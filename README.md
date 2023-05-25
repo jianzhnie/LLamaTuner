@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="assets/guanaco.svg" width="800"/>
+  <img src="assets/guanaco.svg" width="300"/>
 <div>&nbsp;</div>
 </div>
 
