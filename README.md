@@ -14,6 +14,8 @@ The repo contains:
 - code for generation based on trained model
 - code for run on CPU (fp16 or int4 is support, in purely C++)
 
+This model is designed for research use only, i.e., cannot be used for commercial purposes or entertainment.
+
 ## Overview
 
 We present QLoRA, an efficient finetuning approach that reduces memory usage enough to finetune a 65B parameter model on a single 48GB GPU while preserving full 16-bit finetuning task performance. QLoRA backpropagates gradients through a frozen, 4-bit quantized pretrained language model into Low Rank Adapters (LoRA). Our best model family, which we name Guanaco, outperforms all previous openly released models on the Vicuna benchmark, reaching 99.3% of the performance level of ChatGPT while only requiring 24 hours of finetuning on a single GPU. QLoRA introduces a number of innovations to save memory without sacrificing performance: (a) 4-bit NormalFloat (NF4), a new data type that is information theoretically optimal for normally distributed weights (b) Double Quantization to reduce the average memory footprint by quantizing the quantization constants, and (c) Paged Optimizers to manage memory spikes. We use QLoRA to finetune more than 1,000 models, providing a detailed analysis of instruction following and chatbot performance across 8 instruction datasets, multiple model types (LLaMA, T5), and model scales that would be infeasible to run with regular finetuning (e.g. 33B and 65B parameter models). Our results show that QLoRA finetuning on a small high-quality dataset leads to state-of-the-art results, even when using smaller models than the previous SoTA. We provide a detailed analysis of chatbot performance based on both human and GPT-4 evaluations showing that GPT-4 evaluations are a cheap and reasonable alternative to human evaluation. Furthermore, we find that current chatbot benchmarks are not trustworthy to accurately evaluate the performance levels of chatbots. We release all of our models and code, including CUDA kernels for 4-bit training.
@@ -29,15 +31,41 @@ pip install -q -U git+https://github.com/huggingface/accelerate.git
 ```
 
 ## Getting Started
-The `qlora_fintune.py` code is a starting point for finetuning and inference on various datasets.
+
+## QLora int8 Finetune
+```bash
+python qlora_int8_finetune.py \
+    --model_name_or_path  decapoda-research/llama-7b-hf  \
+    --data_path tatsu-lab/alpaca  \
+    --output_dir work_dir_lora/ \
+    --num_train_epochs 3 \
+    --per_device_train_batch_size 4 \
+    --per_device_eval_batch_size 4 \
+    --gradient_accumulation_steps 8 \
+    --evaluation_strategy "no" \
+    --save_strategy "steps" \
+    --save_steps 500 \
+    --save_total_limit 5 \
+    --learning_rate 1e-4 \
+    --weight_decay 0. \
+    --warmup_ratio 0.03 \
+    --lr_scheduler_type "cosine" \
+    --model_max_length 2048 \
+    --logging_steps 1 \
+    --fp16 True
+```
+
+## QLora int4 Finetune
+
+The `qlora_int4_finetune.py` code is a starting point for finetuning and inference on various datasets.
 Basic command for finetuning a baseline model on the Alpaca dataset:
 ```bash
-python qlora_fintune.py --model_name_or_path <path_or_name>
+python qlora_int4_finetune.py --model_name_or_path <path_or_name>
 ```
 
 For models larger than 13B, we recommend adjusting the learning rate:
 ```bash
-python qlora_fintune.py –learning_rate 0.0001 --model_name_or_path <path_or_name>
+python qlora_int4_finetune.py –learning_rate 0.0001 --model_name_or_path <path_or_name>
 ```
 
 ## Quantization
@@ -65,6 +93,10 @@ Quantization parameters are controlled from the `BitsandbytesConfig` ([see HF do
 
 ## Tutorials and Demonstrations
 Examples are found under the `examples/` folder.
+
+[Basic usage Google Colab notebook](https://colab.research.google.com/drive/1ge2F1QSK8Q7h0hn3YKuBCOAS0bK8E0wf?usp=sharing) - This notebook shows how to use 4bit models in inference with all their variants, and how to run GPT-neo-X (a 20B parameter model) on a free Google Colab instance 🤯
+[Fine tuning Google Colab notebook](https://colab.research.google.com/drive/1VoYNfYDKcKRQRor98Zbf2-9VQTtGJ24k?usp=sharing) - This notebook shows how to fine-tune a 4bit model on a downstream task using the Hugging Face ecosystem. We show that it is possible to fine tune GPT-neo-X 20B on a Google Colab instance!
+
 
 ## Sample Outputs
 We provide generations for the models described in the paper for both OA and Vicuna queries in the `eval/generations` folder. These are intended to foster further research on model evaluation and analysis.
