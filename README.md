@@ -5,12 +5,12 @@
 
 # Chinese-Guanaco: Efficient Finetuning of Quantized LLMs for Chinese  —— 一个中文低资源的量化训练/部署方案
 
-This is the repo for the Chinese-Guanaco project, which aims to build and share instruction-following Chinese LLaMA/Pythia/GLM model tuning methods which can be trained on **a single Nvidia RTX-2080TI**, multi-round chatbot which can be trained on **a single Nvidia RTX-3090** with the context len 2048. 
+This is the repo for the Chinese-Guanaco project, which aims to build and share instruction-following Chinese LLaMA/Pythia/GLM model tuning methods which can be trained on **a single Nvidia RTX-2080TI**, multi-round chatbot which can be trained on **a single Nvidia RTX-3090** with the context len 2048.
 
-Chinese-Guanaco uses [bitsandbytes](https://github.com/TimDettmers/bitsandbytes) for quantization and is integrated with Huggingface's [PEFT](https://github.com/huggingface/peft) and [transformers](https://github.com/huggingface/transformers/) libraries. 
+Chinese-Guanaco uses [bitsandbytes](https://github.com/TimDettmers/bitsandbytes) for quantization and is integrated with Huggingface's [PEFT](https://github.com/huggingface/peft) and [transformers](https://github.com/huggingface/transformers/) libraries.
 
 The repo contains:
-- code for finetune the model 
+- code for finetune the model
 - code for generation based on trained model
 - code for run on CPU (fp16 or int4 is support, in purely C++)
 
@@ -64,12 +64,12 @@ Quantization parameters are controlled from the `BitsandbytesConfig` ([see HF do
 ```
 
 ## Tutorials and Demonstrations
-Examples are found under the `examples/` folder.  
+Examples are found under the `examples/` folder.
 
 ## Sample Outputs
 We provide generations for the models described in the paper for both OA and Vicuna queries in the `eval/generations` folder. These are intended to foster further research on model evaluation and analysis.
 
-Can you distinguish ChatGPT from Guanaco? Give it a try! 
+Can you distinguish ChatGPT from Guanaco? Give it a try!
 You can access [the model response Colab here](https://colab.research.google.com/drive/1kK6xasHiav9nhiRUJjPMZb4fAED4qRHb?usp=sharing) comparing ChatGPT and Guanaco 65B on Vicuna prompts.
 
 ## Evaluation
