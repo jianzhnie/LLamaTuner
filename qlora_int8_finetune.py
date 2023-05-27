@@ -6,10 +6,12 @@ from typing import Any, Dict, List, Optional, Sequence
 
 import torch
 from datasets import load_dataset
-from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
+from deepspeed import zero
+from deepspeed.runtime.zero.partition_parameters import ZeroParamStatus
+from peft import LoraConfig, get_peft_model, prepare_model_for_int8_training
+from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import Dataset
 from transformers import (AutoModelForCausalLM, AutoTokenizer,
-                          BitsAndBytesConfig, DataCollatorForLanguageModeling,
                           HfArgumentParser, LlamaTokenizer, PreTrainedModel,
                           PreTrainedTokenizer, Trainer, TrainingArguments)
 
@@ -206,23 +208,18 @@ class DataCollatorForSupervisedDataset(object):
         )
 
 
-def print_trainable_parameters(model):
+def train(load_in_8bit=False) -> None:
+    """Trains a language model using Hugging Face's Transformers library.
+
+    Args:
+        model_args (ModelArguments): The arguments for the model configuration.
+        data_args (DataArguments): The arguments for the data configuration.
+        training_args (TrainingArguments): The arguments for the training configuration.
+        lora_args (LoraArguments): The arguments for low-rank factorization.
+
+    Returns:
+        None
     """
-    Prints the number of trainable parameters in the model.
-    """
-    trainable_params = 0
-    all_param = 0
-    for _, param in model.named_parameters():
-        all_param += param.numel()
-        if param.requires_grad:
-            trainable_params += param.numel()
-    print(
-        f'trainable params: {trainable_params} || all params: {all_param} || trainable%: {100 * trainable_params / all_param}'
-    )
-
-
-def train():
-
     parser = HfArgumentParser(
         (ModelArguments, DataArguments, TrainingArguments, LoraArguments))
     model_args, data_args, training_args, lora_args = parser.parse_args_into_dataclasses(
@@ -233,14 +230,10 @@ def train():
     if ddp:
         device_map = {'': int(os.environ.get('LOCAL_RANK') or 0)}
 
-    bnb_config = BitsAndBytesConfig(load_in_4bit=True,
-                                    bnb_4bit_use_double_quant=True,
-                                    bnb_4bit_quant_type='nf4',
-                                    bnb_4bit_compute_dtype=torch.bfloat16)
     # Load the pre-trained model and tokenizer
     model = AutoModelForCausalLM.from_pretrained(
         model_args.model_name_or_path,
-        quantization_config=bnb_config,
+        load_in_8bit=load_in_8bit,
         torch_dtype=torch.float16,
         cache_dir=training_args.cache_dir,
         device_map=device_map,
@@ -300,13 +293,13 @@ def train():
                                              model)
 
     # Prepare the model for int8 training and get the PEFT model
-    model = prepare_model_for_kbit_training(model)
+    if load_in_8bit:
+        model = prepare_model_for_int8_training(model)
     model = get_peft_model(model, lora_config)
 
     # Print the percentage of trainable parameters if using DeepSpeed and running on local rank 0
     if training_args.deepspeed is not None and training_args.local_rank == 0:
         model.print_trainable_parameters()
-        print_trainable_parameters(model)
 
     # Create a supervised dataset and Trainer, then train the model
     train_dataset = SupervisedDataset(
