@@ -1,4 +1,4 @@
-python qlora.py \
+python qlora_int4_finetune.py \
     --model_name_or_path huggyllama/llama-7b \
     --output_dir ./output/guanaco-7b \
     --logging_steps 10 \

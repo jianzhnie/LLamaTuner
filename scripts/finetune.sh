@@ -1,4 +1,4 @@
-python qlora.py \
+python qlora_int4_finetune.py \
     --model_name_or_path EleutherAI/pythia-12b \
     --output_dir ./output \
     --dataset alpaca \
