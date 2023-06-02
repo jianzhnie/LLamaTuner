@@ -14,7 +14,6 @@ The repo contains:
 - code for generation based on trained model
 - code for run on CPU (fp16 or int4 is support, in purely C++)
 
-This model is designed for research use only, i.e., cannot be used for commercial purposes or entertainment.
 
 ## Overview
 
@@ -92,10 +91,43 @@ Quantization parameters are controlled from the `BitsandbytesConfig` ([see HF do
 ```
 
 ## Tutorials and Demonstrations
-Examples are found under the `examples/` folder.
+We provide two Google Colab notebooks to demonstrate the use of 4bit models in inference and fine-tuning. These notebooks are intended to be a starting point for further research and development.
+- [Basic usage Google Colab notebook](https://colab.research.google.com/drive/1ge2F1QSK8Q7h0hn3YKuBCOAS0bK8E0wf?usp=sharing) - This notebook shows how to use 4bit models in inference with all their variants, and how to run GPT-neo-X (a 20B parameter model) on a free Google Colab instance 🤯
+- [Fine tuning Google Colab notebook](https://colab.research.google.com/drive/1VoYNfYDKcKRQRor98Zbf2-9VQTtGJ24k?usp=sharing) - This notebook shows how to fine-tune a 4bit model on a downstream task using the Hugging Face ecosystem. We show that it is possible to fine tune GPT-neo-X 20B on a Google Colab instance!
 
-[Basic usage Google Colab notebook](https://colab.research.google.com/drive/1ge2F1QSK8Q7h0hn3YKuBCOAS0bK8E0wf?usp=sharing) - This notebook shows how to use 4bit models in inference with all their variants, and how to run GPT-neo-X (a 20B parameter model) on a free Google Colab instance 🤯
-[Fine tuning Google Colab notebook](https://colab.research.google.com/drive/1VoYNfYDKcKRQRor98Zbf2-9VQTtGJ24k?usp=sharing) - This notebook shows how to fine-tune a 4bit model on a downstream task using the Hugging Face ecosystem. We show that it is possible to fine tune GPT-neo-X 20B on a Google Colab instance!
+## Using Local Datasets
+You can specify the path to your dataset using the --dataset argument. If the --dataset_format argument is not set, it will default to the Alpaca format. Here are a few examples:
+
+- Training with an alpaca format dataset:
+```python
+python qlora_int4_finetune.py --dataset="path/to/your/dataset"
+```
+- Training with a self-instruct format dataset:
+
+```python
+python qlora_int4_finetune.py --dataset="path/to/your/dataset" --dataset_format="self-instruct"
+```
+
+## Multi GPU
+Multi GPU training and inference work out-of-the-box with Hugging Face's Accelerate. Note that the per_device_train_batch_size and per_device_eval_batch_size arguments are global batch sizes unlike what their name suggest.
+
+When loading a model for training or inference on multiple GPUs you should pass something like the following to AutoModelForCausalLM.from_pretrained():
+```python
+device_map = "auto"
+max_memory = {i: '46000MB' for i in range(torch.cuda.device_count())}
+```
+
+## Inference
+
+This file reads the foundation model from the Hugging Face model hub and the LoRA weights from `path/to/your/model_dir`, and runs a Gradio interface for inference on a specified input. Users should treat this as example code for the use of the model, and modify it as needed.
+
+Example usage:
+
+```bash
+python generate_server.py \
+    --model_name_or_path decapoda-research/llama-7b-hf \
+    --lora_model_name_or_path  `path/to/your/model_dir`
+```
 
 
 ## Sample Outputs
@@ -103,13 +135,6 @@ We provide generations for the models described in the paper for both OA and Vic
 
 Can you distinguish ChatGPT from Guanaco? Give it a try!
 You can access [the model response Colab here](https://colab.research.google.com/drive/1kK6xasHiav9nhiRUJjPMZb4fAED4qRHb?usp=sharing) comparing ChatGPT and Guanaco 65B on Vicuna prompts.
-
-## Evaluation
-We include scripts adapted from the FastChat repo to automatically evaluate model generations using GPT-4. We include script for comparisons relative to ChatGPT with scores out of 10 as well as "pairwise comparisons" with three class labeling (win, loose, or tie). These are found in the `eval` folder.
-
-To facilitate the replication of our evaluation and future work in this area, we release GPT-4 and human ratings of our systems. These are found under `eval/ratings-human` and `eval/ratings-gpt4`.
-
-More details can be found at `eval/EVAL_README.md`.
 
 ## Known Issues and Limitations
 Here a list of known issues and bugs. If your issue is not reported here, please open a new issue and describe the problem.
