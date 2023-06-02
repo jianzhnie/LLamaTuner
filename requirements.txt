@@ -1,0 +1,21 @@
+
+accelerate
+accelerate @ git+https://github.com/huggingface/accelerate.git
+bitsandbytes==0.39.0
+datasets
+deepspeed
+einops==0.6.1
+evaluate>=0.4.0
+gradio
+nltk>=3.8.1
+numpy
+peft
+peft @ git+https://github.com/huggingface/peft.git
+rouge-score>=0.1.2
+scikit-learn==1.2.2
+sentencepiece
+tokenizers
+torch
+transformers>=4.28.0
+transformers @ git+https://github.com/huggingface/transformers.git
+wandb==0.15.3
