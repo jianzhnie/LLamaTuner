@@ -108,18 +108,12 @@ if __name__ == '__main__':
             logging_steps=1,
             output_dir='outputs',
             optim='paged_adamw_8bit',
-            eval_steps=1,
-            # Evaluate and Save Model every `eval_steps` steps
             save_total_limit=3,
             # Only keep the last 3 models saved to disk.
+            save_strategy='steps',
+            # Save checkpoints every `save_steps` steps.
             save_steps=200,
             # Save model checkpoint every `save_steps` steps.
-            load_best_model_at_end=True,
-            # Load the best model found during training at the end of training
-            metric_for_best_model='loss',
-            # Use loss to determine the best model.
-            greater_is_better=False,
-            # The lower the loss, the better the model
         ),
         data_collator=DataCollatorForLanguageModeling(tokenizer, mlm=False),
     )
