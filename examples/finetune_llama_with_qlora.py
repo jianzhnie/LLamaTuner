@@ -1,6 +1,7 @@
 from typing import Dict
 
 import torch
+import transformers
 from datasets import load_dataset
 from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
 from transformers import (AutoModelForCausalLM, AutoTokenizer,
@@ -25,6 +26,31 @@ def print_trainable_parameters(model: AutoModelForCausalLM) -> None:
     print(
         f'trainable params: {trainable_params} || all params: {all_param} || trainable%: \
             {100 * trainable_params / all_param}')
+
+
+def smart_tokenizer_and_embedding_resize(
+    special_tokens_dict: Dict,
+    tokenizer: transformers.PreTrainedTokenizer,
+    model: transformers.PreTrainedModel,
+):
+    """Resize tokenizer and embedding.
+
+    Note: This is the unoptimized version that may make your embedding size not be divisible by 64.
+    """
+    num_new_tokens = tokenizer.add_special_tokens(special_tokens_dict)
+    model.resize_token_embeddings(len(tokenizer))
+
+    if num_new_tokens > 0:
+        input_embeddings = model.get_input_embeddings().weight.data
+        output_embeddings = model.get_output_embeddings().weight.data
+
+        input_embeddings_avg = input_embeddings[:-num_new_tokens].mean(
+            dim=0, keepdim=True)
+        output_embeddings_avg = output_embeddings[:-num_new_tokens].mean(
+            dim=0, keepdim=True)
+
+        input_embeddings[-num_new_tokens:] = input_embeddings_avg
+        output_embeddings[-num_new_tokens:] = output_embeddings_avg
 
 
 if __name__ == '__main__':
@@ -93,7 +119,12 @@ if __name__ == '__main__':
         special_tokens_dict['bos_token'] = DEFAULT_BOS_TOKEN
     if tokenizer.unk_token is None:
         special_tokens_dict['unk_token'] = DEFAULT_UNK_TOKEN
-    tokenizer.add_special_tokens(special_tokens_dict)
+
+    smart_tokenizer_and_embedding_resize(
+        special_tokens_dict=special_tokens_dict,
+        tokenizer=tokenizer,
+        model=model,
+    )
 
     trainer = Trainer(
         model=model,
@@ -108,12 +139,6 @@ if __name__ == '__main__':
             logging_steps=1,
             output_dir='outputs',
             optim='paged_adamw_8bit',
-            save_total_limit=3,
-            # Only keep the last 3 models saved to disk.
-            save_strategy='steps',
-            # Save checkpoints every `save_steps` steps.
-            save_steps=200,
-            # Save model checkpoint every `save_steps` steps.
         ),
         data_collator=DataCollatorForLanguageModeling(tokenizer, mlm=False),
     )
