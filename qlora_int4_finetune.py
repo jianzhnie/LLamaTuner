@@ -44,6 +44,12 @@ class ModelArguments:
             'help':
             'Enable unpickling of arbitrary code in AutoModelForCausalLM#from_pretrained.'
         })
+    use_auth_token: Optional[bool] = field(
+        default=False,
+        metadata={
+            'help':
+            'Enables using Huggingface auth token from Git Credentials.'
+        })
 
 
 @dataclass
@@ -309,6 +315,13 @@ def get_accelerate_model(args, checkpoint_dir):
     n_gpus = torch.cuda.device_count()
     max_memory = f'{args.max_memory_MB}MB'
     max_memory = {i: max_memory for i in range(n_gpus)}
+    device_map = 'auto'
+
+    # if we are in a distributed setting, we need to set the device map and max memory per device
+    if os.environ.get('LOCAL_RANK') is not None:
+        local_rank = int(os.environ.get('LOCAL_RANK', '0'))
+        device_map = {'': local_rank}
+        max_memory = {'': max_memory[local_rank]}
 
     if args.full_finetune: assert args.bits in [16, 32]
 
@@ -320,7 +333,7 @@ def get_accelerate_model(args, checkpoint_dir):
         cache_dir=args.cache_dir,
         load_in_4bit=args.bits == 4,
         load_in_8bit=args.bits == 8,
-        device_map='auto',
+        device_map=device_map,
         max_memory=max_memory,
         quantization_config=BitsAndBytesConfig(
             load_in_4bit=args.bits == 4,
@@ -334,7 +347,7 @@ def get_accelerate_model(args, checkpoint_dir):
         torch_dtype=(torch.float32 if args.fp16 else
                      (torch.bfloat16 if args.bf16 else torch.float32)),
         trust_remote_code=args.trust_remote_code,
-    )
+        use_auth_token=args.use_auth_token)
     if compute_dtype == torch.float16 and args.bits == 4:
         major, minor = torch.cuda.get_device_capability()
         if major >= 8:
@@ -601,7 +614,7 @@ def make_data_module(tokenizer: transformers.PreTrainedTokenizer,
         else:
             if os.path.exists(dataset_name):
                 try:
-                    args.dataset_format = args.dataset_format if args.dataset_format else 'alpaca'
+                    args.dataset_format = args.dataset_format if args.dataset_format else 'input-output'
                     full_dataset = local_dataset(dataset_name)
                     return full_dataset
                 except:
@@ -642,6 +655,9 @@ def make_data_module(tokenizer: transformers.PreTrainedTokenizer,
                 'input': '',
                 'output': x['text'],
             })
+        elif dataset_format == 'input-output':
+            # leave as is
+            pass
         # Remove unused columns.
         dataset = dataset.remove_columns([
             col for col in dataset.column_names['train']
@@ -740,6 +756,7 @@ def train():
         use_fast=False,  # Fast tokenizer giving issues.
         tokenizer_type='llama' if 'llama' in args.model_name_or_path else
         None,  # Needed for HF name change
+        use_auth_token=args.use_auth_token,
     )
     if tokenizer._pad_token is None:
         smart_tokenizer_and_embedding_resize(
