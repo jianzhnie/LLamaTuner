@@ -3,6 +3,14 @@
 <div>&nbsp;</div>
 </div>
 
+
+![GitHub Repo stars](https://img.shields.io/github/stars/jianzhnie/Chinese-Guanaco?style=social)
+![GitHub Code License](https://img.shields.io/github/license/jianzhnie/Chinese-Guanaco)
+![GitHub last commit](https://img.shields.io/github/last-commit/jianzhnie/Chinese-Guanaco)
+![GitHub pull request](https://img.shields.io/badge/PRs-welcome-blue)
+
+👋 Join our [WeChat](assets/wechat.jpg).
+
 # Chinese-Guanaco: Efficient Finetuning of Quantized LLMs for Chinese  —— 一个中文低资源的量化训练/部署方案
 
 This is the repo for the Chinese-Guanaco project, which aims to build and share instruction-following Chinese LLaMA/Pythia/GLM model tuning methods which can be trained on **a single Nvidia RTX-2080TI**, multi-round chatbot which can be trained on **a single Nvidia RTX-3090** with the context len 2048.
