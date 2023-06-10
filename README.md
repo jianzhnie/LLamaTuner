@@ -7,6 +7,9 @@
 ![GitHub Code License](https://img.shields.io/github/license/jianzhnie/Chinese-Guanaco)
 ![GitHub last commit](https://img.shields.io/github/last-commit/jianzhnie/Chinese-Guanaco)
 ![GitHub pull request](https://img.shields.io/badge/PRs-welcome-blue)
+[![Code License](https://img.shields.io/badge/Code%20License-Apache_2.0-green.svg)](https://github.com/jianzhnie/open-chatgpt/blob/main/LICENSE)
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/release/python-390/)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 👋 Join our [WeChat](assets/wechat.jpeg).
 
@@ -148,9 +151,16 @@ Quantization parameters are controlled from the `BitsandbytesConfig` ([see HF do
 ```
 
 ## Tutorials and Demonstrations
+
+
+
 We provide two Google Colab notebooks to demonstrate the use of 4bit models in inference and fine-tuning. These notebooks are intended to be a starting point for further research and development.
 - [Basic usage Google Colab notebook](https://colab.research.google.com/drive/1ge2F1QSK8Q7h0hn3YKuBCOAS0bK8E0wf?usp=sharing) - This notebook shows how to use 4bit models in inference with all their variants, and how to run GPT-neo-X (a 20B parameter model) on a free Google Colab instance 🤯
 - [Fine tuning Google Colab notebook](https://colab.research.google.com/drive/1VoYNfYDKcKRQRor98Zbf2-9VQTtGJ24k?usp=sharing) - This notebook shows how to fine-tune a 4bit model on a downstream task using the Hugging Face ecosystem. We show that it is possible to fine tune GPT-neo-X 20B on a Google Colab instance!
+
+Other examples are found under the examples/ folder.
+- Finetune LLama-7B (ex1)
+- Finetune GPT-neo-X 20B (ex2)
 
 ## Using Local Datasets
 You can specify the path to your dataset using the --dataset argument. If the --dataset_format argument is not set, it will default to the Alpaca format. Here are a few examples:
