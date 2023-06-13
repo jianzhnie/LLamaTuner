@@ -12,7 +12,7 @@ from peft import LoraConfig, get_peft_model, prepare_model_for_int8_training
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import Dataset
 from transformers import (AutoModelForCausalLM, AutoTokenizer,
-                          HfArgumentParser, LlamaTokenizer, PreTrainedModel,
+                          HfArgumentParser, PreTrainedModel,
                           PreTrainedTokenizer, Trainer, TrainingArguments)
 
 IGNORE_INDEX = -100
@@ -249,34 +249,20 @@ def train(load_in_8bit=False) -> None:
         task_type='CAUSAL_LM',
     )
 
-    # Warn about potential issue with gradient checkpointing and LORA
     if training_args.gradient_checkpointing:
-        logging.warning(
-            'Gradient checkpointing with LORA makes requires_grad '
-            'incorrect and needs a monkey patch in Trainer or the '
-            "wrapped model's forward. Ref: "
-            'https://github.com/lm-sys/FastChat/pull/138#issuecomment-1509172198'
-        )
+        model.enable_input_require_grads()
+        model.gradient_checkpointing_enable()
 
     # Load the tokenizer
-    if model.config.model_type == 'llama':
-        # Due to the name of Transformers' LlamaTokenizer, we have to do this
-        tokenizer = LlamaTokenizer.from_pretrained(
-            model_args.model_name_or_path,
-            cache_dir=training_args.cache_dir,
-            model_max_length=training_args.model_max_length,
-            padding_side='right',
-            use_fast=True,
-        )
-    else:
-        tokenizer = AutoTokenizer.from_pretrained(
-            model_args.model_name_or_path,
-            cache_dir=training_args.cache_dir,
-            model_max_length=training_args.model_max_length,
-            padding_side='right',
-            use_fast=True,
-        )
-
+    tokenizer = AutoTokenizer.from_pretrained(
+        model_args.model_name_or_path,
+        cache_dir=training_args.cache_dir,
+        padding_side='right',
+        use_fast=False,  # Fast tokenizer giving issues.
+        tokenizer_type='llama'
+        if 'llama' in model_args.model_name_or_path else None,
+        # Needed for HF name change
+    )
     # Add special tokens to tokenizer if they are not already present
     special_tokens_dict: Dict[str, Any] = {}
     if tokenizer.pad_token is None:
