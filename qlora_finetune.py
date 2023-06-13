@@ -5,18 +5,18 @@ import logging
 import os
 from dataclasses import dataclass, field
 from os.path import exists, isdir, join
-from typing import Any, Dict, Optional, Sequence
+from typing import Any, Dict, Optional, Sequence, List, Tuple
 
 import torch
 import transformers
-from datasets import load_dataset
+from datasets import load_dataset, Dataset
 from peft import (LoraConfig, PeftModel, get_peft_model,
                   prepare_model_for_kbit_training)
 from peft.tuners.lora import LoraLayer
 from torch.nn.utils.rnn import pad_sequence
 from transformers import (AutoModelForCausalLM, AutoTokenizer,
-                          BitsAndBytesConfig, LlamaTokenizer, Seq2SeqTrainer,
-                          set_seed)
+                          PreTrainedTokenizer, BitsAndBytesConfig,
+                          LlamaTokenizer, Seq2SeqTrainer, set_seed)
 
 from utils.model_utils import (SavePeftModelCallback, find_all_linear_names,
                                print_trainable_parameters,
@@ -60,7 +60,7 @@ class DataArguments:
         },
     )
     target_max_len: int = field(
-        default=256,
+        default=1024,
         metadata={
             'help':
             'Maximum target sequence length. Sequences will be right padded (and possibly truncated).'
@@ -71,6 +71,12 @@ class DataArguments:
 @dataclass
 class TrainingArguments(transformers.TrainingArguments):
     cache_dir: Optional[str] = field(default=None)
+    train_on_source: Optional[bool] = field(
+        default=False,
+        metadata={
+            'help':
+            'Whether to train on the input in addition to the target text.'
+        })
     optim: str = field(default='adamw_torch')
     max_grad_norm: float = field(
         default=0.3,
@@ -128,14 +134,14 @@ class GenerationArguments:
         default=None,
         metadata={'help': 'Minimum number of new tokens to generate.'})
 
-    # gebneration strategy
+    # Generation strategy
     do_sample: Optional[bool] = field(default=False)
     num_beams: Optional[int] = field(default=1)
     num_beam_groups: Optional[int] = field(default=1)
     penalty_alpha: Optional[float] = field(default=None)
     use_cache: Optional[bool] = field(default=True)
 
-    # hyperparameters for logits processing
+    # Hyperparameters for logit manipulation
     temperature: Optional[float] = field(default=1.0)
     top_k: Optional[int] = field(default=50)
     top_p: Optional[float] = field(default=1.0)
@@ -146,20 +152,30 @@ class GenerationArguments:
     no_repeat_ngram_size: Optional[int] = field(default=0)
 
 
-def get_accelerate_model(args, checkpoint_dir):
+def get_accelerate_model(args: Dict,
+                         checkpoint_dir: Optional[str]) -> torch.nn.Module:
+    """
+    Returns a language model for text generation that can be trained with mixed precision.
 
+    Args:
+        args (Dict): A dictionary containing various hyperparameters.
+        checkpoint_dir (str, optional): A directory containing pre-trained adapters for the model.
+
+    Returns:
+        torch.nn.Module: An instance of the language model.
+    """
     n_gpus = torch.cuda.device_count()
     max_memory = f'{args.max_memory_MB}MB'
     max_memory = {i: max_memory for i in range(n_gpus)}
     device_map = 'auto'
 
-    # if we are in a distributed setting, we need to set the device map and max memory per device
+    # If we are in a distributed setting, we need to set the device map and max memory per device.
     if os.environ.get('LOCAL_RANK') is not None:
         local_rank = int(os.environ.get('LOCAL_RANK', '0'))
         device_map = {'': local_rank}
         max_memory = {'': max_memory[local_rank]}
 
-    print(f'loading base model {args.model_name_or_path}...')
+    print(f'Loading base model {args.model_name_or_path}...')
     compute_dtype = (torch.float16 if args.fp16 else
                      (torch.bfloat16 if args.bf16 else torch.float32))
     model = AutoModelForCausalLM.from_pretrained(
@@ -181,6 +197,8 @@ def get_accelerate_model(args, checkpoint_dir):
         torch_dtype=(torch.float32 if args.fp16 else
                      (torch.bfloat16 if args.bf16 else torch.float32)),
         use_auth_token=args.use_auth_token)
+
+    # Print a message if the GPU supports bfloat16.
     if compute_dtype == torch.float16 and args.bits == 4:
         major, minor = torch.cuda.get_device_capability()
         if major >= 8:
@@ -190,25 +208,31 @@ def get_accelerate_model(args, checkpoint_dir):
             )
             print('=' * 80)
 
+    # Enable model parallelism.
     setattr(model, 'model_parallel', True)
     setattr(model, 'is_parallelizable', True)
 
     model.config.torch_dtype = (torch.float32 if args.fp16 else (
         torch.bfloat16 if args.bf16 else torch.float32))
 
+    # Prepare the model for k-bit training if specified.
     model = prepare_model_for_kbit_training(
         model, use_gradient_checkpointing=args.gradient_checkpointing)
+
+    # Enable gradient checkpointing if specified.
     if args.gradient_checkpointing:
         model.gradient_checkpointing_enable()
 
     if checkpoint_dir is not None:
+        # Load pre-trained adapters from checkpoint directory.
         print('Loading adapters from checkpoint.')
         model = PeftModel.from_pretrained(model,
-                                          join(checkpoint_dir,
-                                               'adapter_model'),
+                                          os.path.join(checkpoint_dir,
+                                                       'adapter_model'),
                                           is_trainable=True)
     else:
-        print('adding LoRA modules...')
+        # Add LoRA modules to the model.
+        print('Adding LoRA modules...')
         modules = find_all_linear_names(args, model)
         config = LoraConfig(
             r=args.lora_r,
@@ -220,6 +244,7 @@ def get_accelerate_model(args, checkpoint_dir):
         )
         model = get_peft_model(model, config)
 
+    # Convert certain model modules to a different precision as specified by the hyperparameters.
     for name, module in model.named_modules():
         if isinstance(module, LoraLayer):
             if args.bf16:
@@ -233,24 +258,62 @@ def get_accelerate_model(args, checkpoint_dir):
     return model
 
 
-@dataclass
 class DataCollatorForCausalLM(object):
-    tokenizer: transformers.PreTrainedTokenizer
-    source_max_len: int
-    target_max_len: int
-    train_on_source: bool
-    predict_with_generate: bool
+    """
+    Data collator used for language modeling tasks. This collator takes in a sequence of examples
+    (input/output pairs) and returns a dictionary containing the inputs and labels for training
+    a causal language model.
 
-    def __call__(self, instances: Sequence[Dict]) -> Dict[str, torch.Tensor]:
+    Parameters:
+        tokenizer (transformers.PreTrainedTokenizer): Tokenizer used to tokenize the input and output text.
+        source_max_len (int): The maximum length allowed for the input source text.
+        target_max_len (int): The maximum length allowed for the target output text.
+        train_on_source (bool): If True, the model will be trained on the source text. Otherwise, it will be trained
+                                on both source and target text concatenated together.
+        predict_with_generate (bool, default=False): If True, only the input_ids for the tokenized source text
+                                                      are returned. This is useful during inference when generating
+                                                      text sequences from the model.
+    """
+
+    def __init__(
+        self,
+        tokenizer: PreTrainedTokenizer,
+        source_max_len: int,
+        target_max_len: int,
+        train_on_source: bool,
+        predict_with_generate: bool = False,
+    ) -> None:
+        self.tokenizer = tokenizer
+        self.source_max_len = source_max_len
+        self.target_max_len = target_max_len
+        self.train_on_source = train_on_source
+        self.predict_with_generate = predict_with_generate
+
+    def __call__(
+            self, instances: Sequence[Dict[str,
+                                           str]]) -> Dict[str, torch.Tensor]:
+        """
+        Takes a sequence of input/output pairs and returns a dictionary containing the inputs and labels
+        for training a causal language model.
+
+        Parameters:
+            instances (Sequence[Dict[str, str]]): A sequence of input/output pairs. Each dictionary must contain
+                                                  the keys 'input' and 'output'.
+
+        Returns:
+            data_dict (Dict[str, torch.Tensor]): A dictionary containing the input_ids, attention_mask,
+                                                 and optionally the labels.
+        """
         # Extract elements
-        sources = [
+        sources: List[str] = [
             f"{self.tokenizer.bos_token}{example['input']}"
             for example in instances
         ]
-        targets = [
+        targets: List[str] = [
             f"{example['output']}{self.tokenizer.eos_token}"
             for example in instances
         ]
+
         # Tokenize
         tokenized_sources_with_prompt = self.tokenizer(
             sources,
@@ -264,12 +327,14 @@ class DataCollatorForCausalLM(object):
             truncation=True,
             add_special_tokens=False,
         )
+
         # Build the input and labels for causal LM
         input_ids = []
         labels = []
         for tokenized_source, tokenized_target in zip(
-                tokenized_sources_with_prompt['input_ids'],
-                tokenized_targets['input_ids']):
+                tokenized_sources_with_prompt["input_ids"],
+                tokenized_targets["input_ids"],
+        ):
             if not self.predict_with_generate:
                 input_ids.append(
                     torch.tensor(tokenized_source + tokenized_target))
@@ -285,61 +350,110 @@ class DataCollatorForCausalLM(object):
                                           tokenized_target)))
             else:
                 input_ids.append(torch.tensor(tokenized_source))
+
         # Apply padding
         input_ids = pad_sequence(input_ids,
                                  batch_first=True,
                                  padding_value=self.tokenizer.pad_token_id)
-        labels = pad_sequence(
-            labels, batch_first=True, padding_value=IGNORE_INDEX
-        ) if not self.predict_with_generate else None
+        labels = (pad_sequence(
+            labels,
+            batch_first=True,
+            padding_value=IGNORE_INDEX,
+        ) if not self.predict_with_generate else None)
+
+        # Construct data dictionary containing inputs and labels
         data_dict = {
-            'input_ids': input_ids,
-            'attention_mask': input_ids.ne(self.tokenizer.pad_token_id),
+            "input_ids": input_ids,
+            "attention_mask": input_ids.ne(self.tokenizer.pad_token_id),
         }
         if labels is not None:
-            data_dict['labels'] = labels
+            data_dict["labels"] = labels
+
         return data_dict
 
 
-def load_and_format_dataset(data_path):
+def load_and_format_dataset(data_path: str) -> Dataset:
+    """
+    Load a dataset from the `data_path` argument and format each example using a pre-defined prompt specified in 
+    `ALPACA_PROMPT_DICT`. The formatted examples will only include an input prompt and corresponding output.
+    
+    Args:
+    - data_path (str): A string representing the path to the dataset.
+    
+    Returns:
+    - A Hugging Face datasets Dataset containing formatted examples.
+    """
 
-    ALPACA_PROMPT_DICT = {
+    # Define the prompts that will be used to format each example
+    ALPACA_PROMPT_DICT: Dict[str, str] = {
         'prompt_input':
-        ('Below is an instruction that describes a task, paired with an input that provides further context. '
-         'Write a response that appropriately completes the request.\n\n'
+        ('Below is an instruction that describes a task, paired with an input that provides '
+         'further context. Write a response that appropriately completes the request.\n\n'
          '### Instruction:\n{instruction}\n\n### Input:\n{input}\n\n### Response: '
          ),
         'prompt_no_input':
-        ('Below is an instruction that describes a task. '
-         'Write a response that appropriately completes the request.\n\n'
-         '### Instruction:\n{instruction}\n\n### Response: '),
+        ('Below is an instruction that describes a task. Write a response that appropriately '
+         'completes the request.\n\n### Instruction:\n{instruction}\n\n### Response: '
+         )
     }
 
-    def extract_alpaca_dataset(example):
+    def extract_alpaca_dataset(example: Dict[str, str]) -> Dict[str, str]:
+        """
+        This function formats a single input-output example using the appropriate prompt.
+        
+        Args:
+        - example (Dict[str, str]): A dictionary representing a single example containing the keys 'input', 
+          'output', and 'instruction'.
+          
+        Returns:
+        - A dictionary containing the formatted input and output for the given example.
+        """
         if example.get('input', '') != '':
             prompt_format = ALPACA_PROMPT_DICT['prompt_input']
         else:
             prompt_format = ALPACA_PROMPT_DICT['prompt_no_input']
         return {'input': prompt_format.format(**example)}
 
+    # Load the dataset from the given data path
     if data_path.endswith('.json') or data_path.endswith('.jsonl'):
         dataset = load_dataset('json', data_files=data_path)['train']
     else:
-        dataset = load_dataset(data_path)['train']
+        dataset = load_dataset(
+            data_path, cache_dir='~/.cache/huggingface/datasets')['train']
 
+    # Map each example to a formatted input-output pair using the `extract_alpaca_dataset` function
     dataset = dataset.map(extract_alpaca_dataset,
                           remove_columns=['instruction'])
-    # Remove unused columns.
+
+    # Remove any unused columns (only 'input' and 'output' will remain)
     dataset = dataset.remove_columns([
         col for col in dataset.column_names if col not in ['input', 'output']
     ])
+
     return dataset
 
 
-def get_last_checkpoint(checkpoint_dir):
+def get_last_checkpoint(checkpoint_dir: str) -> Tuple[str, bool]:
+    """
+    Given a directory containing previous saved checkpoints, returns the path to the last checkpoint
+    if available along with a boolean flag indicating whether training has already been completed.
+
+    Args:
+        checkpoint_dir (str): Path to the directory containing the saved checkpoints.
+
+    Returns:
+        A tuple containing the path to the last checkpoint if available, and a boolean flag indicating
+        whether training has already been completed.
+    """
+    # Check if provided directory exists
     if isdir(checkpoint_dir):
+
+        # Check if 'completed' file exists in the directory - indicates training has completed
         is_completed = exists(join(checkpoint_dir, 'completed'))
-        if is_completed: return None, True  # already finished
+        if is_completed:
+            return None, True  # Already finished
+
+        # Find the latest checkpoint by checking all subdirectories named 'checkpoint-*'
         max_step = 0
         for filename in os.listdir(checkpoint_dir):
             if isdir(join(checkpoint_dir,
@@ -347,11 +461,15 @@ def get_last_checkpoint(checkpoint_dir):
                 max_step = max(max_step,
                                int(filename.replace('checkpoint-', '')))
         if max_step == 0:
-            return None, is_completed  # training started, but no checkpoint
+            return None, is_completed  # Training started, but no checkpoint found
+
+        # Return path to the latest checkpoint directory
         checkpoint_dir = join(checkpoint_dir, f'checkpoint-{max_step}')
         print(f'Found a previous checkpoint at: {checkpoint_dir}')
-        return checkpoint_dir, is_completed  # checkpoint found!
-    return None, False  # first training
+        return checkpoint_dir, is_completed
+
+    # The directory does not exist, meaning this is the first time the training is being run
+    return None, False
 
 
 def train():
@@ -430,7 +548,7 @@ def train():
         source_max_len=args.source_max_len,
         target_max_len=args.target_max_len,
         train_on_source=args.train_on_source,
-        predict_with_generate=args.predict_with_generate,
+        predict_with_generate=False,
     )
 
     trainer = Seq2SeqTrainer(

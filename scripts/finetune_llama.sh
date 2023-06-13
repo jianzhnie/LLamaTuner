@@ -1,6 +1,6 @@
 python qlora_finetune.py \
     --model_name_or_path decapoda-research/llama-7b-hf \
-    --data_path tatsu-lab/alpaca  \
+    --data_path databricks/databricks-dolly-15k \
     --output_dir ./work_dir/llama-7b \
     --num_train_epochs 3 \
     --per_device_train_batch_size 1 \
