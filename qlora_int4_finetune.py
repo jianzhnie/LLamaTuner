@@ -377,7 +377,7 @@ def get_accelerate_model(args, checkpoint_dir):
                                                    'adapter_model'),
                                               is_trainable=True)
         else:
-            print(f'adding LoRA modules...')
+            print('adding LoRA modules...')
             modules = find_all_linear_names(args, model)
             config = LoraConfig(
                 r=args.lora_r,

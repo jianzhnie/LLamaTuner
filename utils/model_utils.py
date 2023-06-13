@@ -1,11 +1,12 @@
+import os
+from os.path import join
+from typing import Dict
+
 import bitsandbytes as bnb
 import torch
 import transformers
-import os
+from transformers import PreTrainedModel, PreTrainedTokenizer
 from transformers.trainer_utils import PREFIX_CHECKPOINT_DIR
-from os.path import exists, isdir, join
-from transformers import PreTrainedModel,PreTrainedTokenizer
-from typing import Dict, Optional, Sequence, List
 
 
 def smart_tokenizer_and_embedding_resize(special_tokens_dict: Dict,
@@ -62,7 +63,6 @@ def print_trainable_parameters(args, model):
 
 
 class SavePeftModelCallback(transformers.TrainerCallback):
-
     def save_model(self, args, state, kwargs):
         print('Saving PEFT checkpoint...')
         if state.best_model_checkpoint is not None:
@@ -86,7 +86,6 @@ class SavePeftModelCallback(transformers.TrainerCallback):
         return control
 
     def on_train_end(self, args, state, control, **kwargs):
-
         def touch(fname, times=None):
             with open(fname, 'a'):
                 os.utime(fname, times)

@@ -5,19 +5,18 @@ import logging
 import os
 from dataclasses import dataclass, field
 from os.path import exists, isdir, join
-from typing import Dict, List, Optional, Sequence
+from typing import Any, Dict, Optional, Sequence
 
-import bitsandbytes as bnb
 import torch
 import transformers
-from datasets import Dataset, load_dataset
+from datasets import load_dataset
 from peft import (LoraConfig, PeftModel, get_peft_model,
                   prepare_model_for_kbit_training)
 from peft.tuners.lora import LoraLayer
 from torch.nn.utils.rnn import pad_sequence
 from transformers import (AutoModelForCausalLM, AutoTokenizer,
-                          BitsAndBytesConfig, LlamaTokenizer,
-                          PreTrainedTokenizer, Seq2SeqTrainer, set_seed)
+                          BitsAndBytesConfig, LlamaTokenizer, Seq2SeqTrainer,
+                          set_seed)
 
 from utils.model_utils import (SavePeftModelCallback, find_all_linear_names,
                                print_trainable_parameters,
@@ -209,7 +208,7 @@ def get_accelerate_model(args, checkpoint_dir):
                                                'adapter_model'),
                                           is_trainable=True)
     else:
-        print(f'adding LoRA modules...')
+        print('adding LoRA modules...')
         modules = find_all_linear_names(args, model)
         config = LoraConfig(
             r=args.lora_r,
@@ -332,8 +331,7 @@ def load_and_format_dataset(data_path):
                           remove_columns=['instruction'])
     # Remove unused columns.
     dataset = dataset.remove_columns([
-        col for col in dataset.column_names['train']
-        if col not in ['input', 'output']
+        col for col in dataset.column_names if col not in ['input', 'output']
     ])
     return dataset
 
