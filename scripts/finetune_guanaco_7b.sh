@@ -1,5 +1,5 @@
 python qlora_int4_finetune.py \
-    --model_name_or_path huggyllama/llama-7b \
+    --model_name_or_path decapoda-research/llama-7b-hf \
     --output_dir ./output/guanaco-7b \
     --logging_steps 10 \
     --save_strategy steps \
@@ -16,19 +16,17 @@ python qlora_int4_finetune.py \
     --logging_strategy steps \
     --remove_unused_columns False \
     --do_train \
-    --do_eval \
-    --do_mmlu_eval \
     --lora_r 64 \
     --lora_alpha 16 \
     --lora_modules all \
     --double_quant \
     --quant_type nf4 \
-    --bf16 \
+    --fp16 \
     --bits 4 \
     --warmup_ratio 0.03 \
     --lr_scheduler_type constant \
     --gradient_checkpointing \
-    --dataset oasst1 \
+    --dataset alpaca \
     --source_max_len 16 \
     --target_max_len 512 \
     --per_device_train_batch_size 1 \

@@ -1,6 +1,3 @@
-# This source code is licensed under the MIT license found in the
-# LICENSE file in the root directory of this source tree.
-
 import argparse
 import copy
 import json
@@ -8,7 +5,7 @@ import logging
 import os
 from dataclasses import dataclass, field
 from os.path import exists, isdir, join
-from typing import Dict, Optional, Sequence
+from typing import Any, Dict, Optional, Sequence
 
 import bitsandbytes as bnb
 import evaluate
@@ -33,6 +30,9 @@ logger = logging.getLogger(__name__)
 
 IGNORE_INDEX = -100
 DEFAULT_PAD_TOKEN = '[PAD]'
+DEFAULT_EOS_TOKEN = '</s>'
+DEFAULT_BOS_TOKEN = '<s>'
+DEFAULT_UNK_TOKEN = '<unk>'
 
 
 @dataclass
@@ -749,20 +749,23 @@ def train():
     set_seed(args.seed)
 
     # Tokenizer
-    tokenizer = AutoTokenizer.from_pretrained(
-        args.model_name_or_path,
-        cache_dir=args.cache_dir,
-        padding_side='right',
-        use_fast=False,  # Fast tokenizer giving issues.
-        tokenizer_type='llama' if 'llama' in args.model_name_or_path else
-        None,  # Needed for HF name change
-        use_auth_token=args.use_auth_token,
-    )
-    if tokenizer._pad_token is None:
-        smart_tokenizer_and_embedding_resize(
-            special_tokens_dict=dict(pad_token=DEFAULT_PAD_TOKEN),
-            tokenizer=tokenizer,
-            model=model,
+    if model.config.model_type == 'llama':
+        # Due to the name of Transformers' LlamaTokenizer, we have to do this
+        tokenizer = LlamaTokenizer.from_pretrained(
+            args.model_name_or_path,
+            cache_dir=args.cache_dir,
+            padding_side='right',
+            use_fast=True,
+        )
+    else:
+        tokenizer = AutoTokenizer.from_pretrained(
+            args.model_name_or_path,
+            cache_dir=args.cache_dir,
+            padding_side='right',
+            use_fast=False,  # Fast tokenizer giving issues.
+            tokenizer_type='llama' if 'llama' in args.model_name_or_path else
+            None,  # Needed for HF name change
+            use_auth_token=args.use_auth_token,
         )
     if 'llama' in args.model_name_or_path or isinstance(
             tokenizer, LlamaTokenizer):
@@ -771,16 +774,20 @@ def train():
         # Note that these are present in the vocabulary.
         # Note also that `model.config.pad_token_id` is 0 which corresponds to `<unk>` token.
         print('Adding special tokens.')
-        tokenizer.add_special_tokens({
-            'eos_token':
-            tokenizer.convert_ids_to_tokens(model.config.eos_token_id),
-            'bos_token':
-            tokenizer.convert_ids_to_tokens(model.config.bos_token_id),
-            'unk_token':
-            tokenizer.convert_ids_to_tokens(
-                model.config.pad_token_id if model.config.pad_token_id != -1
-                else tokenizer.pad_token_id),
-        })
+        special_tokens_dict: Dict[str, Any] = {}
+        if tokenizer.pad_token is None:
+            special_tokens_dict['pad_token'] = DEFAULT_PAD_TOKEN
+        if tokenizer.eos_token is None:
+            special_tokens_dict['eos_token'] = DEFAULT_EOS_TOKEN
+        if tokenizer.bos_token is None:
+            special_tokens_dict['bos_token'] = DEFAULT_BOS_TOKEN
+        if tokenizer.unk_token is None:
+            special_tokens_dict['unk_token'] = DEFAULT_UNK_TOKEN
+
+        if len(special_tokens_dict) > 0:
+            smart_tokenizer_and_embedding_resize(special_tokens_dict,
+                                                 tokenizer, model)
+
     data_module = make_data_module(tokenizer=tokenizer, args=args)
     trainer = Seq2SeqTrainer(
         model=model,
