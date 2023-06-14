@@ -5,22 +5,23 @@ import logging
 import os
 from dataclasses import dataclass, field
 from os.path import exists, isdir, join
-from typing import Any, Dict, Optional, Sequence, List, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import torch
 import transformers
-from datasets import load_dataset, Dataset
+from datasets import Dataset, load_dataset
 from peft import (LoraConfig, PeftModel, get_peft_model,
                   prepare_model_for_kbit_training)
 from peft.tuners.lora import LoraLayer
 from torch.nn.utils.rnn import pad_sequence
 from transformers import (AutoModelForCausalLM, AutoTokenizer,
-                          PreTrainedTokenizer, BitsAndBytesConfig,
-                          LlamaTokenizer, Seq2SeqTrainer, set_seed)
+                          BitsAndBytesConfig, LlamaTokenizer,
+                          PreTrainedTokenizer, Seq2SeqTrainer, set_seed)
 
 from utils.model_utils import (SavePeftModelCallback, find_all_linear_names,
                                print_trainable_parameters,
-                               smart_tokenizer_and_embedding_resize)
+                               smart_tokenizer_and_embedding_resize,
+                               verify_dtypes)
 
 IGNORE_INDEX = -100
 DEFAULT_PAD_TOKEN = '[PAD]'
@@ -274,7 +275,6 @@ class DataCollatorForCausalLM(object):
                                                       are returned. This is useful during inference when generating
                                                       text sequences from the model.
     """
-
     def __init__(
         self,
         tokenizer: PreTrainedTokenizer,
@@ -332,8 +332,8 @@ class DataCollatorForCausalLM(object):
         input_ids = []
         labels = []
         for tokenized_source, tokenized_target in zip(
-                tokenized_sources_with_prompt["input_ids"],
-                tokenized_targets["input_ids"],
+                tokenized_sources_with_prompt['input_ids'],
+                tokenized_targets['input_ids'],
         ):
             if not self.predict_with_generate:
                 input_ids.append(
@@ -365,23 +365,23 @@ class DataCollatorForCausalLM(object):
 
         # Construct data dictionary containing inputs and labels
         data_dict = {
-            "input_ids": input_ids,
-            "attention_mask": input_ids.ne(self.tokenizer.pad_token_id),
+            'input_ids': input_ids,
+            'attention_mask': input_ids.ne(self.tokenizer.pad_token_id),
         }
         if labels is not None:
-            data_dict["labels"] = labels
+            data_dict['labels'] = labels
 
         return data_dict
 
 
 def load_and_format_dataset(data_path: str) -> Dataset:
     """
-    Load a dataset from the `data_path` argument and format each example using a pre-defined prompt specified in 
+    Load a dataset from the `data_path` argument and format each example using a pre-defined prompt specified in
     `ALPACA_PROMPT_DICT`. The formatted examples will only include an input prompt and corresponding output.
-    
+
     Args:
     - data_path (str): A string representing the path to the dataset.
-    
+
     Returns:
     - A Hugging Face datasets Dataset containing formatted examples.
     """
@@ -402,11 +402,11 @@ def load_and_format_dataset(data_path: str) -> Dataset:
     def extract_alpaca_dataset(example: Dict[str, str]) -> Dict[str, str]:
         """
         This function formats a single input-output example using the appropriate prompt.
-        
+
         Args:
-        - example (Dict[str, str]): A dictionary representing a single example containing the keys 'input', 
+        - example (Dict[str, str]): A dictionary representing a single example containing the keys 'input',
           'output', and 'instruction'.
-          
+
         Returns:
         - A dictionary containing the formatted input and output for the given example.
         """
@@ -563,18 +563,8 @@ def train():
     )
     trainer.add_callback(SavePeftModelCallback)
 
-    # Verifying the datatypes.
-    dtypes = {}
-    for _, p in model.named_parameters():
-        dtype = p.dtype
-        if dtype not in dtypes: dtypes[dtype] = 0
-        dtypes[dtype] += p.numel()
-    total = 0
-    for k, v in dtypes.items():
-        total += v
-    for k, v in dtypes.items():
-        print(k, v, v / total)
-
+    # Verify dtypes
+    verify_dtypes(model)
     all_metrics = {'run_name': args.run_name}
     # Training
     logger.info('*** Train ***')

@@ -62,6 +62,32 @@ def print_trainable_parameters(args, model):
           f'trainable: {100 * trainable_params / all_param}')
 
 
+def verify_dtypes(model: torch.nn.Module) -> None:
+    """
+    检查模型参数的数据类型，并输出各个数据类型在这些张量中所占的比例.
+
+    :param model: 待检查的模型.
+    :return: 无返回值.
+    """
+    # 创建一个空字典dtypes，用于记录模型参数的数据类型及其数量.
+    dtypes = {}
+
+    # 遍历模型参数，并统计每种数据类型出现的次数.
+    for _, p in model.named_parameters():
+        dtype = p.dtype
+        if dtype not in dtypes:
+            dtypes[dtype] = 0
+        dtypes[dtype] += p.numel()
+
+    # 计算总共的参数数量total.
+    total = sum(dtypes.values())
+
+    # 输出各个数据类型的数量以及所占比例.
+    for k, v in dtypes.items():
+        print(f'{k}: {v} ({100 * v / total:.2f}%)')
+    return None
+
+
 class SavePeftModelCallback(transformers.TrainerCallback):
     def save_model(self, args, state, kwargs):
         print('Saving PEFT checkpoint...')
