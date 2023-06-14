@@ -52,6 +52,8 @@ def load_data(dataset_name: str) -> Union[Dict[str, Dataset], None]:
         return load_dataset('timdettmers/openassistant-guanaco')
     elif dataset_name == 'vicuna':
         raise NotImplementedError('Vicuna data was not released.')
+    elif dataset_name == 'dolly-15k':
+        return load_dataset('databricks/databricks-dolly-15k')
     else:
         raise NotImplementedError(
             f'Dataset {dataset_name} not implemented yet.')
@@ -100,6 +102,11 @@ def format_dataset(dataset: Dataset,
 
     """
     if dataset_name == 'alpaca' or dataset_name == 'alpaca-clean':
+        dataset = dataset.map(extract_alpaca_dataset,
+                              remove_columns=['instruction'])
+    elif dataset_name == 'dolly-15k':
+        dataset = dataset.rename_column('context', 'input')
+        dataset = dataset.rename_column('response', 'output')
         dataset = dataset.map(extract_alpaca_dataset,
                               remove_columns=['instruction'])
     elif dataset_name == 'chip2':
@@ -201,64 +208,3 @@ def split_train_eval(
         'train': train_dataset if do_train else None,
         'eval': eval_dataset if do_eval else None
     }
-
-
-def load_and_format_dataset(data_path: str) -> Dataset:
-    """
-    Load a dataset from the `data_path` argument and format each example using a pre-defined prompt specified in
-    `ALPACA_PROMPT_DICT`. The formatted examples will only include an input prompt and corresponding output.
-
-    Args:
-    - data_path (str): A string representing the path to the dataset.
-
-    Returns:
-    - A Hugging Face datasets Dataset containing formatted examples.
-    """
-
-    # Define the prompts that will be used to format each example
-    ALPACA_PROMPT_DICT: Dict[str, str] = {
-        'prompt_input':
-        ('Below is an instruction that describes a task, paired with an input that provides '
-         'further context. Write a response that appropriately completes the request.\n\n'
-         '### Instruction:\n{instruction}\n\n### Input:\n{input}\n\n### Response: '
-         ),
-        'prompt_no_input':
-        ('Below is an instruction that describes a task. Write a response that appropriately '
-         'completes the request.\n\n### Instruction:\n{instruction}\n\n### Response: '
-         )
-    }
-
-    def extract_alpaca_dataset(example: Dict[str, str]) -> Dict[str, str]:
-        """
-        This function formats a single input-output example using the appropriate prompt.
-
-        Args:
-        - example (Dict[str, str]): A dictionary representing a single example containing the keys 'input',
-          'output', and 'instruction'.
-
-        Returns:
-        - A dictionary containing the formatted input and output for the given example.
-        """
-        if example.get('input', '') != '':
-            prompt_format = ALPACA_PROMPT_DICT['prompt_input']
-        else:
-            prompt_format = ALPACA_PROMPT_DICT['prompt_no_input']
-        return {'input': prompt_format.format(**example)}
-
-    # Load the dataset from the given data path
-    if data_path.endswith('.json') or data_path.endswith('.jsonl'):
-        dataset = load_dataset('json', data_files=data_path)['train']
-    else:
-        dataset = load_dataset(
-            data_path, cache_dir='~/.cache/huggingface/datasets')['train']
-
-    # Map each example to a formatted input-output pair using the `extract_alpaca_dataset` function
-    dataset = dataset.map(extract_alpaca_dataset,
-                          remove_columns=['instruction'])
-
-    # Remove any unused columns (only 'input' and 'output' will remain)
-    dataset = dataset.remove_columns([
-        col for col in dataset.column_names if col not in ['input', 'output']
-    ])
-
-    return dataset

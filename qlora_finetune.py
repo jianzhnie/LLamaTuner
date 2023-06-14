@@ -51,8 +51,29 @@ class ModelArguments:
 
 @dataclass
 class DataArguments:
-    data_path: str = field(default=None,
-                           metadata={'help': 'Path to the training data.'})
+    dataset_name: str = field(
+        default='alpaca',
+        metadata={
+            'help': 'Which dataset to finetune on. See datamodule for options.'
+        })
+    eval_dataset_size: int = field(
+        default=1024, metadata={'help': 'Size of validation dataset.'})
+    max_train_samples: Optional[int] = field(
+        default=None,
+        metadata={
+            'help':
+            'For debugging purposes or quicker training, truncate the number of training examples to this '
+            'value if set.'
+        },
+    )
+    max_eval_samples: Optional[int] = field(
+        default=None,
+        metadata={
+            'help':
+            'For debugging purposes or quicker training, truncate the number of evaluation examples to this '
+            'value if set.'
+        },
+    )
     source_max_len: int = field(
         default=1024,
         metadata={
@@ -437,8 +458,8 @@ def make_data_module(args):
         - vicuna
 
     """
-    dataset = load_data(args.data_path)
-    dataset = format_dataset(dataset, dataset_name=args.data_path)
+    dataset = load_data(args.dataset_name)
+    dataset = format_dataset(dataset, dataset_name=args.dataset_name)
     dataset_dict = split_train_eval(
         dataset,
         do_eval=args.do_eval,
