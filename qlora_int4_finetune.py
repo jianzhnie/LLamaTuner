@@ -749,24 +749,15 @@ def train():
     set_seed(args.seed)
 
     # Tokenizer
-    if model.config.model_type == 'llama':
-        # Due to the name of Transformers' LlamaTokenizer, we have to do this
-        tokenizer = LlamaTokenizer.from_pretrained(
-            args.model_name_or_path,
-            cache_dir=args.cache_dir,
-            padding_side='right',
-            use_fast=True,
-        )
-    else:
-        tokenizer = AutoTokenizer.from_pretrained(
-            args.model_name_or_path,
-            cache_dir=args.cache_dir,
-            padding_side='right',
-            use_fast=False,  # Fast tokenizer giving issues.
-            tokenizer_type='llama' if 'llama' in args.model_name_or_path else
-            None,  # Needed for HF name change
-            use_auth_token=args.use_auth_token,
-        )
+    tokenizer = AutoTokenizer.from_pretrained(
+        args.model_name_or_path,
+        cache_dir=args.cache_dir,
+        padding_side='right',
+        use_fast=False,  # Fast tokenizer giving issues.
+        tokenizer_type='llama' if 'llama' in args.model_name_or_path else
+        None,  # Needed for HF name change
+        use_auth_token=args.use_auth_token,
+    )
     if 'llama' in args.model_name_or_path or isinstance(
             tokenizer, LlamaTokenizer):
         # LLaMA tokenizer may not have correct special tokens set.

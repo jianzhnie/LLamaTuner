@@ -178,6 +178,8 @@ def get_accelerate_model(args: Dict,
     print(f'Loading base model {args.model_name_or_path}...')
     compute_dtype = (torch.float16 if args.fp16 else
                      (torch.bfloat16 if args.bf16 else torch.float32))
+    torch_dtype = (torch.float32 if args.fp16 else
+                   (torch.bfloat16 if args.bf16 else torch.float32))
     model = AutoModelForCausalLM.from_pretrained(
         args.model_name_or_path,
         cache_dir=args.cache_dir,
@@ -194,8 +196,7 @@ def get_accelerate_model(args: Dict,
             bnb_4bit_use_double_quant=args.double_quant,
             bnb_4bit_quant_type=args.quant_type  # {'fp4', 'nf4'}
         ),
-        torch_dtype=(torch.float32 if args.fp16 else
-                     (torch.bfloat16 if args.bf16 else torch.float32)),
+        torch_dtype=torch_dtype,
         use_auth_token=args.use_auth_token)
 
     # Print a message if the GPU supports bfloat16.
@@ -212,8 +213,7 @@ def get_accelerate_model(args: Dict,
     setattr(model, 'model_parallel', True)
     setattr(model, 'is_parallelizable', True)
 
-    model.config.torch_dtype = (torch.float32 if args.fp16 else (
-        torch.bfloat16 if args.bf16 else torch.float32))
+    model.config.torch_dtype = torch_dtype
 
     # Prepare the model for k-bit training if specified.
     model = prepare_model_for_kbit_training(
@@ -339,11 +339,13 @@ class DataCollatorForCausalLM(object):
                 input_ids.append(
                     torch.tensor(tokenized_source + tokenized_target))
                 if not self.train_on_source:
+                    # train_on_source 默认设置为 False, 训练时不在 source  text 上计算损失
                     labels.append(
                         torch.tensor([
                             IGNORE_INDEX for _ in range(len(tokenized_source))
                         ] + copy.deepcopy(tokenized_target)))
                 else:
+                    # 如果 train_on_source 设置为 True, 训练时将 source text  和 target text 的标签合并, 然后计算损失
                     labels.append(
                         torch.tensor(
                             copy.deepcopy(tokenized_source +
