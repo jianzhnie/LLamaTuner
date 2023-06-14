@@ -29,6 +29,7 @@ DEFAULT_EOS_TOKEN = '</s>'
 DEFAULT_BOS_TOKEN = '<s>'
 DEFAULT_UNK_TOKEN = '<unk>'
 
+torch.backends.cuda.matmul.allow_tf32 = True
 logger = logging.getLogger(__name__)
 
 
@@ -93,6 +94,12 @@ class DataArguments:
 @dataclass
 class TrainingArguments(transformers.TrainingArguments):
     cache_dir: Optional[str] = field(default=None)
+    do_train: bool = field(
+        default=True,
+        metadata={'help': 'To train or not to train, that is the question?'})
+    do_eval: bool = field(
+        default=False,
+        metadata={'help': 'To train or not to train, that is the question?'})
     train_on_source: Optional[bool] = field(
         default=False,
         metadata={
@@ -296,6 +303,7 @@ class DataCollatorForCausalLM(object):
                                                       are returned. This is useful during inference when generating
                                                       text sequences from the model.
     """
+
     def __init__(
         self,
         tokenizer: PreTrainedTokenizer,
@@ -354,8 +362,7 @@ class DataCollatorForCausalLM(object):
         labels = []
         for tokenized_source, tokenized_target in zip(
                 tokenized_sources_with_prompt['input_ids'],
-                tokenized_targets['input_ids'],
-        ):
+                tokenized_targets['input_ids']):
             if not self.predict_with_generate:
                 input_ids.append(
                     torch.tensor(tokenized_source + tokenized_target))
@@ -378,11 +385,11 @@ class DataCollatorForCausalLM(object):
         input_ids = pad_sequence(input_ids,
                                  batch_first=True,
                                  padding_value=self.tokenizer.pad_token_id)
-        labels = (pad_sequence(
+        labels = pad_sequence(
             labels,
             batch_first=True,
             padding_value=IGNORE_INDEX,
-        ) if not self.predict_with_generate else None)
+        ) if not self.predict_with_generate else None
 
         # Construct data dictionary containing inputs and labels
         data_dict = {
@@ -470,6 +477,7 @@ def make_data_module(args):
         max_train_samples=args.max_train_samples,
     )
 
+
     return dataset_dict
 
 
@@ -543,13 +551,13 @@ def train():
                                                  tokenizer, model)
 
     dataset_dict = make_data_module(args)
-
+    print(dataset_dict)
     data_collator = DataCollatorForCausalLM(
         tokenizer=tokenizer,
         source_max_len=args.source_max_len,
         target_max_len=args.target_max_len,
         train_on_source=args.train_on_source,
-        predict_with_generate=False,
+        predict_with_generate=args.predict_with_generate,
     )
 
     trainer = Seq2SeqTrainer(

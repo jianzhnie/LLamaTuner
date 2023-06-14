@@ -1,7 +1,7 @@
 from typing import Any, Dict, Optional, Union
 
 import numpy as np
-from datasets import Dataset, load_dataset
+from datasets import Dataset, load_dataset, DatasetDict
 
 ALPACA_PROMPT_DICT = {
     'prompt_input':
@@ -164,7 +164,7 @@ def split_train_eval(
         Dict[str, Dataset]: A dictionary containing the prepared training and evaluation datasets
         (if used), where the keys are 'train' and 'eval', respectively.
     """
-    if not isinstance(dataset, Dataset):
+    if not isinstance(dataset, DatasetDict):
         raise TypeError("The 'dataset' argument must be a DatasetDict object.")
 
     # Prepare evaluation dataset
@@ -204,7 +204,4 @@ def split_train_eval(
             train_dataset = train_dataset.map(
                 lambda x: {'length': len(x['input']) + len(x['output'])})
 
-    return {
-        'train': train_dataset if do_train else None,
-        'eval': eval_dataset if do_eval else None
-    }
+    return {'train': train_dataset, 'eval': eval_dataset}
