@@ -9,7 +9,6 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import torch
 import transformers
-from datasets import Dataset, load_dataset
 from peft import (LoraConfig, PeftModel, get_peft_model,
                   prepare_model_for_kbit_training)
 from peft.tuners.lora import LoraLayer
@@ -18,6 +17,7 @@ from transformers import (AutoModelForCausalLM, AutoTokenizer,
                           BitsAndBytesConfig, LlamaTokenizer,
                           PreTrainedTokenizer, Seq2SeqTrainer, set_seed)
 
+from utils.data_utils import format_dataset, load_data, split_train_eval
 from utils.model_utils import (SavePeftModelCallback, find_all_linear_names,
                                print_trainable_parameters,
                                smart_tokenizer_and_embedding_resize,
@@ -374,67 +374,6 @@ class DataCollatorForCausalLM(object):
         return data_dict
 
 
-def load_and_format_dataset(data_path: str) -> Dataset:
-    """
-    Load a dataset from the `data_path` argument and format each example using a pre-defined prompt specified in
-    `ALPACA_PROMPT_DICT`. The formatted examples will only include an input prompt and corresponding output.
-
-    Args:
-    - data_path (str): A string representing the path to the dataset.
-
-    Returns:
-    - A Hugging Face datasets Dataset containing formatted examples.
-    """
-
-    # Define the prompts that will be used to format each example
-    ALPACA_PROMPT_DICT: Dict[str, str] = {
-        'prompt_input':
-        ('Below is an instruction that describes a task, paired with an input that provides '
-         'further context. Write a response that appropriately completes the request.\n\n'
-         '### Instruction:\n{instruction}\n\n### Input:\n{input}\n\n### Response: '
-         ),
-        'prompt_no_input':
-        ('Below is an instruction that describes a task. Write a response that appropriately '
-         'completes the request.\n\n### Instruction:\n{instruction}\n\n### Response: '
-         )
-    }
-
-    def extract_alpaca_dataset(example: Dict[str, str]) -> Dict[str, str]:
-        """
-        This function formats a single input-output example using the appropriate prompt.
-
-        Args:
-        - example (Dict[str, str]): A dictionary representing a single example containing the keys 'input',
-          'output', and 'instruction'.
-
-        Returns:
-        - A dictionary containing the formatted input and output for the given example.
-        """
-        if example.get('input', '') != '':
-            prompt_format = ALPACA_PROMPT_DICT['prompt_input']
-        else:
-            prompt_format = ALPACA_PROMPT_DICT['prompt_no_input']
-        return {'input': prompt_format.format(**example)}
-
-    # Load the dataset from the given data path
-    if data_path.endswith('.json') or data_path.endswith('.jsonl'):
-        dataset = load_dataset('json', data_files=data_path)['train']
-    else:
-        dataset = load_dataset(
-            data_path, cache_dir='~/.cache/huggingface/datasets')['train']
-
-    # Map each example to a formatted input-output pair using the `extract_alpaca_dataset` function
-    dataset = dataset.map(extract_alpaca_dataset,
-                          remove_columns=['instruction'])
-
-    # Remove any unused columns (only 'input' and 'output' will remain)
-    dataset = dataset.remove_columns([
-        col for col in dataset.column_names if col not in ['input', 'output']
-    ])
-
-    return dataset
-
-
 def get_last_checkpoint(checkpoint_dir: str) -> Tuple[str, bool]:
     """
     Given a directory containing previous saved checkpoints, returns the path to the last checkpoint
@@ -472,6 +411,45 @@ def get_last_checkpoint(checkpoint_dir: str) -> Tuple[str, bool]:
 
     # The directory does not exist, meaning this is the first time the training is being run
     return None, False
+
+
+def make_data_module(args):
+    """
+    Make dataset and collator for supervised fine-tuning.
+    Datasets are expected to have the following columns: { `input`, `output` }
+
+    Available datasets to be selected with `dataset` argument:
+        - alpaca, 52002 examples
+        - alpaca cleaned, 51942 examples
+        - chip2 (OIG), 210289 examples
+        - self-instruct, 82612 examples
+        - hh-rlhf (Anthropic), 160800 examples
+        - longform, 23.7k examples
+        - oasst1 (OpenAssistant) primary message tree only, 9,846 examples
+
+    Coming soon:
+        - unnatural instructions core, 66010 examples
+        - unnatural instructions full, 240670 examples
+        - alpaca-gpt4, 52002 examples
+        - unnatural-instructions-gpt4, 9000 examples
+        - supernatural-instructions, 69624 examples (same as paper with 100 ex/task more can be used)
+        - flan (FLAN v2), up to 20M examples available
+        - vicuna
+
+    """
+    dataset = load_data(args.data_path)
+    dataset = format_dataset(dataset, dataset_name=args.data_path)
+    dataset_dict = split_train_eval(
+        dataset,
+        do_eval=args.do_eval,
+        eval_dataset_size=args.eval_dataset_size,
+        max_eval_samples=args.max_eval_samples,
+        group_by_length=args.group_by_length,
+        do_train=args.do_train,
+        max_train_samples=args.max_train_samples,
+    )
+
+    return dataset_dict
 
 
 def train():
@@ -543,7 +521,7 @@ def train():
             smart_tokenizer_and_embedding_resize(special_tokens_dict,
                                                  tokenizer, model)
 
-    dataset = load_and_format_dataset(args.data_path)
+    dataset_dict = make_data_module(args)
 
     data_collator = DataCollatorForCausalLM(
         tokenizer=tokenizer,
@@ -557,8 +535,8 @@ def train():
         model=model,
         tokenizer=tokenizer,
         args=training_args,
-        train_dataset=dataset,
-        eval_dataset=None,
+        train_dataset=dataset_dict['train'] if args.do_train else None,
+        eval_dataset=dataset_dict['eval'] if args.do_eval else None,
         data_collator=data_collator,
     )
     trainer.add_callback(SavePeftModelCallback)
