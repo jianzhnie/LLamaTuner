@@ -1,12 +1,15 @@
 python qlora_finetune.py \
     --model_name_or_path decapoda-research/llama-7b-hf \
-    --data_path databricks/databricks-dolly-15k \
+    --dataset_name dolly-15k \
     --output_dir ./work_dir/llama-7b \
     --num_train_epochs 3 \
     --per_device_train_batch_size 1 \
     --per_device_eval_batch_size 1 \
     --gradient_accumulation_steps 16 \
     --evaluation_strategy steps \
+    --eval_steps 2000 \
+    --eval_dataset_size 1024 \
+    --max_eval_samples 1000 \
     --save_strategy steps \
     --save_total_limit 5 \
     --save_steps 500 \
@@ -27,5 +30,8 @@ python qlora_finetune.py \
     --fp16 \
     --bits 4 \
     --gradient_checkpointing \
+    --group_by_length \
+    --do_train \
+    --do_eval \
     --data_seed 42 \
     --seed 0
