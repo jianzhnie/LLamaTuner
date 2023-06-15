@@ -83,7 +83,7 @@ class DataArguments:
         },
     )
     target_max_len: int = field(
-        default=1024,
+        default=256,
         metadata={
             'help':
             'Maximum target sequence length. Sequences will be right padded (and possibly truncated).'
@@ -106,7 +106,8 @@ class TrainingArguments(transformers.TrainingArguments):
             'help':
             'Whether to train on the input in addition to the target text.'
         })
-    optim: str = field(default='adamw_torch')
+    optim: str = field(default='paged_adamw_32bit',
+                       metadata={'help': 'The optimizer to be used'})
     max_grad_norm: float = field(
         default=0.3,
         metadata={
@@ -116,6 +117,18 @@ class TrainingArguments(transformers.TrainingArguments):
     gradient_checkpointing: bool = field(
         default=True,
         metadata={'help': 'Use gradient checkpointing. You want to use this.'})
+    group_by_length: bool = field(
+        default=True,
+        metadata={
+            'help':
+            'Group sequences into batches with same length. Saves memory and speeds up training considerably.'
+        })
+    predict_with_generate: bool = field(
+        default=False,
+        metadata={
+            'help':
+            'Group sequences into batches with same length. Saves memory and speeds up training considerably.'
+        })
 
 
 @dataclass
@@ -303,7 +316,6 @@ class DataCollatorForCausalLM(object):
                                                       are returned. This is useful during inference when generating
                                                       text sequences from the model.
     """
-
     def __init__(
         self,
         tokenizer: PreTrainedTokenizer,
@@ -477,7 +489,6 @@ def make_data_module(args):
         max_train_samples=args.max_train_samples,
     )
 
-
     return dataset_dict
 
 
@@ -499,7 +510,7 @@ def train():
     args = argparse.Namespace(**vars(model_args), **vars(data_args),
                               **vars(training_args), **vars(lora_args),
                               **vars(quant_args))
-
+    print(args)
     checkpoint_dir, completed_training = get_last_checkpoint(args.output_dir)
     if completed_training:
         print('Detected that training was already completed!')
