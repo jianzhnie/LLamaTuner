@@ -13,9 +13,9 @@
 
 👋 Join our [WeChat](assets/wechat.jpeg).
 
-# Efficient Finetuning of Quantized LLMs  —— 低资源的大语言模型量化训练/部署方案
+# Efficient Finetuning of Quantized LLMs  --- 低资源的大语言模型量化训练/部署方案
 
-This is the repo for the Chinese-Guanaco project, which aims to build and share instruction-following Chinese LLaMA/Pythia/GLM model tuning methods which can be trained on **a single Nvidia RTX-2080TI**, multi-round chatbot which can be trained on **a single Nvidia RTX-3090** with the context len 2048.
+This is the repo for the Chinese-Guanaco project, which aims to build and share instruction-following Chinese `baichuan-7b/LLaMA/Pythia/GLM`model tuning methods which can be trained on **a single Nvidia RTX-2080TI**, multi-round chatbot which can be trained on **a single Nvidia RTX-3090** with the context len 2048.
 
 Chinese-Guanaco uses [bitsandbytes](https://github.com/TimDettmers/bitsandbytes) for quantization and is integrated with Huggingface's [PEFT](https://github.com/huggingface/peft) and [transformers](https://github.com/huggingface/transformers/) libraries.
 
