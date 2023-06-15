@@ -15,9 +15,9 @@
 
 # Efficient Finetuning of Quantized LLMs  --- 低资源的大语言模型量化训练/部署方案
 
-This is the repo for the Chinese-Guanaco project, which aims to build and share instruction-following Chinese `baichuan-7b/LLaMA/Pythia/GLM`model tuning methods which can be trained on **a single Nvidia RTX-2080TI**, multi-round chatbot which can be trained on **a single Nvidia RTX-3090** with the context len 2048.
+This is the repo for the `Efficient Finetuning of Quantized LLMs` project, which aims to build and share instruction-following Chinese `baichuan-7b/LLaMA/Pythia/GLM`model tuning methods which can be trained on **a single Nvidia RTX-2080TI**, multi-round chatbot which can be trained on **a single Nvidia RTX-3090** with the context len 2048.
 
-Chinese-Guanaco uses [bitsandbytes](https://github.com/TimDettmers/bitsandbytes) for quantization and is integrated with Huggingface's [PEFT](https://github.com/huggingface/peft) and [transformers](https://github.com/huggingface/transformers/) libraries.
+We uses [bitsandbytes](https://github.com/TimDettmers/bitsandbytes) for quantization and is integrated with Huggingface's [PEFT](https://github.com/huggingface/peft) and [transformers](https://github.com/huggingface/transformers/) libraries.
 
 The repo contains:
 - code for finetune the model
@@ -214,7 +214,7 @@ Here a list of known issues and bugs. If your issue is not reported here, please
 
 ## License
 
-`Chinese-Guanaco` is released under the Apache 2.0 license.
+`Efficient Finetuning of Quantized LLMs` is released under the Apache 2.0 license.
 
 
 ## Acknowledgements
@@ -241,6 +241,6 @@ Please cite the repo if you use the data or code in this repo.
   year = {2023},
   publisher = {GitHub},
   journal = {GitHub repository},
-  howpublished = {\url{https://github.com/jianzhnie/Chinese-Guanaco}},
+  howpublished = {\url{https://github.com/jianzhnie/Efficient-Tuning-LLMs}},
 }
 ```
