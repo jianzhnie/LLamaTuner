@@ -343,14 +343,14 @@ def train():
         lora_args,
         quant_args,
         generation_args,
-    ) = parser.parse_args_into_dataclasses()
+        extra_args,
+    ) = parser.parse_args_into_dataclasses(return_remaining_strings=True)
     training_args.generation_config = transformers.GenerationConfig(
         **vars(generation_args))
 
     args = argparse.Namespace(**vars(model_args), **vars(data_args),
                               **vars(training_args), **vars(lora_args),
                               **vars(quant_args))
-    print(args)
     checkpoint_dir, completed_training = get_last_checkpoint(args.output_dir)
     if completed_training:
         print('Detected that training was already completed!')
@@ -393,7 +393,13 @@ def train():
                                                  tokenizer, model)
 
     dataset_dict = make_data_module(args)
-    print(dataset_dict)
+    print(dataset_dict['eval'][0])
+    print('==' * 80)
+    print(dataset_dict['train'][0])
+    print('==' * 80)
+    print(dataset_dict['train'][-1])
+    print('==' * 80)
+    print(dataset_dict['eval'][-1])
     data_collator = DataCollatorForCausalLM(
         tokenizer=tokenizer,
         source_max_len=args.source_max_len,
@@ -411,7 +417,7 @@ def train():
         data_collator=data_collator,
     )
     trainer.add_callback(SavePeftModelCallback)
-
+    print(trainer.train_dataset)
     # Verify dtypes
     verify_dtypes(model)
     all_metrics = {'run_name': args.run_name}

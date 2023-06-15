@@ -1,6 +1,8 @@
-from typing import Any, Dict, Optional, Union
+import os
+from typing import Any, Dict, Optional, Tuple, Union
 
 import numpy as np
+import pandas as pd
 from datasets import Dataset, DatasetDict, load_dataset
 
 ALPACA_PROMPT_DICT = {
@@ -14,6 +16,39 @@ ALPACA_PROMPT_DICT = {
      'Write a response that appropriately completes the request.\n\n'
      '### Instruction:\n{instruction}\n\n### Response: '),
 }
+
+
+def local_dataset(dataset_name: str) -> Tuple[Dataset, Dataset]:
+    """
+    Reads in a dataset from a file and returns it as a split train-test dataset.
+
+    Args:
+        dataset_name (str): The name of the dataset file to read in. The format is inferred based on the file extension.
+
+    Returns:
+        A tuple containing two datasets - the training subset and the testing subset.
+    Raises:
+        ValueError: If the specified file format is unsupported.
+
+    """
+    # Read in the full dataset from file based on the file format
+    if dataset_name.endswith('.json'):
+        full_dataset = Dataset.from_json(path_or_paths=dataset_name)
+    elif dataset_name.endswith('.jsonl'):
+        full_dataset = Dataset.from_json(filename=dataset_name,
+                                         format='jsonlines')
+    elif dataset_name.endswith('.csv'):
+        full_dataset = Dataset.from_pandas(pd.read_csv(dataset_name))
+    elif dataset_name.endswith('.tsv'):
+        full_dataset = Dataset.from_pandas(
+            pd.read_csv(dataset_name, delimiter='\t'))
+    else:
+        raise ValueError(f'Unsupported dataset format: {dataset_name}')
+
+    # Split the full dataset into train and test subsets
+    split_dataset = full_dataset.train_test_split(test_size=0.1)
+
+    return split_dataset
 
 
 def load_data(dataset_name: str) -> Union[Dict[str, Dataset], None]:
@@ -55,8 +90,15 @@ def load_data(dataset_name: str) -> Union[Dict[str, Dataset], None]:
     elif dataset_name == 'dolly-15k':
         return load_dataset('databricks/databricks-dolly-15k')
     else:
-        raise NotImplementedError(
-            f'Dataset {dataset_name} not implemented yet.')
+        if os.path.exists(dataset_name):
+            try:
+                full_dataset = local_dataset(dataset_name)
+                return full_dataset
+            except:
+                raise ValueError(f'Error loading dataset from {dataset_name}')
+        else:
+            raise NotImplementedError(
+                f'Dataset {dataset_name} not implemented yet.')
 
 
 def extract_alpaca_dataset(example: Dict[str, Any]) -> Dict[str, str]:
@@ -123,8 +165,9 @@ def format_dataset(dataset: Dataset,
         dataset = dataset.map(lambda x: {'input': '', 'output': x['chosen']})
     elif dataset_name == 'oasst1':
         dataset = dataset.map(lambda x: {'input': '', 'output': x['text']})
-    elif dataset_name == 'input-output':
-        pass
+    elif os.path.exists(dataset_name):
+        dataset = dataset.map(extract_alpaca_dataset,
+                              remove_columns=['instruction'])
     else:
         return None  # invalid format
 

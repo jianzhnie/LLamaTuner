@@ -1,6 +1,6 @@
 python qlora_finetune.py \
-    --model_name_or_path decapoda-research/llama-7b-hf \
-    --dataset_name dolly-15k \
+    --model_name_or_path facebook/opt-125m \
+    --dataset_name /home/robin/prompt_data/InstructionWild/instinwild_en.json \
     --output_dir ./work_dir/llama-7b \
     --num_train_epochs 3 \
     --per_device_train_batch_size 1 \
@@ -22,6 +22,8 @@ python qlora_finetune.py \
     --adam_beta2 0.999 \
     --max_grad_norm 0.3 \
     --max_new_tokens 32 \
+    --source_max_len 512 \
+    --target_max_len 512 \
     --lora_r 64 \
     --lora_alpha 16 \
     --lora_dropout 0.1 \
@@ -30,7 +32,6 @@ python qlora_finetune.py \
     --fp16 \
     --bits 4 \
     --gradient_checkpointing \
-    --group_by_length \
     --do_train \
     --do_eval \
     --data_seed 42 \

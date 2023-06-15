@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
 from typing import Optional
+
 import transformers
+
 
 @dataclass
 class ModelArguments:
@@ -87,7 +89,7 @@ class TrainingArguments(transformers.TrainingArguments):
         default=True,
         metadata={'help': 'Use gradient checkpointing. You want to use this.'})
     group_by_length: bool = field(
-        default=True,
+        default=False,
         metadata={
             'help':
             'Group sequences into batches with same length. Saves memory and speeds up training considerably.'
