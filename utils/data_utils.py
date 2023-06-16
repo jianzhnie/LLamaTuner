@@ -221,7 +221,7 @@ def split_train_eval(
         raise TypeError("The 'dataset' argument must be a DatasetDict object.")
 
     # Prepare evaluation dataset
-    if do_eval or do_predict:
+    if do_eval:
         if 'eval' in dataset:
             eval_dataset = dataset['eval']
         else:
@@ -238,6 +238,23 @@ def split_train_eval(
                 eval_dataset) > max_eval_samples:
             eval_dataset = eval_dataset.select(np.arange(max_eval_samples))
 
+    if do_predict:
+        if 'test' in dataset:
+            test_dataset = dataset['test']
+        else:
+            # Split train dataset in train and validation according to `eval_dataset_size`
+            print(
+                'Splitting train dataset in train and validation according to `eval_dataset_size`'
+            )
+            dataset = dataset['train'].train_test_split(
+                test_size=eval_dataset_size, shuffle=True, seed=42)
+            test_dataset = dataset['test']
+
+        # Reduce evaluation dataset size (if specified)
+        if max_eval_samples is not None and len(
+                test_dataset) > max_eval_samples:
+            test_dataset = test_dataset.select(np.arange(max_eval_samples))
+
     # Prepare training dataset
     if do_train:
         train_dataset = dataset['train']
@@ -250,7 +267,7 @@ def split_train_eval(
     return dict(
         train=train_dataset if do_train else None,
         eval=eval_dataset if do_eval else None,
-        predict=eval_dataset if do_predict else None,
+        predict=test_dataset if do_predict else None,
     )
 
 
@@ -283,6 +300,7 @@ def make_data_module(args):
     dataset_dict = split_train_eval(
         dataset,
         do_eval=args.do_eval,
+        do_predict=args.do_predict,
         eval_dataset_size=args.eval_dataset_size,
         max_eval_samples=args.max_eval_samples,
         do_train=args.do_train,

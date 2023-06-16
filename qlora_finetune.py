@@ -15,7 +15,8 @@ from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import Dataset
 from transformers import (AutoModelForCausalLM, AutoTokenizer,
                           BitsAndBytesConfig, LlamaTokenizer,
-                          PreTrainedTokenizer, Seq2SeqTrainer, set_seed)
+                          PreTrainedTokenizer, Seq2SeqTrainer, Trainer,
+                          set_seed)
 
 from config import (DataArguments, GenerationArguments, LoraArguments,
                     ModelArguments, QuantArgments, TrainingArguments)
@@ -366,10 +367,11 @@ def main():
         predict_with_generate=args.predict_with_generate,
     ) if args.do_predict else None
 
+    print(train_dataset, eval_dataset, predict_dataset)
     data_collator = DataCollatorForSupervisedDataset(
         tokenizer=tokenizer, predict_with_generate=args.predict_with_generate)
 
-    trainer = Seq2SeqTrainer(
+    trainer = Trainer(
         model=model,
         tokenizer=tokenizer,
         args=training_args,
@@ -383,8 +385,11 @@ def main():
 
     # Verify dtypes
     verify_dtypes(model)
-    train_and_evaluate(trainer, args)
-    predict_and_save(trainer, tokenizer, predict_dataset, args)
+    assert args.do_train or args.do_eval or args.do_predict
+    if args.do_train or args.do_eval:
+        train_and_evaluate(trainer, args)
+    if args.do_predict:
+        predict_and_save(trainer, tokenizer, predict_dataset, args)
 
 
 if __name__ == '__main__':
