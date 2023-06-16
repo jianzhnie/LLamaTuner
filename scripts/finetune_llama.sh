@@ -32,7 +32,6 @@ python qlora_finetune.py \
     --fp16 \
     --bits 4 \
     --gradient_checkpointing \
-    --do_train \
-    --do_eval \
+    --do_predict \
     --data_seed 42 \
     --seed 0
