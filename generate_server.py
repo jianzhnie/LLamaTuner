@@ -1,21 +1,16 @@
 import argparse
-import sys
 from typing import Union
 
 import gradio as gr
 import torch
 import transformers
-
-sys.path.append('../../')
-from transformers import GenerationConfig
+from transformers import AutoModelForCausalLM, AutoTokenizer, GenerationConfig
 
 from utils.apply_lora import apply_lora
 from utils.callbacks import Iteratorize, Stream
-from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
 class Prompter(object):
-
     def __init__(self) -> None:
         self.PROMPT_DICT = {
             'prompt_input':

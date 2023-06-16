@@ -1,14 +1,11 @@
 import argparse
-import sys
-from typing import Union
 
 import gradio as gr
 import torch
-sys.path.append('../../')
-from transformers import GenerationConfig
+from transformers import AutoModelForCausalLM, AutoTokenizer, GenerationConfig
 
 from utils.apply_lora import apply_lora
-from transformers import AutoModelForCausalLM, AutoTokenizer
+
 
 def args_parser():
     parser = argparse.ArgumentParser()
@@ -81,7 +78,6 @@ def main(args):
         s = generation_output.sequences[0]
         output = tokenizer.decode(s, skip_special_tokens=True)
         yield output
-
 
     description = 'Baichuan7B is a 7B-parameter LLaMA model finetuned to follow instructions.'
     server = gr.Interface(
