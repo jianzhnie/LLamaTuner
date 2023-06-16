@@ -1,6 +1,7 @@
 import argparse
 import os
-from typing import Any, Dict, List
+from os.path import exists, isdir, join
+from typing import Any, Dict, List, Tuple
 
 import bitsandbytes as bnb
 import torch
@@ -167,6 +168,45 @@ def verify_dtypes(model: torch.nn.Module) -> None:
     for k, v in dtypes.items():
         print(f'{k}: {v} ({100 * v / total:.2f}%)')
     return None
+
+
+def get_last_checkpoint(checkpoint_dir: str) -> Tuple[str, bool]:
+    """
+    Given a directory containing previous saved checkpoints, returns the path to the last checkpoint
+    if available along with a boolean flag indicating whether training has already been completed.
+
+    Args:
+        checkpoint_dir (str): Path to the directory containing the saved checkpoints.
+
+    Returns:
+        A tuple containing the path to the last checkpoint if available, and a boolean flag indicating
+        whether training has already been completed.
+    """
+    # Check if provided directory exists
+    if isdir(checkpoint_dir):
+
+        # Check if 'completed' file exists in the directory - indicates training has completed
+        is_completed = exists(join(checkpoint_dir, 'completed'))
+        if is_completed:
+            return None, True  # Already finished
+
+        # Find the latest checkpoint by checking all subdirectories named 'checkpoint-*'
+        max_step = 0
+        for filename in os.listdir(checkpoint_dir):
+            if isdir(join(checkpoint_dir,
+                          filename)) and filename.startswith('checkpoint'):
+                max_step = max(max_step,
+                               int(filename.replace('checkpoint-', '')))
+        if max_step == 0:
+            return None, is_completed  # Training started, but no checkpoint found
+
+        # Return path to the latest checkpoint directory
+        checkpoint_dir = join(checkpoint_dir, f'checkpoint-{max_step}')
+        print(f'Found a previous checkpoint at: {checkpoint_dir}')
+        return checkpoint_dir, is_completed
+
+    # The directory does not exist, meaning this is the first time the training is being run
+    return None, False
 
 
 class SavePeftModelCallback(transformers.TrainerCallback):

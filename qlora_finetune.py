@@ -3,32 +3,31 @@ import copy
 import json
 import logging
 import os
-from os.path import exists, isdir, join
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional, Sequence
 
+import datasets
 import torch
 import transformers
 from peft import (LoraConfig, PeftModel, get_peft_model,
                   prepare_model_for_kbit_training)
 from peft.tuners.lora import LoraLayer
 from torch.nn.utils.rnn import pad_sequence
+from torch.utils.data import Dataset
 from transformers import (AutoModelForCausalLM, AutoTokenizer,
                           BitsAndBytesConfig, LlamaTokenizer,
                           PreTrainedTokenizer, Seq2SeqTrainer, set_seed)
 
 from config import (DataArguments, GenerationArguments, LoraArguments,
                     ModelArguments, QuantArgments, TrainingArguments)
-from utils.data_utils import format_dataset, load_data, split_train_eval
+from utils.data_utils import (DEFAULT_BOS_TOKEN, DEFAULT_EOS_TOKEN,
+                              DEFAULT_PAD_TOKEN, DEFAULT_UNK_TOKEN,
+                              IGNORE_INDEX, format_dataset, load_data,
+                              make_data_module)
 from utils.model_utils import (SavePeftModelCallback, find_all_linear_names,
-                               print_trainable_parameters,
+                               get_last_checkpoint, print_trainable_parameters,
                                smart_tokenizer_and_embedding_resize,
                                verify_dtypes)
-
-IGNORE_INDEX = -100
-DEFAULT_PAD_TOKEN = '[PAD]'
-DEFAULT_EOS_TOKEN = '</s>'
-DEFAULT_BOS_TOKEN = '<s>'
-DEFAULT_UNK_TOKEN = '<unk>'
 
 torch.backends.cuda.matmul.allow_tf32 = True
 logger = logging.getLogger(__name__)
@@ -140,196 +139,91 @@ def get_accelerate_model(args: Dict,
     return model
 
 
-class DataCollatorForCausalLM(object):
-    """
-    Data collator used for language modeling tasks. This collator takes in a sequence of examples
-    (input/output pairs) and returns a dictionary containing the inputs and labels for training
-    a causal language model.
-
-    Parameters:
-        tokenizer (transformers.PreTrainedTokenizer): Tokenizer used to tokenize the input and output text.
-        source_max_len (int): The maximum length allowed for the input source text.
-        target_max_len (int): The maximum length allowed for the target output text.
-        train_on_source (bool): If True, the model will be trained on the source text. Otherwise, it will be trained
-                                on both source and target text concatenated together.
-        predict_with_generate (bool, default=False): If True, only the input_ids for the tokenized source text
-                                                      are returned. This is useful during inference when generating
-                                                      text sequences from the model.
-    """
+@dataclass
+class SupervisedDataset(Dataset):
+    """Dataset for supervised fine-tuning."""
     def __init__(
         self,
+        dataset_name: str,
         tokenizer: PreTrainedTokenizer,
         source_max_len: int,
         target_max_len: int,
         train_on_source: bool,
         predict_with_generate: bool = False,
-    ) -> None:
+    ):
+        super(SupervisedDataset, self).__init__()
+        logging.warning('Loading data...')
+        dataset = load_data(dataset_name)
+        self.dataset = format_dataset(dataset,
+                                      dataset_name=dataset_name)['train']
         self.tokenizer = tokenizer
         self.source_max_len = source_max_len
         self.target_max_len = target_max_len
         self.train_on_source = train_on_source
         self.predict_with_generate = predict_with_generate
 
-    def __call__(
-            self, instances: Sequence[Dict[str,
-                                           str]]) -> Dict[str, torch.Tensor]:
-        """
-        Takes a sequence of input/output pairs and returns a dictionary containing the inputs and labels
-        for training a causal language model.
+    def __len__(self):
+        return len(self.dataset)
 
-        Parameters:
-            instances (Sequence[Dict[str, str]]): A sequence of input/output pairs. Each dictionary must contain
-                                                  the keys 'input' and 'output'.
+    def __getitem__(self, idx) -> Dict[str, torch.Tensor]:
 
-        Returns:
-            data_dict (Dict[str, torch.Tensor]): A dictionary containing the input_ids, attention_mask,
-                                                 and optionally the labels.
-        """
-        # Extract elements
-        sources: List[str] = [
-            f"{self.tokenizer.bos_token}{example['input']}"
-            for example in instances
-        ]
-        targets: List[str] = [
-            f"{example['output']}{self.tokenizer.eos_token}"
-            for example in instances
-        ]
-
-        # Tokenize
-        tokenized_sources_with_prompt = self.tokenizer(
-            sources,
+        example = self.dataset[idx]
+        source_txt = f"{self.tokenizer.bos_token}{example['input']}"
+        tokenized_source = self.tokenizer(
+            source_txt,
             max_length=self.source_max_len,
             truncation=True,
             add_special_tokens=False,
         )
-        tokenized_targets = self.tokenizer(
-            targets,
+        target_txt = f"{example['output']}{self.tokenizer.eos_token}"
+        tokenized_target = self.tokenizer(
+            target_txt,
             max_length=self.target_max_len,
             truncation=True,
             add_special_tokens=False,
         )
-
-        # Build the input and labels for causal LM
-        input_ids = []
-        labels = []
-        for tokenized_source, tokenized_target in zip(
-                tokenized_sources_with_prompt['input_ids'],
-                tokenized_targets['input_ids']):
-            if not self.predict_with_generate:
-                input_ids.append(
-                    torch.tensor(tokenized_source + tokenized_target))
-                if not self.train_on_source:
-                    # train_on_source 默认设置为 False, 训练时不在 source  text 上计算损失
-                    labels.append(
-                        torch.tensor([
-                            IGNORE_INDEX for _ in range(len(tokenized_source))
-                        ] + copy.deepcopy(tokenized_target)))
-                else:
-                    # 如果 train_on_source 设置为 True, 训练时将 source text  和 target text 的标签合并, 然后计算损失
-                    labels.append(
-                        torch.tensor(
-                            copy.deepcopy(tokenized_source +
-                                          tokenized_target)))
+        if not self.predict_with_generate:
+            input_ids = torch.tensor(tokenized_source['input_ids'] +
+                                     tokenized_target['input_ids'])
+            if not self.train_on_source:
+                # train_on_source 默认设置为 False, 训练时不在 source  text 上计算损失
+                labels = torch.tensor([
+                    IGNORE_INDEX
+                    for _ in range(len(tokenized_source['input_ids']))
+                ] + copy.deepcopy(tokenized_target['input_ids']))
             else:
-                input_ids.append(torch.tensor(tokenized_source))
-
-        # Apply padding
-        input_ids = pad_sequence(input_ids,
-                                 batch_first=True,
-                                 padding_value=self.tokenizer.pad_token_id)
-        labels = pad_sequence(
-            labels,
-            batch_first=True,
-            padding_value=IGNORE_INDEX,
-        ) if not self.predict_with_generate else None
+                # 如果 train_on_source 设置为 True, 训练时将 source text  和 target text 的标签合并, 然后计算损失
+                labels = torch.tensor(
+                    copy.deepcopy(tokenized_source + tokenized_target))
+        else:
+            input_ids = torch.tensor(tokenized_source)
 
         # Construct data dictionary containing inputs and labels
-        data_dict = {
-            'input_ids': input_ids,
-            'attention_mask': input_ids.ne(self.tokenizer.pad_token_id),
-        }
-        if labels is not None:
-            data_dict['labels'] = labels
+        data_dict = {'input_ids': input_ids, 'labels': labels}
 
         return data_dict
 
 
-def get_last_checkpoint(checkpoint_dir: str) -> Tuple[str, bool]:
-    """
-    Given a directory containing previous saved checkpoints, returns the path to the last checkpoint
-    if available along with a boolean flag indicating whether training has already been completed.
+@dataclass
+class DataCollatorForSupervisedDataset(object):
+    """Collate examples for supervised fine-tuning."""
 
-    Args:
-        checkpoint_dir (str): Path to the directory containing the saved checkpoints.
+    tokenizer: PreTrainedTokenizer
 
-    Returns:
-        A tuple containing the path to the last checkpoint if available, and a boolean flag indicating
-        whether training has already been completed.
-    """
-    # Check if provided directory exists
-    if isdir(checkpoint_dir):
-
-        # Check if 'completed' file exists in the directory - indicates training has completed
-        is_completed = exists(join(checkpoint_dir, 'completed'))
-        if is_completed:
-            return None, True  # Already finished
-
-        # Find the latest checkpoint by checking all subdirectories named 'checkpoint-*'
-        max_step = 0
-        for filename in os.listdir(checkpoint_dir):
-            if isdir(join(checkpoint_dir,
-                          filename)) and filename.startswith('checkpoint'):
-                max_step = max(max_step,
-                               int(filename.replace('checkpoint-', '')))
-        if max_step == 0:
-            return None, is_completed  # Training started, but no checkpoint found
-
-        # Return path to the latest checkpoint directory
-        checkpoint_dir = join(checkpoint_dir, f'checkpoint-{max_step}')
-        print(f'Found a previous checkpoint at: {checkpoint_dir}')
-        return checkpoint_dir, is_completed
-
-    # The directory does not exist, meaning this is the first time the training is being run
-    return None, False
-
-
-def make_data_module(args):
-    """
-    Make dataset and collator for supervised fine-tuning.
-    Datasets are expected to have the following columns: { `input`, `output` }
-
-    Available datasets to be selected with `dataset` argument:
-        - alpaca, 52002 examples
-        - alpaca cleaned, 51942 examples
-        - chip2 (OIG), 210289 examples
-        - self-instruct, 82612 examples
-        - hh-rlhf (Anthropic), 160800 examples
-        - longform, 23.7k examples
-        - oasst1 (OpenAssistant) primary message tree only, 9,846 examples
-
-    Coming soon:
-        - unnatural instructions core, 66010 examples
-        - unnatural instructions full, 240670 examples
-        - alpaca-gpt4, 52002 examples
-        - unnatural-instructions-gpt4, 9000 examples
-        - supernatural-instructions, 69624 examples (same as paper with 100 ex/task more can be used)
-        - flan (FLAN v2), up to 20M examples available
-        - vicuna
-
-    """
-    dataset = load_data(args.dataset_name)
-    dataset = format_dataset(dataset, dataset_name=args.dataset_name)
-    dataset_dict = split_train_eval(
-        dataset,
-        do_eval=args.do_eval,
-        eval_dataset_size=args.eval_dataset_size,
-        max_eval_samples=args.max_eval_samples,
-        group_by_length=args.group_by_length,
-        do_train=args.do_train,
-        max_train_samples=args.max_train_samples,
-    )
-
-    return dataset_dict
+    def __call__(self, instances: Sequence[Dict]) -> Dict[str, torch.Tensor]:
+        input_ids, labels = tuple([instance[key] for instance in instances]
+                                  for key in ('input_ids', 'labels'))
+        input_ids = pad_sequence(input_ids,
+                                 batch_first=True,
+                                 padding_value=self.tokenizer.pad_token_id)
+        labels = pad_sequence(labels,
+                              batch_first=True,
+                              padding_value=IGNORE_INDEX)
+        return dict(
+            input_ids=input_ids,
+            labels=labels,
+            attention_mask=input_ids.ne(self.tokenizer.pad_token_id),
+        )
 
 
 def train():
@@ -392,15 +286,8 @@ def train():
             smart_tokenizer_and_embedding_resize(special_tokens_dict,
                                                  tokenizer, model)
 
-    dataset_dict = make_data_module(args)
-    print(dataset_dict['eval'][0])
-    print('==' * 80)
-    print(dataset_dict['train'][0])
-    print('==' * 80)
-    print(dataset_dict['train'][-1])
-    print('==' * 80)
-    print(dataset_dict['eval'][-1])
-    data_collator = DataCollatorForCausalLM(
+    train_dataset = SupervisedDataset(
+        args.dataset_name,
         tokenizer=tokenizer,
         source_max_len=args.source_max_len,
         target_max_len=args.target_max_len,
@@ -408,12 +295,14 @@ def train():
         predict_with_generate=args.predict_with_generate,
     )
 
+    data_collator = DataCollatorForSupervisedDataset(tokenizer=tokenizer)
+
     trainer = Seq2SeqTrainer(
         model=model,
         tokenizer=tokenizer,
         args=training_args,
-        train_dataset=dataset_dict['train'] if args.do_train else None,
-        eval_dataset=dataset_dict['eval'] if args.do_eval else None,
+        train_dataset=train_dataset,
+        eval_dataset=None,
         data_collator=data_collator,
     )
     trainer.add_callback(SavePeftModelCallback)

@@ -1,9 +1,20 @@
+import copy
 import os
-from typing import Any, Dict, Optional, Tuple, Union
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import pandas as pd
+import torch
 from datasets import Dataset, DatasetDict, load_dataset
+from torch.nn.utils.rnn import pad_sequence
+from transformers import PreTrainedTokenizer
+
+IGNORE_INDEX = -100
+DEFAULT_PAD_TOKEN = '[PAD]'
+DEFAULT_EOS_TOKEN = '</s>'
+DEFAULT_BOS_TOKEN = '<s>'
+DEFAULT_UNK_TOKEN = '<unk>'
 
 ALPACA_PROMPT_DICT = {
     'prompt_input':
@@ -248,3 +259,157 @@ def split_train_eval(
                 lambda x: {'length': len(x['input']) + len(x['output'])})
 
     return {'train': train_dataset, 'eval': eval_dataset}
+
+
+def make_data_module(args):
+    """
+    Make dataset and collator for supervised fine-tuning.
+    Datasets are expected to have the following columns: { `input`, `output` }
+
+    Available datasets to be selected with `dataset` argument:
+        - alpaca, 52002 examples
+        - alpaca cleaned, 51942 examples
+        - chip2 (OIG), 210289 examples
+        - self-instruct, 82612 examples
+        - hh-rlhf (Anthropic), 160800 examples
+        - longform, 23.7k examples
+        - oasst1 (OpenAssistant) primary message tree only, 9,846 examples
+
+    Coming soon:
+        - unnatural instructions core, 66010 examples
+        - unnatural instructions full, 240670 examples
+        - alpaca-gpt4, 52002 examples
+        - unnatural-instructions-gpt4, 9000 examples
+        - supernatural-instructions, 69624 examples (same as paper with 100 ex/task more can be used)
+        - flan (FLAN v2), up to 20M examples available
+        - vicuna
+
+    """
+    dataset = load_data(args.dataset_name)
+    dataset = format_dataset(dataset, dataset_name=args.dataset_name)
+    dataset_dict = split_train_eval(
+        dataset,
+        do_eval=args.do_eval,
+        eval_dataset_size=args.eval_dataset_size,
+        max_eval_samples=args.max_eval_samples,
+        group_by_length=args.group_by_length,
+        do_train=args.do_train,
+        max_train_samples=args.max_train_samples,
+    )
+
+    return dataset_dict
+
+
+@dataclass
+class DataCollatorForCausalLM(object):
+    """
+    Data collator used for language modeling tasks. This collator takes in a sequence of examples
+    (input/output pairs) and returns a dictionary containing the inputs and labels for training
+    a causal language model.
+
+    Parameters:
+        tokenizer (transformers.PreTrainedTokenizer): Tokenizer used to tokenize the input and output text.
+        source_max_len (int): The maximum length allowed for the input source text.
+        target_max_len (int): The maximum length allowed for the target output text.
+        train_on_source (bool): If True, the model will be trained on the source text. Otherwise, it will be trained
+                                on both source and target text concatenated together.
+        predict_with_generate (bool, default=False): If True, only the input_ids for the tokenized source text
+                                                      are returned. This is useful during inference when generating
+                                                      text sequences from the model.
+    """
+    def __init__(
+        self,
+        tokenizer: PreTrainedTokenizer,
+        source_max_len: int,
+        target_max_len: int,
+        train_on_source: bool,
+        predict_with_generate: bool = False,
+    ) -> None:
+        self.tokenizer = tokenizer
+        self.source_max_len = source_max_len
+        self.target_max_len = target_max_len
+        self.train_on_source = train_on_source
+        self.predict_with_generate = predict_with_generate
+
+    def __call__(
+            self, instances: Sequence[Dict[str,
+                                           str]]) -> Dict[str, torch.Tensor]:
+        """
+        Takes a sequence of input/output pairs and returns a dictionary containing the inputs and labels
+        for training a causal language model.
+
+        Parameters:
+            instances (Sequence[Dict[str, str]]): A sequence of input/output pairs. Each dictionary must contain
+                                                  the keys 'input' and 'output'.
+
+        Returns:
+            data_dict (Dict[str, torch.Tensor]): A dictionary containing the input_ids, attention_mask,
+                                                 and optionally the labels.
+        """
+        # Extract elements
+        sources: List[str] = [
+            f"{self.tokenizer.bos_token}{example['input']}"
+            for example in instances
+        ]
+        targets: List[str] = [
+            f"{example['output']}{self.tokenizer.eos_token}"
+            for example in instances
+        ]
+
+        # Tokenize
+        tokenized_sources_with_prompt = self.tokenizer(
+            sources,
+            max_length=self.source_max_len,
+            truncation=True,
+            add_special_tokens=False,
+        )
+        tokenized_targets = self.tokenizer(
+            targets,
+            max_length=self.target_max_len,
+            truncation=True,
+            add_special_tokens=False,
+        )
+
+        # Build the input and labels for causal LM
+        input_ids = []
+        labels = []
+        for tokenized_source, tokenized_target in zip(
+                tokenized_sources_with_prompt['input_ids'],
+                tokenized_targets['input_ids']):
+            if not self.predict_with_generate:
+                input_ids.append(
+                    torch.tensor(tokenized_source + tokenized_target))
+                if not self.train_on_source:
+                    # train_on_source 默认设置为 False, 训练时不在 source  text 上计算损失
+                    labels.append(
+                        torch.tensor([
+                            IGNORE_INDEX for _ in range(len(tokenized_source))
+                        ] + copy.deepcopy(tokenized_target)))
+                else:
+                    # 如果 train_on_source 设置为 True, 训练时将 source text  和 target text 的标签合并, 然后计算损失
+                    labels.append(
+                        torch.tensor(
+                            copy.deepcopy(tokenized_source +
+                                          tokenized_target)))
+            else:
+                input_ids.append(torch.tensor(tokenized_source))
+
+        # Apply padding
+        input_ids = pad_sequence(input_ids,
+                                 batch_first=True,
+                                 padding_value=self.tokenizer.pad_token_id)
+        labels = pad_sequence(
+            labels,
+            batch_first=True,
+            padding_value=IGNORE_INDEX,
+        ) if not self.predict_with_generate else None
+
+        # Construct data dictionary containing inputs and labels
+        data_dict = {
+            'input_ids': input_ids,
+            'attention_mask': input_ids.ne(self.tokenizer.pad_token_id),
+        }
+        if labels is not None:
+            data_dict['labels'] = labels
+
+        return data_dict
