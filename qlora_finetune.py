@@ -1,6 +1,5 @@
 import argparse
 import copy
-import json
 import logging
 import os
 from dataclasses import dataclass
@@ -27,6 +26,7 @@ from utils.model_utils import (SavePeftModelCallback, find_all_linear_names,
                                get_last_checkpoint, print_trainable_parameters,
                                smart_tokenizer_and_embedding_resize,
                                verify_dtypes)
+from utils.training import predict_and_save, train_and_evaluate
 
 torch.backends.cuda.matmul.allow_tf32 = True
 logger = logging.getLogger(__name__)
@@ -55,11 +55,15 @@ def get_accelerate_model(args: Dict,
         device_map = {'': local_rank}
         max_memory = {'': max_memory[local_rank]}
 
+    # Check if we are doing full finetuning.
+    if args.full_finetune: assert args.bits in [16, 32]
+
     print(f'Loading base model {args.model_name_or_path}...')
     compute_dtype = (torch.float16 if args.fp16 else
                      (torch.bfloat16 if args.bf16 else torch.float32))
     torch_dtype = (torch.float32 if args.fp16 else
                    (torch.bfloat16 if args.bf16 else torch.float32))
+    # Load the model.
     model = AutoModelForCausalLM.from_pretrained(
         args.model_name_or_path,
         cache_dir=args.cache_dir,
@@ -96,33 +100,36 @@ def get_accelerate_model(args: Dict,
     model.config.torch_dtype = torch_dtype
 
     # Prepare the model for k-bit training if specified.
-    model = prepare_model_for_kbit_training(
-        model, use_gradient_checkpointing=args.gradient_checkpointing)
+    if not args.full_finetune:
+        model = prepare_model_for_kbit_training(
+            model, use_gradient_checkpointing=args.gradient_checkpointing)
 
     # Enable gradient checkpointing if specified.
     if args.gradient_checkpointing:
         model.gradient_checkpointing_enable()
 
-    if checkpoint_dir is not None:
-        # Load pre-trained adapters from checkpoint directory.
-        print('Loading adapters from checkpoint.')
-        model = PeftModel.from_pretrained(model,
-                                          os.path.join(checkpoint_dir,
-                                                       'adapter_model'),
-                                          is_trainable=True)
-    else:
-        # Add LoRA modules to the model.
-        print('Adding LoRA modules...')
-        modules = find_all_linear_names(args, model)
-        config = LoraConfig(
-            r=args.lora_r,
-            lora_alpha=args.lora_alpha,
-            target_modules=modules,
-            lora_dropout=args.lora_dropout,
-            bias='none',
-            task_type='CAUSAL_LM',
-        )
-        model = get_peft_model(model, config)
+    if not args.full_finetune:
+        if checkpoint_dir is not None:
+            # Load pre-trained adapters from checkpoint directory.
+            print('Loading adapters from checkpoint.')
+            model = PeftModel.from_pretrained(model,
+                                              os.path.join(
+                                                  checkpoint_dir,
+                                                  'adapter_model'),
+                                              is_trainable=True)
+        else:
+            # Add LoRA modules to the model.
+            print('Adding LoRA modules...')
+            modules = find_all_linear_names(args, model)
+            config = LoraConfig(
+                r=args.lora_r,
+                lora_alpha=args.lora_alpha,
+                target_modules=modules,
+                lora_dropout=args.lora_dropout,
+                bias='none',
+                task_type='CAUSAL_LM',
+            )
+            model = get_peft_model(model, config)
 
     # Convert certain model modules to a different precision as specified by the hyperparameters.
     for name, module in model.named_modules():
@@ -271,7 +278,7 @@ class DataCollatorForSupervisedDataset:
         return data_dict
 
 
-def train():
+def main():
     parser = transformers.HfArgumentParser(
         (ModelArguments, DataArguments, TrainingArguments, LoraArguments,
          QuantArgments, GenerationArguments))
@@ -350,6 +357,15 @@ def train():
         predict_with_generate=args.predict_with_generate,
     ) if args.do_eval else None
 
+    predict_dataset = SupervisedDataset(
+        dataset_dict['predict'],
+        tokenizer=tokenizer,
+        source_max_len=args.source_max_len,
+        target_max_len=args.target_max_len,
+        train_on_source=args.train_on_source,
+        predict_with_generate=args.predict_with_generate,
+    ) if args.do_predict else None
+
     data_collator = DataCollatorForSupervisedDataset(
         tokenizer=tokenizer, predict_with_generate=args.predict_with_generate)
 
@@ -361,25 +377,15 @@ def train():
         eval_dataset=eval_dataset,
         data_collator=data_collator,
     )
-    trainer.add_callback(SavePeftModelCallback)
-    print(trainer.train_dataset)
+    # Add callback to save adapter model.
+    if not args.full_finetune:
+        trainer.add_callback(SavePeftModelCallback)
+
     # Verify dtypes
     verify_dtypes(model)
-    all_metrics = {'run_name': args.run_name}
-    # Training
-    logger.info('*** Train ***')
-    # Note: `resume_from_checkpoint` not supported for adapter checkpoints by HF.
-    # Currently adapter checkpoint is reloaded as expected but optimizer/scheduler states are not.
-    train_result = trainer.train()
-    metrics = train_result.metrics
-    trainer.log_metrics('train', metrics)
-    trainer.save_metrics('train', metrics)
-    trainer.save_state()
-    all_metrics.update(metrics)
-
-    with open(os.path.join(args.output_dir, 'metrics.json'), 'w') as fout:
-        fout.write(json.dumps(all_metrics))
+    train_and_evaluate(trainer, args)
+    predict_and_save(trainer, tokenizer, predict_dataset, args)
 
 
 if __name__ == '__main__':
-    train()
+    main()

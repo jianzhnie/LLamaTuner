@@ -193,9 +193,9 @@ def format_dataset(dataset: Dataset,
 def split_train_eval(
     dataset: Dataset,
     do_eval: bool = False,
+    do_predict: bool = False,
     eval_dataset_size: float = 0.2,
     max_eval_samples: int = None,
-    group_by_length: bool = False,
     do_train: bool = True,
     max_train_samples: int = None,
 ) -> Dict[str, Dataset]:
@@ -209,7 +209,6 @@ def split_train_eval(
             Ignored if `do_eval` is False. Defaults to 0.2.
         max_eval_samples (int, optional): The maximum number of samples to keep in the evaluation dataset.
             Ignored if `do_eval` is False or `None`. Defaults to None.
-        group_by_length (bool, optional): Whether to group the data by length or not. Defaults to False.
         do_train (bool, optional): Whether to use a training dataset or not. Defaults to True.
         max_train_samples (int, optional): The maximum number of samples to keep in the training dataset.
             Ignored if `do_train` is False or `None`. Defaults to None.
@@ -222,7 +221,7 @@ def split_train_eval(
         raise TypeError("The 'dataset' argument must be a DatasetDict object.")
 
     # Prepare evaluation dataset
-    if do_eval:
+    if do_eval or do_predict:
         if 'eval' in dataset:
             eval_dataset = dataset['eval']
         else:
@@ -239,11 +238,6 @@ def split_train_eval(
                 eval_dataset) > max_eval_samples:
             eval_dataset = eval_dataset.select(np.arange(max_eval_samples))
 
-        # Group data by length (if specified)
-        if group_by_length:
-            eval_dataset = eval_dataset.map(
-                lambda x: {'length': len(x['input']) + len(x['output'])})
-
     # Prepare training dataset
     if do_train:
         train_dataset = dataset['train']
@@ -253,12 +247,11 @@ def split_train_eval(
                 train_dataset) > max_train_samples:
             train_dataset = train_dataset.select(np.arange(max_train_samples))
 
-        # Group data by length (if specified)
-        if group_by_length:
-            train_dataset = train_dataset.map(
-                lambda x: {'length': len(x['input']) + len(x['output'])})
-
-    return {'train': train_dataset, 'eval': eval_dataset}
+    return dict(
+        train=train_dataset if do_train else None,
+        eval=eval_dataset if do_eval else None,
+        predict=eval_dataset if do_predict else None,
+    )
 
 
 def make_data_module(args):
@@ -292,7 +285,6 @@ def make_data_module(args):
         do_eval=args.do_eval,
         eval_dataset_size=args.eval_dataset_size,
         max_eval_samples=args.max_eval_samples,
-        group_by_length=args.group_by_length,
         do_train=args.do_train,
         max_train_samples=args.max_train_samples,
     )

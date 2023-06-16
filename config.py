@@ -65,8 +65,11 @@ class DataArguments:
 @dataclass
 class TrainingArguments(transformers.TrainingArguments):
     cache_dir: Optional[str] = field(default=None)
+    full_finetune: bool = field(
+        default=False,
+        metadata={'help': 'Finetune the entire model without adapters.'})
     do_train: bool = field(
-        default=True,
+        default=False,
         metadata={'help': 'To train or not to train, that is the question?'})
     do_eval: bool = field(
         default=False,
@@ -88,12 +91,6 @@ class TrainingArguments(transformers.TrainingArguments):
     gradient_checkpointing: bool = field(
         default=True,
         metadata={'help': 'Use gradient checkpointing. You want to use this.'})
-    group_by_length: bool = field(
-        default=False,
-        metadata={
-            'help':
-            'Group sequences into batches with same length. Saves memory and speeds up training considerably.'
-        })
     predict_with_generate: bool = field(
         default=False,
         metadata={
