@@ -11,9 +11,11 @@ from transformers import GenerationConfig
 
 from utils.apply_lora import apply_lora
 from utils.callbacks import Iteratorize, Stream
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
 class Prompter(object):
+
     def __init__(self) -> None:
         self.PROMPT_DICT = {
             'prompt_input':
@@ -60,7 +62,6 @@ def args_parser():
     parser.add_argument('--lora_model_name_or_path',
                         default=None,
                         type=str,
-                        required=True,
                         help='Path to pre-trained model')
     parser.add_argument('--no_cuda',
                         action='store_true',
@@ -76,9 +77,20 @@ def args_parser():
 
 
 def main(args):
-    model, tokenizer = apply_lora(args.model_name_or_path,
-                                  args.lora_model_name_or_path,
-                                  load_8bit=args.load_8bit)
+    if args.lora_model_name_or_path is not None:
+        model, tokenizer = apply_lora(args.model_name_or_path,
+                                      args.lora_model_name_or_path,
+                                      load_8bit=args.load_8bit)
+    else:
+        tokenizer = AutoTokenizer.from_pretrained(
+            pretrained_model_name_or_path=args.model_name_or_path,
+            trust_remote_code=True)
+        model = AutoModelForCausalLM.from_pretrained(
+            pretrained_model_name_or_path=args.model_name_or_path,
+            load_in_8bit=args.load_8bit,
+            torch_dtype=torch.float16,
+            device_map='auto',
+            trust_remote_code=True)
 
     if not args.load_8bit:
         model.half()  # seems to fix bugs for some users.
@@ -162,11 +174,7 @@ def main(args):
         output = tokenizer.decode(s)
         yield prompter.get_response(output)
 
-    description = 'Alpaca-LoRA is a 7B-parameter LLaMA model finetuned to follow instructions. '
-    'It is trained on the [Stanford Alpaca](https://github.com/tatsu-lab/stanford_alpaca) '
-    'dataset and makes use of the Huggingface LLaMA implementation. For more information, '
-    "please visit [the project's website](https://github.com/tloen/alpaca-lora).",
-
+    description = 'Baichuan7B is a 7B-parameter LLaMA model finetuned to follow instructions.'
     server = gr.Interface(
         fn=evaluate,
         inputs=[
@@ -203,7 +211,7 @@ def main(args):
             lines=5,
             label='Output',
         )],
-        title='🦙🌲 Alpaca-LoRA',
+        title='Baichuan7B',
         description=description,
     )
 
