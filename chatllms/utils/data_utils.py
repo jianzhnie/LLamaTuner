@@ -28,6 +28,80 @@ ALPACA_PROMPT_DICT = {
      '### Instruction:\n{instruction}\n\n### Response: '),
 }
 
+def extract_alpaca_dataset(example: Dict[str, Any]) -> Dict[str, str]:
+    """
+    Extracts input from an example in the Alpaca dataset.
+
+    Args:
+        example: A dictionary containing a single example from the Alpaca dataset.
+
+    Returns:
+        A dictionary containing the extracted input string from the example.
+
+    Examples:
+        >>> example = {'input': 'example input', 'output': 'example output'}
+        >>> extract_alpaca_dataset(example)
+        {'input': 'example input'}
+
+    """
+    if example.get('input', '') != '':
+        prompt_format = ALPACA_PROMPT_DICT['prompt_input']
+    else:
+        prompt_format = ALPACA_PROMPT_DICT['prompt_no_input']
+    return {'input': prompt_format.format(**example)}
+
+
+def extract_vicuna_dataset(example: Dict[str, Any]) -> Dict[str, str]:
+    """
+    Extracts the input and output portions of a single conversation example from the Vicuña format.
+
+    Args:
+        example (Dict[str, Any]): A single conversation example in the Vicuña format.
+
+    Returns:
+        Dict[str, str]: A dictionary containing the input and output portions of the conversation.
+    """
+    # Set default system message
+    system = "A chat between a curious user and an artificial intelligence assistant. The assistant gives helpful,\
+          detailed, and polite answers to the user's questions."
+    
+    # Define roles and role mappings
+    roles = ("USER", "ASSISTANT")
+    roles_mapping = {"human": roles[0], "gpt": roles[1]}
+    
+    # Define separators for input and output messages
+    seps = [" ", "</s>"]
+
+    # Extract messages from conversation
+    messages = []
+    conversations = example["conversations"]
+    if conversations[0]["from"].lower() == "system":
+        # If first message is from system, use it as system message
+        system = conversations[0]["value"]
+        conversations = conversations[1:]
+    if roles_mapping[conversations[0]["from"]] != roles[0]:
+        # If first message is not from human, skip it
+        conversations = conversations[1:]
+    for j, sentence in enumerate(conversations):
+        # Assign role based on sender
+        role = roles_mapping[sentence["from"]]
+        assert role == roles[j % 2], f"Unexpected role at index {j}"
+        messages.append((role, sentence["value"]))
+
+    # Concatenate messages into input and output portions
+    ret = system + seps[0]
+    for i, (role, message) in enumerate(messages):
+        if message:
+            ret += role + ": " + message + seps[i % 2]
+        else:
+            ret += role + ":"
+    sep = seps[0] + roles[1] + ": "
+    input_str, output_str = ret.rsplit(sep, 1)
+    input_str += sep
+
+    return {'input': input_str, 'output': output_str}
+
+
 
 def local_dataset(dataset_name: str) -> Tuple[Dataset, Dataset]:
     """
@@ -111,28 +185,6 @@ def load_data(dataset_name: str) -> Union[Dict[str, Dataset], None]:
             raise NotImplementedError(
                 f'Dataset {dataset_name} not implemented yet.')
 
-
-def extract_alpaca_dataset(example: Dict[str, Any]) -> Dict[str, str]:
-    """
-    Extracts input from an example in the Alpaca dataset.
-
-    Args:
-        example: A dictionary containing a single example from the Alpaca dataset.
-
-    Returns:
-        A dictionary containing the extracted input string from the example.
-
-    Examples:
-        >>> example = {'input': 'example input', 'output': 'example output'}
-        >>> extract_alpaca_dataset(example)
-        {'input': 'example input'}
-
-    """
-    if example.get('input', '') != '':
-        prompt_format = ALPACA_PROMPT_DICT['prompt_input']
-    else:
-        prompt_format = ALPACA_PROMPT_DICT['prompt_no_input']
-    return {'input': prompt_format.format(**example)}
 
 
 def format_dataset(dataset: Dataset,
