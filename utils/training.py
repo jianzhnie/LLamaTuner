@@ -7,6 +7,7 @@ from typing import Any, Dict
 import numpy as np
 import transformers
 from torch.utils.data import Dataset
+
 logger = logging.getLogger(__name__)
 
 
@@ -112,50 +113,3 @@ def predict_and_save(trainer: transformers.Trainer,
     # Save the overall metrics to a file
     with open(os.path.join(args.output_dir, 'eval_metrics.json'), 'w') as fout:
         fout.write(json.dumps(all_metrics))
-
-
-def evaluate_mmlu(args: Dict[str, Any], trainer: Trainer,
-                  tokenizer: PreTrainedTokenizer) -> None:
-    """Evaluate the model performance on the MMLU dataset.
-
-    Args:
-        args (Dict[str, Any]): dictionary containing the evaluation arguments.
-        trainer (Trainer): the training object containing the model to be evaluated.
-        tokenizer (PreTrainedTokenizer): the tokenizer associated with the model.
-    """
-    if args.do_mmlu_eval:
-        # Load the appropriate MMLU dataset based on the value of 'mmlu_dataset'.
-        if args.mmlu_dataset == 'mmlu-zs':
-            mmlu_dataset = load_dataset(
-                'json',
-                data_files={
-                    'eval': 'data/mmlu/zero_shot_mmlu_val.json',
-                    'test': 'data/mmlu/zero_shot_mmlu_test.json',
-                })
-            mmlu_dataset = mmlu_dataset.remove_columns('subject')
-        elif args.mmlu_dataset in ['mmlu', 'mmlu-fs']:
-            mmlu_dataset = load_dataset(
-                'json',
-                data_files={
-                    'eval': 'data/mmlu/five_shot_mmlu_val.json',
-                    'test': 'data/mmlu/five_shot_mmlu_test.json',
-                })
-        else:
-            raise ValueError(
-                f"Invalid value '{args.mmlu_dataset}' for argument 'mmlu_dataset'."
-            )
-
-        # Select the appropriate split of the dataset and limit the number of samples to evaluate.
-        mmlu_dataset = mmlu_dataset[args.mmlu_split]
-        if args.max_mmlu_samples is not None:
-            mmlu_dataset = mmlu_dataset.select(range(args.max_mmlu_samples))
-
-        # Define a list of token IDs representing the letters A, B, C, and D.
-        abcd_idx = [
-            tokenizer('A', add_special_tokens=False).input_ids[0],
-            tokenizer('B', add_special_tokens=False).input_ids[0],
-            tokenizer('C', add_special_tokens=False).input_ids[0],
-            tokenizer('D', add_special_tokens=False).input_ids[0],
-        ]
-        # Load the accuracy metric for evaluating MMLU performance.
-        accuracy = evaluate.load('accuracy')

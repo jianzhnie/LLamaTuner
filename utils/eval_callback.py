@@ -1,10 +1,14 @@
-from typing import Any, Dict, List, Optional
+import argparse
+import os
+from typing import Any, Dict
 
-import accuracy
+import evaluate
 import numpy as np
 import torch
+from datasets import load_dataset
 from tqdm.auto import tqdm
-from transformers import PreTrainedModel, Trainer, TrainerCallback
+from transformers import (PreTrainedModel, PreTrainedTokenizer, Trainer,
+                          TrainerCallback)
 
 
 class MMLUEvalCallback(TrainerCallback):
@@ -13,11 +17,58 @@ class MMLUEvalCallback(TrainerCallback):
 
     Args:
         trainer (Trainer): The trainer instance to be used.
-        mmlu_dataset (Dict[str, Any]): The dataset containing MMLU data.
+        tokenizer (PreTrainedTokenizer): the tokenizer associated with the model.
+        args (argparse.Namespace): The command line arguments for the current run.
     """
-    def __init__(self, trainer: Trainer, mmlu_dataset: Dict[str, Any]):
+    def __init__(
+        self,
+        trainer: Trainer,
+        tokenizer: PreTrainedTokenizer,
+        data_dir: str,
+        args: argparse.Namespace,
+    ) -> None:
+
         self.trainer = trainer
-        self.mmlu_dataset = mmlu_dataset
+        self.tokenizer = tokenizer
+
+        # Load the appropriate MMLU dataset based on the value of 'mmlu_dataset'.
+        if args.mmlu_dataset == 'mmlu-zs':
+            mmlu_dataset = load_dataset(
+                'json',
+                data_files={
+                    'eval':
+                    os.path.join(data_dir, 'mmlu/zero_shot_mmlu_val.json'),
+                    'test':
+                    os.path.join(data_dir, 'mmlu/zero_shot_mmlu_test.json'),
+                })
+            mmlu_dataset = mmlu_dataset.remove_columns('subject')
+        elif args.mmlu_dataset in ['mmlu', 'mmlu-fs']:
+            mmlu_dataset = load_dataset(
+                'json',
+                data_files={
+                    'eval':
+                    os.path.join(data_dir, 'mmlu/five_shot_mmlu_val.json'),
+                    'test':
+                    os.path.join(data_dir, 'mmlu/five_shot_mmlu_test.json'),
+                })
+        else:
+            raise ValueError(
+                f"Invalid value '{args.mmlu_dataset}' for argument 'mmlu_dataset'."
+            )
+        # Select the appropriate split of the dataset and limit the number of samples to evaluate.
+        mmlu_dataset = mmlu_dataset[args.mmlu_split]
+        if args.max_mmlu_samples is not None:
+            mmlu_dataset = mmlu_dataset.select(range(args.max_mmlu_samples))
+
+        # Define a list of token IDs representing the letters A, B, C, and D.
+        self.abcd_idx = [
+            tokenizer('A', add_special_tokens=False).input_ids[0],
+            tokenizer('B', add_special_tokens=False).input_ids[0],
+            tokenizer('C', add_special_tokens=False).input_ids[0],
+            tokenizer('D', add_special_tokens=False).input_ids[0],
+        ]
+        # Load the accuracy metric for evaluating MMLU performance.
+        self.accuracy = evaluate.load('accuracy')
 
     def on_evaluate(self, args: Dict[str, Any], state: Dict[str, Any],
                     control: Dict[str, Any], model: PreTrainedModel,
@@ -50,17 +101,16 @@ class MMLUEvalCallback(TrainerCallback):
             )
 
             # Extract the predictions for A, B, C, and D tokens.
-            abcd_idx = ['A', 'B', 'C', 'D']
             for i, logit in enumerate(logits):
                 label_non_zero_id = (batch['labels'][i] !=
                                      -100).nonzero()[0][0]
-                logit_abcd = logit[label_non_zero_id - 1][abcd_idx]
+                logit_abcd = logit[label_non_zero_id - 1][self.abcd_idx]
                 preds.append(torch.argmax(logit_abcd).item())
 
             # Extract the ground truth labels and compute the accuracy by subject.
             IGNORE_INDEX = -100
             labels = labels[labels != IGNORE_INDEX].view(-1, 2)[:, 0]
-            refs += [abcd_idx.index(label) for label in labels.tolist()]
+            refs += [self.abcd_idx.index(label) for label in labels.tolist()]
             loss_mmlu += loss.item()
 
         # Extract results by subject.
@@ -75,7 +125,7 @@ class MMLUEvalCallback(TrainerCallback):
 
         subject_scores = []
         for subject in subjects:
-            subject_score = accuracy.compute(
+            subject_score = self.accuracy.compute(
                 references=subjects[subject]['refs'],
                 predictions=subjects[subject]['preds'])['accuracy']
             results[
