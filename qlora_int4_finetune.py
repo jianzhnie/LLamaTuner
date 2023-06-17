@@ -23,7 +23,7 @@ from transformers import (AutoModelForCausalLM, AutoTokenizer,
                           BitsAndBytesConfig, LlamaTokenizer, Seq2SeqTrainer,
                           set_seed)
 from transformers.trainer_utils import PREFIX_CHECKPOINT_DIR
-
+from utils.eval_callback import SampleGenerateCallback
 torch.backends.cuda.matmul.allow_tf32 = True
 
 logger = logging.getLogger(__name__)
@@ -228,6 +228,9 @@ class TrainingArguments(transformers.Seq2SeqTrainingArguments):
             'help':
             'How many checkpoints to save before the oldest is overwritten'
         })
+    sample_generate: bool = field(
+        default=False,
+        metadata={'help': 'If do sample generation on evaluation.'})
 
 
 @dataclass
@@ -280,7 +283,7 @@ def find_all_linear_names(args, model):
 
 class SavePeftModelCallback(transformers.TrainerCallback):
     def save_model(self, args, state, kwargs):
-        print('Saving PEFT checkpoint...')
+        logger.info('Saving PEFT checkpoint...')
         if state.best_model_checkpoint is not None:
             checkpoint_folder = os.path.join(state.best_model_checkpoint,
                                              'adapter_model')
@@ -325,7 +328,7 @@ def get_accelerate_model(args, checkpoint_dir):
 
     if args.full_finetune: assert args.bits in [16, 32]
 
-    print(f'loading base model {args.model_name_or_path}...')
+    logger.info(f'loading base model {args.model_name_or_path}...')
     compute_dtype = (torch.float16 if args.fp16 else
                      (torch.bfloat16 if args.bf16 else torch.float32))
     model = AutoModelForCausalLM.from_pretrained(
@@ -351,11 +354,11 @@ def get_accelerate_model(args, checkpoint_dir):
     if compute_dtype == torch.float16 and args.bits == 4:
         major, minor = torch.cuda.get_device_capability()
         if major >= 8:
-            print('=' * 80)
-            print(
+            logger.info('=' * 80)
+            logger.info(
                 'Your GPU supports bfloat16, you can accelerate training with the argument --bf16'
             )
-            print('=' * 80)
+            logger.info('=' * 80)
 
     setattr(model, 'model_parallel', True)
     setattr(model, 'is_parallelizable', True)
@@ -371,13 +374,13 @@ def get_accelerate_model(args, checkpoint_dir):
 
     if not args.full_finetune:
         if checkpoint_dir is not None:
-            print('Loading adapters from checkpoint.')
+            logger.info('Loading adapters from checkpoint.')
             model = PeftModel.from_pretrained(model,
                                               join(checkpoint_dir,
                                                    'adapter_model'),
                                               is_trainable=True)
         else:
-            print('adding LoRA modules...')
+            logger.info('adding LoRA modules...')
             modules = find_all_linear_names(args, model)
             config = LoraConfig(
                 r=args.lora_r,
@@ -413,9 +416,9 @@ def print_trainable_parameters(args, model):
         if param.requires_grad:
             trainable_params += param.numel()
     if args.bits == 4: trainable_params /= 2
-    print(f'trainable params: {trainable_params} || '
-          f'all params: {all_param} || '
-          f'trainable: {100 * trainable_params / all_param}')
+    logger.info(f'trainable params: {trainable_params} || '
+                f'all params: {all_param} || '
+                f'trainable: {100 * trainable_params / all_param}')
 
 
 def smart_tokenizer_and_embedding_resize(
@@ -611,6 +614,8 @@ def make_data_module(tokenizer: transformers.PreTrainedTokenizer,
             return load_dataset('timdettmers/openassistant-guanaco')
         elif dataset_name == 'vicuna':
             raise NotImplementedError('Vicuna data was not released.')
+        elif dataset_name == 'chinese-vicuna':
+            return load_dataset('Chinese-Vicuna/guanaco_belle_merge_v1.0')
         else:
             if os.path.exists(dataset_name):
                 try:
@@ -674,7 +679,7 @@ def make_data_module(tokenizer: transformers.PreTrainedTokenizer,
         if 'eval' in dataset:
             eval_dataset = dataset['eval']
         else:
-            print(
+            logger.info(
                 'Splitting train dataset in train and validation according to `eval_dataset_size`'
             )
             dataset = dataset['train'].train_test_split(
@@ -721,7 +726,7 @@ def get_last_checkpoint(checkpoint_dir):
         if max_step == 0:
             return None, is_completed  # training started, but no checkpoint
         checkpoint_dir = join(checkpoint_dir, f'checkpoint-{max_step}')
-        print(f'Found a previous checkpoint at: {checkpoint_dir}')
+        logger.info(f'Found a previous checkpoint at: {checkpoint_dir}')
         return checkpoint_dir, is_completed  # checkpoint found!
     return None, False  # first training
 
@@ -737,15 +742,17 @@ def train():
     args = argparse.Namespace(**vars(model_args), **vars(data_args),
                               **vars(training_args))
 
+    logger.info(f'args: {args}')
+
     checkpoint_dir, completed_training = get_last_checkpoint(args.output_dir)
     if completed_training:
-        print('Detected that training was already completed!')
+        logger.info('Detected that training was already completed!')
 
     model = get_accelerate_model(args, checkpoint_dir)
 
     model.config.use_cache = False
     print_trainable_parameters(args, model)
-    print('loaded model')
+    logger.info('loaded model')
     set_seed(args.seed)
 
     # Tokenizer
@@ -791,6 +798,8 @@ def train():
     # Callbacks
     if not args.full_finetune:
         trainer.add_callback(SavePeftModelCallback)
+    if args.sample_generate:
+        trainer.add_callback(SampleGenerateCallback)
     if args.do_mmlu_eval:
         if args.mmlu_dataset == 'mmlu-zs':
             mmlu_dataset = load_dataset(
@@ -877,7 +886,7 @@ def train():
     for k, v in dtypes.items():
         total += v
     for k, v in dtypes.items():
-        print(k, v, v / total)
+        logger.info(k, v, v / total)
 
     all_metrics = {'run_name': args.run_name}
     # Training
@@ -918,7 +927,7 @@ def train():
                 example['prediction'] = predictions[i].replace(
                     example['input'], '').strip()
                 fout.write(json.dumps(example) + '\n')
-        print(prediction_metrics)
+        logger.info(prediction_metrics)
         trainer.log_metrics('predict', prediction_metrics)
         trainer.save_metrics('predict', prediction_metrics)
         all_metrics.update(prediction_metrics)
