@@ -2,7 +2,7 @@
 Apply the LoRA weights on top of a base model.
 
 Usage:
-python3 -m fastchat.model.apply_lora --base ~/model_weights/llama-7b --target ~/model_weights/baize-7b --lora project-baize/baize-lora-7B
+python3 apply_lora.py --base_model_path ~/model_weights/llama-7b --target_model_path ~/model_weights/baize-7b --lora_path project-baize/baize-lora-7B
 
 Dependency:
 pip3 install git+https://github.com/huggingface/peft.git@2822398fbe896f25d4dac5e468624dc5fd65a51b
@@ -18,9 +18,8 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, LlamaTokenizer
 def apply_lora(
     base_model_path: str,
     lora_path: str,
-    load_8bit: bool = False,
     target_model_path: str = None,
-    save_target_model: bool = False
+    load_8bit: bool = False,
 ) -> Tuple[AutoModelForCausalLM, AutoTokenizer]:
     """Applies the LoRA adapter to a base model and saves the resulting target model (optional).
 
@@ -28,7 +27,7 @@ def apply_lora(
         base_model_path (str): The path to the base model to which the LoRA adapter will be applied.
         lora_path (str): The path to the LoRA adapter.
         target_model_path (str): The path where the target model will be saved (if `save_target_model=True`).
-        save_target_model (bool, optional): Whether to save the target model or not. Defaults to False.
+        load_8bit (bool): Whether to load the base model in 8-bit precision.
 
     Returns:
         Tuple[AutoModelForCausalLM, AutoTokenizer]: A tuple containing the target model and its tokenizer.
@@ -66,7 +65,7 @@ def apply_lora(
         torch_dtype=torch.float16,
     )
 
-    if save_target_model and target_model_path is not None:
+    if target_model_path is not None:
         print(f'Saving the target model to {target_model_path}')
         model.save_pretrained(target_model_path)
         base_tokenizer.save_pretrained(target_model_path)
@@ -77,11 +76,15 @@ def apply_lora(
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--base-model-path', type=str, required=True)
-    parser.add_argument('--target-model-path', type=str, required=True)
+    parser.add_argument('--target-model-path', type=str, default=None)
     parser.add_argument('--lora-path', type=str, required=True)
-    parser.add_argument('--save-target-model', type=bool, default=False)
+    parser.add_argument('--load_8bit', type=bool, default=False)
 
     args = parser.parse_args()
 
-    apply_lora(args.base_model_path, args.target_model_path, args.lora_path,
-               args.save_target_model)
+    apply_lora(
+        base_model_path=args.base_model_path,
+        lora_path=args.lora_path,
+        target_model_path=args.target_model_path,
+        load_8bit=args.load_8bit,
+    )
