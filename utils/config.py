@@ -100,6 +100,9 @@ class TrainingArguments(transformers.TrainingArguments):
     mmlu_source_max_len: int = field(
         default=2048,
         metadata={'help': 'Maximum source sequence length for mmlu.'})
+    sample_generate: bool = field(
+        default=False,
+        metadata={'help': 'If do sample generation on evaluation.'})
     optim: str = field(default='paged_adamw_32bit',
                        metadata={'help': 'The optimizer to be used'})
     max_grad_norm: float = field(
