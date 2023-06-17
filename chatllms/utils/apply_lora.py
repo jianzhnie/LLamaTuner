@@ -64,6 +64,8 @@ def apply_lora(
         lora_path,
         torch_dtype=torch.float16,
     )
+    print("Applying the LoRA")
+    model = model.merge_and_unload()
 
     if target_model_path is not None:
         print(f'Saving the target model to {target_model_path}')

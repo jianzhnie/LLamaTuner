@@ -18,17 +18,20 @@ from transformers import (AutoModelForCausalLM, AutoTokenizer,
                           PreTrainedTokenizer, Seq2SeqTrainer, Trainer,
                           set_seed)
 
-from utils.config import (DataArguments, GenerationArguments, LoraArguments,
-                          ModelArguments, QuantArgments, TrainingArguments)
-from utils.data_utils import (DEFAULT_BOS_TOKEN, DEFAULT_EOS_TOKEN,
-                              DEFAULT_PAD_TOKEN, DEFAULT_UNK_TOKEN,
-                              IGNORE_INDEX, make_data_module)
-from utils.callbacks import MMLUEvalCallback
-from utils.model_utils import (SavePeftModelCallback, find_all_linear_names,
-                               get_last_checkpoint, print_trainable_parameters,
-                               smart_tokenizer_and_embedding_resize,
-                               verify_dtypes)
-from utils.training import predict_and_save, train_and_evaluate
+from chatllms.utils.config import (DataArguments, GenerationArguments,
+                                   LoraArguments, ModelArguments,
+                                   QuantArgments, TrainingArguments)
+from chatllms.utils.data_utils import (DEFAULT_BOS_TOKEN, DEFAULT_EOS_TOKEN,
+                                       DEFAULT_PAD_TOKEN, DEFAULT_UNK_TOKEN,
+                                       IGNORE_INDEX, make_data_module)
+from chatllms.utils.callbacks import MMLUEvalCallback
+from chatllms.utils.model_utils import (SavePeftModelCallback,
+                                        find_all_linear_names,
+                                        get_last_checkpoint,
+                                        print_trainable_parameters,
+                                        smart_tokenizer_and_embedding_resize,
+                                        verify_dtypes)
+from chatllms.utils.training import predict_and_save, train_and_evaluate
 
 torch.backends.cuda.matmul.allow_tf32 = True
 logger = logging.getLogger(__name__)

@@ -1,4 +1,4 @@
-python qlora_finetune.py \
+python chatllms/train/qlora_finetune.py \
     --model_name_or_path facebook/opt-125m \
     --dataset_name /home/robin/prompt_data/InstructionWild/instinwild_en.json \
     --output_dir ./work_dir/llama-7b \
