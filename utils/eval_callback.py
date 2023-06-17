@@ -1,7 +1,7 @@
 import argparse
 import os
 from typing import Any, Dict
-
+from .data_utils import IGNORE_INDEX
 import evaluate
 import numpy as np
 import torch
@@ -9,7 +9,6 @@ from datasets import load_dataset
 from tqdm.auto import tqdm
 from transformers import (PreTrainedModel, PreTrainedTokenizer, Trainer,
                           TrainerCallback)
-
 
 class MMLUEvalCallback(TrainerCallback):
     """
@@ -22,6 +21,7 @@ class MMLUEvalCallback(TrainerCallback):
         data_dir (str): The directory where the MMLU dataset is stored.
         args (argparse.Namespace): The command line arguments for the current run.
     """
+
     def __init__(
         self,
         trainer: 'Trainer',
@@ -44,6 +44,7 @@ class MMLUEvalCallback(TrainerCallback):
                 },
             )
             mmlu_dataset = mmlu_dataset.remove_columns('subject')
+        #  MMLU Five-shot (Eval/Test only)
         elif args.mmlu_dataset in ['mmlu', 'mmlu-fs']:
             mmlu_dataset = load_dataset(
                 'json',
@@ -58,7 +59,7 @@ class MMLUEvalCallback(TrainerCallback):
             raise ValueError(
                 f"Invalid value '{args.mmlu_dataset}' for argument 'mmlu_dataset'."
             )
-        
+
         # Select the appropriate split of the dataset and limit the number of samples to evaluate.
         self.mmlu_dataset = mmlu_dataset[args.mmlu_split]
         if args.max_mmlu_samples is not None:
@@ -74,7 +75,15 @@ class MMLUEvalCallback(TrainerCallback):
         ]
         # Load the accuracy metric for evaluating MMLU performance.
         self.accuracy = evaluate.load('accuracy')
-
+        self.mmlu_dataset = SupervisedDataset(
+            self.mmlu_dataset,
+            tokenizer=tokenizer,
+            source_max_len=args.mmlu_source_max_len,
+            target_max_len=args.target_max_len,
+            train_on_source=args.train_on_source,
+            predict_with_generate=args.predict_with_generate,
+        ) if args.do_predict else None
+        
     def on_evaluate(
         self,
         args: Dict[str, Any],
@@ -93,19 +102,18 @@ class MMLUEvalCallback(TrainerCallback):
             model (PreTrainedModel): The model being evaluated.
         """
         # Get the evaluation data loader and set the maximum length of the source sequence.
+
         data_loader = self.trainer.get_eval_dataloader(self.mmlu_dataset)
-        source_max_len = self.trainer.data_collator.source_max_len
-        self.trainer.data_collator.source_max_len = args.mmlu_source_max_len
 
         # Set the trainer model in evaluation mode and initialize empty lists for predictions and references.
-        model.eval()
+        self.trainer.model.eval()
         preds, refs = [], []
         loss_mmlu = 0
 
         # Iterate over the batches of the evaluation dataset and make predictions.
         for batch in tqdm(data_loader, total=len(data_loader)):
             (loss, logits, labels) = self.trainer.prediction_step(
-                model,
+                self.trainer.model,
                 batch,
                 prediction_loss_only=False,
             )
@@ -113,18 +121,17 @@ class MMLUEvalCallback(TrainerCallback):
             # Extract the predictions for A, B, C, and D tokens.
             for i, logit in enumerate(logits):
                 label_non_zero_id = (batch['labels'][i] !=
-                                     -100).nonzero()[0][0]
+                                     IGNORE_INDEX).nonzero()[0][0]
 
                 logit_abcd = logit[label_non_zero_id - 1][self.abcd_idx]
                 preds.append(torch.argmax(logit_abcd).item())
 
-                # Extract the ground truth labels and compute the accuracy by subject.
-                IGNORE_INDEX = -100
-                labels = labels[labels != IGNORE_INDEX].view(-1, 2)[:, 0]
-                refs += [
-                    self.abcd_idx.index(label) for label in labels.tolist()
-                ]
-                loss_mmlu += loss.item()
+            # Extract the ground truth labels and compute the accuracy by subject.
+            labels = labels[labels != IGNORE_INDEX].view(-1, 2)[:, 0]
+            refs += [
+                self.abcd_idx.index(label) for label in labels.tolist()
+            ]
+            loss_mmlu += loss.item()
 
         # Extract results by subject.
         results = {'mmlu_loss': loss_mmlu / len(data_loader)}
@@ -147,6 +154,3 @@ class MMLUEvalCallback(TrainerCallback):
         # Compute the overall MMLU accuracy and log the results.
         results[f'mmlu_{args.mmlu_split}_accuracy'] = np.mean(subject_scores)
         self.trainer.log(results)
-
-        # Reset the maximum length of the source sequence to its original value.
-        self.trainer.data_collator.source_max_len = source_max_len

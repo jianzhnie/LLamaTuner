@@ -18,11 +18,12 @@ from transformers import (AutoModelForCausalLM, AutoTokenizer,
                           PreTrainedTokenizer, Seq2SeqTrainer, Trainer,
                           set_seed)
 
-from config import (DataArguments, GenerationArguments, LoraArguments,
-                    ModelArguments, QuantArgments, TrainingArguments)
+from utils.config import (DataArguments, GenerationArguments, LoraArguments,
+                          ModelArguments, QuantArgments, TrainingArguments)
 from utils.data_utils import (DEFAULT_BOS_TOKEN, DEFAULT_EOS_TOKEN,
                               DEFAULT_PAD_TOKEN, DEFAULT_UNK_TOKEN,
                               IGNORE_INDEX, make_data_module)
+from utils.eval_callback import MMLUEvalCallback
 from utils.model_utils import (SavePeftModelCallback, find_all_linear_names,
                                get_last_checkpoint, print_trainable_parameters,
                                smart_tokenizer_and_embedding_resize,
@@ -382,6 +383,14 @@ def main():
     # Add callback to save adapter model.
     if not args.full_finetune:
         trainer.add_callback(SavePeftModelCallback)
+    if args.do_mmlu_eval:
+        eval_callback = MMLUEvalCallback(
+            trainer=trainer,
+            tokenizer=tokenizer,
+            data_dir='./data',
+            args=args,
+        )
+        trainer.add_callback(eval_callback)
 
     # Verify dtypes
     verify_dtypes(model)
