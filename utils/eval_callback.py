@@ -1,7 +1,8 @@
 import argparse
+import logging
 import os
 from typing import Any, Dict
-from .data_utils import IGNORE_INDEX
+
 import evaluate
 import numpy as np
 import torch
@@ -9,6 +10,75 @@ from datasets import load_dataset
 from tqdm.auto import tqdm
 from transformers import (PreTrainedModel, PreTrainedTokenizer, Trainer,
                           TrainerCallback)
+
+from .data_utils import IGNORE_INDEX
+
+
+class SampleGenerateCallback(TrainerCallback):
+    """
+    A callback that generates text samples from a pre-trained language model during training.
+
+    Args:
+        tokenizer (PreTrainedTokenizer): The tokenizer used to preprocess inputs.
+        max_new_tokens (int): The maximum number of tokens to generate in response to each input.
+    """
+    def __init__(self,
+                 tokenizer: PreTrainedTokenizer,
+                 max_new_tokens: int = 70):
+        self.tokenizer = tokenizer
+        self.max_new_tokens = max_new_tokens
+
+        # Define input prompts to generate text from
+        self.sample_inputs = [
+            '用一句话描述地球为什么是独一无二的。',
+            '中国是否应该推出刺激政策救楼市？',
+            '如何更好地融入新工作圈子',
+        ]
+
+    def on_evaluate(self, args: Any, state: Dict[str, Any], control: Any,
+                    **kwargs: Any) -> None:
+        """
+        Generates text samples from the language model during evaluation.
+
+        Args:
+            args (Any): Trainer arguments, not used in this method.
+            state (Dict[str, Any]): Trainer state dictionary, not used in this method.
+            control (Any): Trainer control object, not used in this method.
+            kwargs (Dict[str, Any]): Keyword arguments passed to the method, including the pre-trained
+                language model (under the key 'model') and any additional parameters needed for generation.
+
+        Returns:
+            None
+        """
+        logger = logging.getLogger(__name__)
+        logger.info('Generating sample text during evaluation...')
+
+        # Check if the pre-trained language model is available
+        if 'model' in kwargs:
+            model = kwargs['model']
+
+            # Generate text for each input prompt
+            for sample_input in self.sample_inputs:
+                # Preprocess input prompt and convert to tensor
+                inputs = f'Below is an instruction that describes a task. Write a response that appropriately completes the request.\n\n### Instruction:\n{sample_input}\n\n### Response: '
+                input_ids = self.tokenizer.encode(inputs, return_tensors='pt')
+                input_ids = input_ids.to(model.device)
+
+                # Generate text from input prompt
+                generation_output = model.generate(
+                    input_ids=input_ids,
+                    max_length=len(input_ids[0]) + self.max_new_tokens,
+                )
+
+                # Decode generated text and log it
+                generated_text = self.tokenizer.decode(generation_output[0])
+                logger.info(f'Input prompt: {sample_input}')
+                logger.info(f'Generated text: {generated_text}')
+
+        else:
+            logger.info(
+                'Pre-trained language model not found in kwargs, skipping.')
+
 
 class MMLUEvalCallback(TrainerCallback):
     """
@@ -21,7 +91,6 @@ class MMLUEvalCallback(TrainerCallback):
         data_dir (str): The directory where the MMLU dataset is stored.
         args (argparse.Namespace): The command line arguments for the current run.
     """
-
     def __init__(
         self,
         trainer: 'Trainer',
@@ -83,7 +152,7 @@ class MMLUEvalCallback(TrainerCallback):
             train_on_source=args.train_on_source,
             predict_with_generate=args.predict_with_generate,
         ) if args.do_predict else None
-        
+
     def on_evaluate(
         self,
         args: Dict[str, Any],
@@ -128,9 +197,7 @@ class MMLUEvalCallback(TrainerCallback):
 
             # Extract the ground truth labels and compute the accuracy by subject.
             labels = labels[labels != IGNORE_INDEX].view(-1, 2)[:, 0]
-            refs += [
-                self.abcd_idx.index(label) for label in labels.tolist()
-            ]
+            refs += [self.abcd_idx.index(label) for label in labels.tolist()]
             loss_mmlu += loss.item()
 
         # Extract results by subject.
