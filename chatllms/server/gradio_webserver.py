@@ -6,8 +6,8 @@ import torch
 import transformers
 from transformers import AutoModelForCausalLM, AutoTokenizer, GenerationConfig
 
-from utils.apply_lora import apply_lora
-from utils.stream_server import Iteratorize, Stream
+from chatllms.utils.apply_lora import apply_lora
+from chatllms.utils.stream_server import Iteratorize, Stream
 
 
 class Prompter(object):

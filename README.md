@@ -7,7 +7,6 @@
 ![GitHub Code License](https://img.shields.io/github/license/jianzhnie/Chinese-Guanaco)
 ![GitHub last commit](https://img.shields.io/github/last-commit/jianzhnie/Chinese-Guanaco)
 ![GitHub pull request](https://img.shields.io/badge/PRs-welcome-blue)
-[![Code License](https://img.shields.io/badge/Code%20License-Apache_2.0-green.svg)](https://github.com/jianzhnie/open-chatgpt/blob/main/LICENSE)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/release/python-390/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
@@ -43,7 +42,7 @@ pip install -q -U git+https://github.com/huggingface/accelerate.git
 
 ## QLora int8 Finetune
 ```bash
-python qlora_int8_finetune.py \
+python chatllms/train/qlora_int8_finetune.py \
     --model_name_or_path  decapoda-research/llama-7b-hf  \
     --data_path tatsu-lab/alpaca  \
     --output_dir work_dir_lora/ \
@@ -69,18 +68,18 @@ python qlora_int8_finetune.py \
 The `qlora_int4_finetune.py` code is a starting point for finetuning and inference on various datasets.
 Basic command for finetuning a baseline model on the Alpaca dataset:
 ```bash
-python qlora_int4_finetune.py --model_name_or_path <path_or_name>
+python chatllms/train/qlora_int4_finetune.py --model_name_or_path <path_or_name>
 ```
 
 For models larger than 13B, we recommend adjusting the learning rate:
 ```bash
-python qlora_int4_finetune.py –learning_rate 0.0001 --model_name_or_path <path_or_name>
+python chatllms/train/qlora_int4_finetune.py –learning_rate 0.0001 --model_name_or_path <path_or_name>
 ```
 
 We can also tweak our hyperparameters:
 
 ```bash
-python qlora_int4_finetune.py \
+python chatllms/train/qlora_int4_finetune.py \
     --model_name_or_path huggyllama/llama-7b \
     --output_dir ./output/guanaco-7b \
     --logging_steps 10 \
@@ -167,12 +166,12 @@ You can specify the path to your dataset using the --dataset argument. If the --
 
 - Training with an alpaca format dataset:
 ```python
-python qlora_int4_finetune.py --dataset="path/to/your/dataset"
+python chatllms/train/qlora_int4_finetune.py --dataset="path/to/your/dataset"
 ```
 - Training with a self-instruct format dataset:
 
 ```python
-python qlora_int4_finetune.py --dataset="path/to/your/dataset" --dataset_format="self-instruct"
+python chatllms/train/qlora_int4_finetune.py --dataset="path/to/your/dataset" --dataset_format="self-instruct"
 ```
 
 ## Multi GPU
@@ -191,7 +190,7 @@ This file reads the foundation model from the Hugging Face model hub and the LoR
 Example usage:
 
 ```bash
-python generate_server.py \
+python chatllms/server/gradio_webserver.py \
     --model_name_or_path decapoda-research/llama-7b-hf \
     --lora_model_name_or_path  `path/to/your/model_dir`
 ```

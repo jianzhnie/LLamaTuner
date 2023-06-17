@@ -1,4 +1,4 @@
-python qlora_int4_finetune.py \
+python chatllms/train/qlora_int4_finetune.py \
     --model_name_or_path decapoda-research/llama-7b-hf \
     --output_dir ./output/guanaco-7b \
     --logging_steps 10 \
