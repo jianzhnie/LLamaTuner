@@ -2,7 +2,8 @@
 Apply the LoRA weights on top of a base model.
 
 Usage:
-python3 apply_lora.py --base_model_path ~/model_weights/llama-7b --target_model_path ~/model_weights/baize-7b --lora_path project-baize/baize-lora-7B
+python3 apply_lora.py --base_model_path ~/model_weights/llama-7b --target_model_path ~/model_weights/baize-7b \
+    --lora_path project-baize/baize-lora-7B
 
 Dependency:
 pip3 install git+https://github.com/huggingface/peft.git@2822398fbe896f25d4dac5e468624dc5fd65a51b
@@ -64,7 +65,7 @@ def apply_lora(
         lora_path,
         torch_dtype=torch.float16,
     )
-    print("Applying the LoRA")
+    print('Applying the LoRA')
     model = model.merge_and_unload()
 
     if target_model_path is not None:
