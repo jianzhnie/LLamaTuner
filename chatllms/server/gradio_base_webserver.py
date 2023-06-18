@@ -3,7 +3,6 @@ import argparse
 import gradio as gr
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, GenerationConfig
-
 from utils.apply_lora import apply_lora
 
 

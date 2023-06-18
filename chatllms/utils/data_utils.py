@@ -28,6 +28,7 @@ ALPACA_PROMPT_DICT = {
      '### Instruction:\n{instruction}\n\n### Response: '),
 }
 
+
 def extract_alpaca_dataset(example: Dict[str, Any]) -> Dict[str, str]:
     """
     Extracts input from an example in the Alpaca dataset.
@@ -64,43 +65,42 @@ def extract_vicuna_dataset(example: Dict[str, Any]) -> Dict[str, str]:
     # Set default system message
     system = "A chat between a curious user and an artificial intelligence assistant. The assistant gives helpful,\
           detailed, and polite answers to the user's questions."
-    
+
     # Define roles and role mappings
-    roles = ("USER", "ASSISTANT")
-    roles_mapping = {"human": roles[0], "gpt": roles[1]}
-    
+    roles = ('USER', 'ASSISTANT')
+    roles_mapping = {'human': roles[0], 'gpt': roles[1]}
+
     # Define separators for input and output messages
-    seps = [" ", "</s>"]
+    seps = [' ', '</s>']
 
     # Extract messages from conversation
     messages = []
-    conversations = example["conversations"]
-    if conversations[0]["from"].lower() == "system":
+    conversations = example['conversations']
+    if conversations[0]['from'].lower() == 'system':
         # If first message is from system, use it as system message
-        system = conversations[0]["value"]
+        system = conversations[0]['value']
         conversations = conversations[1:]
-    if roles_mapping[conversations[0]["from"]] != roles[0]:
+    if roles_mapping[conversations[0]['from']] != roles[0]:
         # If first message is not from human, skip it
         conversations = conversations[1:]
     for j, sentence in enumerate(conversations):
         # Assign role based on sender
-        role = roles_mapping[sentence["from"]]
-        assert role == roles[j % 2], f"Unexpected role at index {j}"
-        messages.append((role, sentence["value"]))
+        role = roles_mapping[sentence['from']]
+        assert role == roles[j % 2], f'Unexpected role at index {j}'
+        messages.append((role, sentence['value']))
 
     # Concatenate messages into input and output portions
     ret = system + seps[0]
     for i, (role, message) in enumerate(messages):
         if message:
-            ret += role + ": " + message + seps[i % 2]
+            ret += role + ': ' + message + seps[i % 2]
         else:
-            ret += role + ":"
-    sep = seps[0] + roles[1] + ": "
+            ret += role + ':'
+    sep = seps[0] + roles[1] + ': '
     input_str, output_str = ret.rsplit(sep, 1)
     input_str += sep
 
     return {'input': input_str, 'output': output_str}
-
 
 
 def local_dataset(dataset_name: str) -> Tuple[Dataset, Dataset]:
@@ -108,7 +108,8 @@ def local_dataset(dataset_name: str) -> Tuple[Dataset, Dataset]:
     Reads in a dataset from a file and returns it as a split train-test dataset.
 
     Args:
-        dataset_name (str): The name of the dataset file to read in. The format is inferred based on the file extension.
+        dataset_name (str): The name of the dataset file to read in. \
+            The format is inferred based on the file extension.
 
     Returns:
         A tuple containing two datasets - the training subset and the testing subset.
@@ -186,7 +187,6 @@ def load_data(dataset_name: str) -> Union[Dict[str, Dataset], None]:
                 f'Dataset {dataset_name} not implemented yet.')
 
 
-
 def format_dataset(dataset: Dataset,
                    dataset_name: str) -> Optional[Dict[str, Dataset]]:
     """
@@ -228,6 +228,8 @@ def format_dataset(dataset: Dataset,
         dataset = dataset.map(lambda x: {'input': '', 'output': x['chosen']})
     elif dataset_name == 'oasst1':
         dataset = dataset.map(lambda x: {'input': '', 'output': x['text']})
+    elif dataset_name == 'vicuna':
+        dataset = dataset.map(extract_vicuna_dataset)
     elif os.path.exists(dataset_name):
         dataset = dataset.map(extract_alpaca_dataset,
                               remove_columns=['instruction'])

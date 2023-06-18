@@ -23,7 +23,7 @@ class ComputeMetrics:
     """
     Wraps the tokenizer into metric functions, used in Seq2SeqPeftTrainer.
     Borrowed from: https://github.com/THUDM/ChatGLM-6B/blob/0c2806fea82683349194e21996dd6b3acc3c265b/ptuning/main.py#L307
-    
+
     """
     def __init__(self, tokenizer: PreTrainedTokenizer) -> None:
         """
@@ -180,7 +180,8 @@ class SampleGenerateCallback(TrainerCallback):
 @dataclass
 class MMLUEvalCallback(TrainerCallback):
     """
-    A callback function called after each evaluation step during training to evaluate the performance of a model on an
+    A callback function called after each evaluation step during training to evaluate \
+        the performance of a model on an
     MMLU (Mean Length of Utterance) dataset.
 
     Args:
