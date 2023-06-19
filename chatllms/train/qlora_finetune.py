@@ -86,7 +86,9 @@ def get_accelerate_model(args: Dict,
             bnb_4bit_quant_type=args.quant_type  # {'fp4', 'nf4'}
         ),
         torch_dtype=torch_dtype,
-        use_auth_token=args.use_auth_token)
+        use_auth_token=args.use_auth_token,
+        trust_remote_code=args.trust_remote_code,
+    )
 
     # Print a message if the GPU supports bfloat16.
     if compute_dtype == torch.float16 and args.bits == 4:
@@ -321,6 +323,7 @@ def main():
         tokenizer_type='llama' if 'llama' in args.model_name_or_path else
         None,  # Needed for HF name change
         use_auth_token=args.use_auth_token,
+        trust_remote_code=args.trust_remote_code,
     )
     if 'llama' in args.model_name_or_path or isinstance(
             tokenizer, LlamaTokenizer):
