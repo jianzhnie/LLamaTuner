@@ -28,8 +28,8 @@ class DataArguments:
         metadata={
             'help': 'Which dataset to finetune on. See datamodule for options.'
         })
-    eval_dataset_size: int = field(
-        default=1024, metadata={'help': 'Size of validation dataset.'})
+    eval_dataset_size: Optional[float] = field(
+        default=0.1, metadata={'help': 'Size of validation dataset.'})
     max_train_samples: Optional[int] = field(
         default=None,
         metadata={

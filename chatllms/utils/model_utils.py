@@ -8,6 +8,43 @@ import torch
 import transformers
 from transformers import PreTrainedModel, PreTrainedTokenizer
 from transformers.trainer_utils import PREFIX_CHECKPOINT_DIR
+from .data_utils import (DEFAULT_BOS_TOKEN, DEFAULT_EOS_TOKEN,
+                         DEFAULT_PAD_TOKEN, DEFAULT_UNK_TOKEN, IGNORE_INDEX)
+
+
+def add_special_tokens_if_missing(tokenizer: PreTrainedTokenizer,
+                                  model: PreTrainedModel):
+    """
+    If 'llama' or 'baichuan' is in the model name or path, check if the special tokens are set correctly.
+    Add any missing special tokens to prevent them from being parsed into different tokens.
+    Note that these special tokens are present in the vocabulary.
+    Note also that `model.config.pad_token_id` is 0 which corresponds to `<unk>` token.
+
+    Args:
+        tokenizer: The pre-trained tokenizer.
+        model: The pre-trained model.
+
+    Returns:
+        None.
+    """
+    # Define a dictionary to store any missing special tokens along with their default values
+    special_tokens_dict: Dict[str, Any] = {}
+
+    # Check if each special token is present. If not, add it to the special_tokens_dict with its default value.
+    if tokenizer.pad_token is None:
+        special_tokens_dict['pad_token'] = DEFAULT_PAD_TOKEN
+    if tokenizer.eos_token is None:
+        special_tokens_dict['eos_token'] = DEFAULT_EOS_TOKEN
+    if tokenizer.bos_token is None:
+        special_tokens_dict['bos_token'] = DEFAULT_BOS_TOKEN
+    if tokenizer.unk_token is None:
+        special_tokens_dict['unk_token'] = DEFAULT_UNK_TOKEN
+
+    # If there are any missing special tokens, call `smart_tokenizer_and_embedding_resize()` to add them to the
+    # tokenizer and resize the embedding accordingly.
+    if len(special_tokens_dict) > 0:
+        smart_tokenizer_and_embedding_resize(special_tokens_dict, tokenizer,
+                                             model)
 
 
 def smart_tokenizer_and_embedding_resize(special_tokens_dict: Dict[str, str],
@@ -213,6 +250,7 @@ class SavePeftModelCallback(transformers.TrainerCallback):
     """
     A TrainerCallback that saves the PEFT model checkpoint during training.
     """
+
     def save_model(self, args: Any, state: transformers.TrainingArguments,
                    kwargs: Dict[str, Any]) -> None:
         """

@@ -40,24 +40,18 @@ pip install -q -U git+https://github.com/huggingface/peft.git
 pip install -q -U git+https://github.com/huggingface/accelerate.git
 ```
 
-### Install the package From source
-1. Clone this repository and navigate to the FastChat folder
+### Clone the code
+1. Clone this repository and navigate to the Efficient-Tuning-LLMs folder
 ```bash
 git clone https://github.com/jianzhnie/Efficient-Tuning-LLMs.git
 cd Efficient-Tuning-LLMs
-```
-
-2. Install Package
-```bash
-pip3 install --upgrade pip  # enable PEP 660 support
-pip3 setup install 
 ```
 
 ## Getting Started
 
 ## QLora int8 Finetune
 ```bash
-python chatllms/train/qlora_int8_finetune.py \
+python qlora_int8_finetune.py \
     --model_name_or_path  decapoda-research/llama-7b-hf  \
     --data_path tatsu-lab/alpaca  \
     --output_dir work_dir_lora/ \
@@ -83,18 +77,18 @@ python chatllms/train/qlora_int8_finetune.py \
 The `qlora_int4_finetune.py` code is a starting point for finetuning and inference on various datasets.
 Basic command for finetuning a baseline model on the Alpaca dataset:
 ```bash
-python chatllms/train/qlora_int4_finetune.py --model_name_or_path <path_or_name>
+python qlora_int4_finetune.py --model_name_or_path <path_or_name>
 ```
 
 For models larger than 13B, we recommend adjusting the learning rate:
 ```bash
-python chatllms/train/qlora_int4_finetune.py –learning_rate 0.0001 --model_name_or_path <path_or_name>
+python qlora_int4_finetune.py –learning_rate 0.0001 --model_name_or_path <path_or_name>
 ```
 
 We can also tweak our hyperparameters:
 
 ```bash
-python chatllms/train/qlora_int4_finetune.py \
+python qlora_int4_finetune.py \
     --model_name_or_path huggyllama/llama-7b \
     --output_dir ./output/guanaco-7b \
     --logging_steps 10 \
@@ -181,12 +175,12 @@ You can specify the path to your dataset using the --dataset argument. If the --
 
 - Training with an alpaca format dataset:
 ```python
-python chatllms/train/qlora_int4_finetune.py --dataset="path/to/your/dataset"
+python qlora_int4_finetune.py --dataset="path/to/your/dataset"
 ```
 - Training with a self-instruct format dataset:
 
 ```python
-python chatllms/train/qlora_int4_finetune.py --dataset="path/to/your/dataset" --dataset_format="self-instruct"
+python qlora_int4_finetune.py --dataset="path/to/your/dataset" --dataset_format="self-instruct"
 ```
 
 ## Multi GPU
@@ -205,7 +199,7 @@ This file reads the foundation model from the Hugging Face model hub and the LoR
 Example usage:
 
 ```bash
-python chatllms/server/gradio_webserver.py \
+python gradio_webserver.py \
     --model_name_or_path decapoda-research/llama-7b-hf \
     --lora_model_name_or_path  `path/to/your/model_dir`
 ```

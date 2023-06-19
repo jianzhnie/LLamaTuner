@@ -39,6 +39,7 @@ if __name__ == '__main__':
         description='chatllms is a open source chatbot framework.',
         long_description=long_description,
         long_description_content_type='text/markdown',
+        version=version,
         packages=find_packages(exclude=[
             'assets', 'benchmark', 'docs', 'examples', 'test', 'scripts',
             'tools'

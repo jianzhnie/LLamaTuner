@@ -1,15 +1,15 @@
-python chatllms/train/qlora_finetune.py \
-    --model_name_or_path facebook/opt-125m \
+python qlora_finetune.py \
+    --model_name_or_path /home/robin/work_dir/llm/llm_pretrain_model/baichuan \
     --dataset_name /home/robin/prompt_data/InstructionWild/instinwild_en.json \
-    --output_dir ./work_dir/llama-7b \
+    --output_dir ./work_dir/baichuan-7b \
     --num_train_epochs 3 \
     --per_device_train_batch_size 1 \
     --per_device_eval_batch_size 1 \
     --gradient_accumulation_steps 16 \
     --evaluation_strategy steps \
     --eval_steps 2000 \
-    --eval_dataset_size 1024 \
-    --max_eval_samples 1000 \
+    --max_train_samples 100 \
+    --max_eval_samples 10 \
     --save_strategy steps \
     --save_total_limit 5 \
     --save_steps 500 \
@@ -32,7 +32,7 @@ python chatllms/train/qlora_finetune.py \
     --fp16 \
     --bits 4 \
     --gradient_checkpointing \
-    --do_predict \
+    --trust_remote_code \
+    --do_train \
     --data_seed 42 \
     --seed 0
-
