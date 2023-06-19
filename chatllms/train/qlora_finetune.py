@@ -22,15 +22,11 @@ from chatllms.utils.callbacks import MMLUEvalCallback
 from chatllms.utils.config import (DataArguments, GenerationArguments,
                                    LoraArguments, ModelArguments,
                                    QuantArgments, TrainingArguments)
-from chatllms.utils.data_utils import (DEFAULT_BOS_TOKEN, DEFAULT_EOS_TOKEN,
-                                       DEFAULT_PAD_TOKEN, DEFAULT_UNK_TOKEN,
-                                       IGNORE_INDEX, make_data_module)
-from chatllms.utils.model_utils import (SavePeftModelCallback,
-                                        find_all_linear_names,
-                                        get_last_checkpoint,
-                                        print_trainable_parameters,
-                                        smart_tokenizer_and_embedding_resize,
-                                        verify_dtypes)
+from chatllms.utils.data_utils import (IGNORE_INDEX, make_data_module)
+from chatllms.utils.model_utils import (
+    SavePeftModelCallback, find_all_linear_names, get_last_checkpoint,
+    print_trainable_parameters, smart_tokenizer_and_embedding_resize,
+    add_special_tokens_if_missing, verify_dtypes)
 from chatllms.utils.training import predict_and_save, train_and_evaluate
 
 torch.backends.cuda.matmul.allow_tf32 = True
@@ -164,6 +160,7 @@ class SupervisedDataset(Dataset):
             train_on_source (bool): If True, the model will be trained on the source text as well as the target text.
             predict_with_generate (bool): If True, the model will generate predictions instead of training.
     """
+
     def __init__(
         self,
         hf_dataset: datasets.DatasetDict,
@@ -325,26 +322,14 @@ def main():
         use_auth_token=args.use_auth_token,
         trust_remote_code=args.trust_remote_code,
     )
-    if 'llama' in args.model_name_or_path or isinstance(
-            tokenizer, LlamaTokenizer):
-        # LLaMA tokenizer may not have correct special tokens set.
-        # Check and add them if missing to prevent them from being parsed into different tokens.
-        # Note that these are present in the vocabulary.
-        # Note also that `model.config.pad_token_id` is 0 which corresponds to `<unk>` token.
-        print('Adding special tokens.')
-        special_tokens_dict: Dict[str, Any] = {}
-        if tokenizer.pad_token is None:
-            special_tokens_dict['pad_token'] = DEFAULT_PAD_TOKEN
-        if tokenizer.eos_token is None:
-            special_tokens_dict['eos_token'] = DEFAULT_EOS_TOKEN
-        if tokenizer.bos_token is None:
-            special_tokens_dict['bos_token'] = DEFAULT_BOS_TOKEN
-        if tokenizer.unk_token is None:
-            special_tokens_dict['unk_token'] = DEFAULT_UNK_TOKEN
 
-        if len(special_tokens_dict) > 0:
-            smart_tokenizer_and_embedding_resize(special_tokens_dict,
-                                                 tokenizer, model)
+    # LLaMA tokenizer may not have correct special tokens set.
+    # Check and add them if missing to prevent them from being parsed into different tokens.
+    # Note that these are present in the vocabulary.
+    # Note also that `model.config.pad_token_id` is 0 which corresponds to `<unk>` token.
+    print('Adding special tokens.')
+    if 'llama' in args.model_name_or_path or 'baichuan' in args.model_name_or_path:
+        add_special_tokens_if_missing(tokenizer, model)
 
     dataset_dict = make_data_module(args)
     train_dataset = SupervisedDataset(

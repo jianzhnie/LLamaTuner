@@ -1,6 +1,6 @@
 python chatllms/train/qlora_finetune.py \
-    --model_name_or_path facebook/opt-125m \
-    --dataset_name oasst1 \
+    --model_name_or_path /home/robin/work_dir/llm/llm_pretrain_model/baichuan \
+    --dataset_name /home/robin/prompt_data/InstructionWild/instinwild_en.json \
     --output_dir ./work_dir/baichuan-7b \
     --num_train_epochs 3 \
     --per_device_train_batch_size 1 \
@@ -33,6 +33,6 @@ python chatllms/train/qlora_finetune.py \
     --bits 4 \
     --gradient_checkpointing \
     --trust_remote_code \
-    --do_predict \
+    --do_train \
     --data_seed 42 \
     --seed 0

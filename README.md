@@ -50,7 +50,7 @@ cd Efficient-Tuning-LLMs
 2. Install Package
 ```bash
 pip3 install --upgrade pip  # enable PEP 660 support
-pip3 setup install 
+pip3 setup install
 ```
 
 ## Getting Started

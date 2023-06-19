@@ -12,8 +12,8 @@ nltk>=3.8.1
 numpy
 peft
 peft @ git+https://github.com/huggingface/peft.git
-rouge-score>=0.1.2
 rouge-chinese
+rouge-score>=0.1.2
 sentencepiece
 tokenizers
 torch
