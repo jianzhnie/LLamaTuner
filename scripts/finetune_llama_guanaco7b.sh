@@ -5,14 +5,11 @@ python qlora_finetune.py \
     --load_from_local \
     --output_dir ./work_dir/oasst1-llama-7b \
     --num_train_epochs 3 \
-    --max_steps 5000 \
-    --per_device_train_batch_size 1 \
-    --per_device_eval_batch_size 1 \
+    --per_device_train_batch_size 4 \
+    --per_device_eval_batch_size 4 \
     --gradient_accumulation_steps 16 \
     --evaluation_strategy steps \
-    --eval_steps 10 \
-    --max_train_samples 100 \
-    --max_eval_samples 100 \
+    --eval_steps 2000 \
     --save_strategy steps \
     --save_total_limit 5 \
     --save_steps 500 \
