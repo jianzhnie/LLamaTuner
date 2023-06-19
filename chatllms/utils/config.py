@@ -28,6 +28,17 @@ class DataArguments:
         metadata={
             'help': 'Which dataset to finetune on. See datamodule for options.'
         })
+    data_dir: str = field(
+        default='./data',
+        metadata={
+            'help':
+            'where is dataset in local dir. See datamodule for options.'
+        })
+    load_from_local: bool = field(
+        default=False,
+        metadata={
+            'help': 'To load the data from local or  huggingface data hub?'
+        })
     eval_dataset_size: Optional[float] = field(
         default=0.1, metadata={'help': 'Size of validation dataset.'})
     max_train_samples: Optional[int] = field(

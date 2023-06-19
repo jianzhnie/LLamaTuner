@@ -10,6 +10,8 @@ from datasets import Dataset, DatasetDict, load_dataset
 from torch.nn.utils.rnn import pad_sequence
 from transformers import PreTrainedTokenizer
 
+from .data_maps import get_dataset_path
+
 IGNORE_INDEX = -100
 DEFAULT_PAD_TOKEN = '[PAD]'
 DEFAULT_EOS_TOKEN = '</s>'
@@ -103,12 +105,12 @@ def extract_vicuna_dataset(example: Dict[str, Any]) -> Dict[str, str]:
     return {'input': input_str, 'output': output_str}
 
 
-def local_dataset(dataset_name: str) -> Tuple[Dataset, Dataset]:
+def local_dataset(dataset_path: str) -> Tuple[Dataset, Dataset]:
     """
     Reads in a dataset from a file and returns it as a split train-test dataset.
 
     Args:
-        dataset_name (str): The name of the dataset file to read in. \
+        dataset_path (str): The name of the dataset file to read in. \
             The format is inferred based on the file extension.
 
     Returns:
@@ -117,27 +119,25 @@ def local_dataset(dataset_name: str) -> Tuple[Dataset, Dataset]:
         ValueError: If the specified file format is unsupported.
 
     """
+
     # Read in the full dataset from file based on the file format
-    if dataset_name.endswith('.json'):
-        full_dataset = Dataset.from_json(path_or_paths=dataset_name)
-    elif dataset_name.endswith('.jsonl'):
-        full_dataset = Dataset.from_json(filename=dataset_name,
-                                         format='jsonlines')
-    elif dataset_name.endswith('.csv'):
-        full_dataset = Dataset.from_pandas(pd.read_csv(dataset_name))
-    elif dataset_name.endswith('.tsv'):
+    if dataset_path.endswith('.json'):
+        full_dataset = Dataset.from_json(path_or_paths=dataset_path)
+    elif dataset_path.endswith('.jsonl'):
+        full_dataset = load_dataset('json', data_files=dataset_path)
+    elif dataset_path.endswith('.csv'):
+        full_dataset = Dataset.from_pandas(pd.read_csv(dataset_path))
+    elif dataset_path.endswith('.tsv'):
         full_dataset = Dataset.from_pandas(
-            pd.read_csv(dataset_name, delimiter='\t'))
+            pd.read_csv(dataset_path, delimiter='\t'))
     else:
-        raise ValueError(f'Unsupported dataset format: {dataset_name}')
+        raise ValueError(f'Unsupported dataset format: {dataset_path}')
 
-    # Split the full dataset into train and test subsets
-    split_dataset = full_dataset.train_test_split(test_size=0.1)
-
-    return split_dataset
+    return full_dataset
 
 
-def load_data(dataset_name: str) -> Union[Dict[str, Dataset], None]:
+def load_data(dataset_name: str,
+              dataset_path: str) -> Union[Dict[str, Dataset], None]:
     """
     Load a dataset based on its name.
 
@@ -157,34 +157,16 @@ def load_data(dataset_name: str) -> Union[Dict[str, Dataset], None]:
         {'train': Dataset(...), 'validation': Dataset(...), 'test': Dataset(...)}
 
     """
-    if dataset_name == 'alpaca':
-        return load_dataset('tatsu-lab/alpaca')
-    elif dataset_name == 'alpaca-clean':
-        return load_dataset('yahma/alpaca-cleaned')
-    elif dataset_name == 'chip2':
-        return load_dataset('laion/OIG', data_files='unified_chip2.jsonl')
-    elif dataset_name == 'self-instruct':
-        return load_dataset('yizhongw/self_instruct', name='self_instruct')
-    elif dataset_name == 'hh-rlhf':
-        return load_dataset('Anthropic/hh-rlhf')
-    elif dataset_name == 'longform':
-        return load_dataset('akoksal/LongForm')
-    elif dataset_name == 'oasst1':
-        return load_dataset('timdettmers/openassistant-guanaco')
-    elif dataset_name == 'vicuna':
-        raise NotImplementedError('Vicuna data was not released.')
-    elif dataset_name == 'dolly-15k':
-        return load_dataset('databricks/databricks-dolly-15k')
+    if not os.path.exists(dataset_path):
+        dataset = load_dataset(dataset_path,
+                               cache_dir='~/.cache/huggingface/datasets')
+        return dataset
     else:
-        if os.path.exists(dataset_name):
-            try:
-                full_dataset = local_dataset(dataset_name)
-                return full_dataset
-            except:
-                raise ValueError(f'Error loading dataset from {dataset_name}')
-        else:
-            raise NotImplementedError(
-                f'Dataset {dataset_name} not implemented yet.')
+        try:
+            full_dataset = local_dataset(dataset_path)
+            return full_dataset
+        except:
+            raise ValueError(f'Error loading dataset from {dataset_name}')
 
 
 def format_dataset(dataset: Dataset,
@@ -349,7 +331,16 @@ def make_data_module(args):
         - vicuna
 
     """
-    dataset = load_data(args.dataset_name)
+    if args.load_from_local:
+        dataset_path = get_dataset_path(args.dataset_name,
+                                        data_dir=args.data_dir,
+                                        load_from_local=True)
+    else:
+        dataset_path = get_dataset_path(args.dataset_name,
+                                        data_dir=args.data_dir,
+                                        load_from_local=True)
+
+    dataset = load_data(args.dataset_name, dataset_path)
     dataset = format_dataset(dataset, dataset_name=args.dataset_name)
     dataset_dict = split_train_eval(
         dataset,
