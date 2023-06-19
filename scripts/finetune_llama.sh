@@ -8,7 +8,6 @@ python qlora_finetune.py \
     --gradient_accumulation_steps 16 \
     --evaluation_strategy steps \
     --eval_steps 2000 \
-    --eval_dataset_size 1024 \
     --max_eval_samples 1000 \
     --save_strategy steps \
     --save_total_limit 5 \
@@ -32,6 +31,6 @@ python qlora_finetune.py \
     --fp16 \
     --bits 4 \
     --gradient_checkpointing \
-    --do_predict \
+    --do_train \
     --data_seed 42 \
     --seed 0
