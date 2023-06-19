@@ -1,4 +1,4 @@
-python chatllms/train/qlora_finetune.py \
+python qlora_finetune.py \
     --model_name_or_path /home/robin/work_dir/llm/llm_pretrain_model/baichuan \
     --dataset_name /home/robin/prompt_data/InstructionWild/instinwild_en.json \
     --output_dir ./work_dir/baichuan-7b \

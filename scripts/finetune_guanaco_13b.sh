@@ -1,4 +1,4 @@
-python chatllms/train/qlora_int4_finetune.py \
+python qlora_int4_finetune.py \
     --model_name_or_path huggyllama/llama-13b \
     --output_dir ./output/guanaco-13b \
     --logging_steps 10 \
