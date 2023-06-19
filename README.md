@@ -30,12 +30,27 @@ We present QLoRA, an efficient finetuning approach that reduces memory usage eno
 
 
 ## Installation
+
+### Install required packages
 To load models in 4bits with transformers and bitsandbytes, you have to install accelerate and transformers from source and make sure you have the latest version of the bitsandbytes library (0.39.0). You can achieve the above with the following commands:
 ```bash
 pip install -q -U bitsandbytes
 pip install -q -U git+https://github.com/huggingface/transformers.git
 pip install -q -U git+https://github.com/huggingface/peft.git
 pip install -q -U git+https://github.com/huggingface/accelerate.git
+```
+
+### Install the package From source
+1. Clone this repository and navigate to the FastChat folder
+```bash
+git clone https://github.com/jianzhnie/Efficient-Tuning-LLMs.git
+cd Efficient-Tuning-LLMs
+```
+
+2. Install Package
+```bash
+pip3 install --upgrade pip  # enable PEP 660 support
+pip3 setup install 
 ```
 
 ## Getting Started
