@@ -143,6 +143,7 @@ def load_data(dataset_name: str,
 
     Args:
         dataset_name: A string representing the name of the dataset to be loaded.
+        dataset_path: A string representing the path to the dataset to be loaded.
 
     Returns:
         A dictionary containing the loaded dataset if the dataset exists.
@@ -166,7 +167,7 @@ def load_data(dataset_name: str,
             full_dataset = local_dataset(dataset_path)
             return full_dataset
         except:
-            raise ValueError(f'Error loading dataset from {dataset_name}')
+            raise ValueError(f'Error loading dataset from {dataset_path}')
 
 
 def format_dataset(dataset: Dataset,
@@ -338,7 +339,7 @@ def make_data_module(args):
     else:
         dataset_path = get_dataset_path(args.dataset_name,
                                         data_dir=args.data_dir,
-                                        load_from_local=True)
+                                        load_from_local=False)
 
     dataset = load_data(args.dataset_name, dataset_path)
     dataset = format_dataset(dataset, dataset_name=args.dataset_name)
