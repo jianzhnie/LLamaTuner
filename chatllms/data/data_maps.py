@@ -1,9 +1,27 @@
 import os
+from typing import Dict, Optional
 
 
-def get_dataset_path(dataset_name, data_dir='', load_from_local=False):
+def get_dataset_path(dataset_name: str,
+                     data_dir: Optional[str] = None,
+                     load_from_local: bool = False) -> str:
+    """
+    Returns the path to a dataset based on a pre-defined map of dataset names to their corresponding URLs on the internet
+    or local file paths.
+
+    Args:
+        dataset_name (str): The name of the dataset to load.
+        data_dir (Optional[str]): The local directory where the dataset is stored; required only if load_from_local is True.
+        load_from_local (bool): Whether to load the dataset from the internet (False) or from a local directory (True).
+
+    Raises:
+        KeyError: If dataset_name does not exist in the dataset_map.
+
+    Returns:
+        str: The path to the specified dataset.
+    """
     if not load_from_local:
-        dataset_map = {
+        dataset_map: Dict[str, str] = {
             'alpaca': 'tatsu-lab/alpaca',
             'alpaca-clean': 'yahma/alpaca-cleaned',
             'chip2': 'laion/OIG',
@@ -40,7 +58,6 @@ def get_dataset_path(dataset_name, data_dir='', load_from_local=False):
                 data_dir,
                 'timdettmers/openassistant-guanaco/openassistant_best_replies_train.jsonl'
             ),
-            ''
             'vicuna':
             os.path.join(
                 data_dir,
