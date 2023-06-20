@@ -39,8 +39,10 @@ def apply_lora(
     base_model = AutoModelForCausalLM.from_pretrained(
         base_model_path,
         load_in_8bit=load_8bit,
-        torch_dtype=torch.float16,
         device_map='auto',
+        torch_dtype=torch.float16,
+        use_auth_token=True,
+        trust_remote_code=True,
     )
 
     # Load the tokenizer
@@ -63,7 +65,6 @@ def apply_lora(
     model = PeftModel.from_pretrained(
         base_model,
         lora_path,
-        torch_dtype=torch.float16,
     )
     print('Applying the LoRA')
     model = model.merge_and_unload()
