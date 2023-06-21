@@ -1,5 +1,4 @@
 import argparse
-import logging
 import os
 from dataclasses import dataclass
 from typing import Any, Dict, List, Tuple, Union
@@ -120,13 +119,11 @@ class SampleGenerateCallback(TrainerCallback):
         tokenizer (PreTrainedTokenizer): The tokenizer used to preprocess inputs.
         max_new_tokens (int): The maximum number of tokens to generate in response to each input.
     """
-    def __init__(self,
-                 tokenizer: PreTrainedTokenizer,
-                 generation_config: argparse.Namespace,
-                 max_new_tokens: int = 70):
+    def __init__(self, tokenizer: PreTrainedTokenizer,
+                 generation_config: argparse.Namespace, logger: None):
         self.tokenizer = tokenizer
         self.generation_config = generation_config
-        self.max_new_tokens = max_new_tokens
+        self.logger = logger
 
         # Define input prompts to generate text from
         self.sample_inputs = [
@@ -150,7 +147,7 @@ class SampleGenerateCallback(TrainerCallback):
         Returns:
             None
         """
-        logger = logging.getLogger(__name__)
+        logger = self.logger
         logger.info('Generating sample text during evaluation...')
 
         # Check if the pre-trained language model is available
@@ -172,8 +169,8 @@ class SampleGenerateCallback(TrainerCallback):
 
                 # Decode generated text and log it
                 generated_text = self.tokenizer.decode(generation_output[0])
-                print(f'Input prompt: {sample_input}')
-                print(f'Generated text: {generated_text}')
+                logger.info(f'Input prompt: {sample_input}')
+                logger.info(f'Generated text: {generated_text}')
 
         else:
             logger.info(
