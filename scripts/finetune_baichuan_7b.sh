@@ -1,20 +1,20 @@
-python qlora_finetune.py \
-    --model_name_or_path /home/robin/work_dir/llm/llm_pretrain_model/baichuan \
-    --dataset_name /home/robin/prompt_data/InstructionWild/instinwild_en.json \
-    --output_dir ./work_dir/baichuan-7b \
-    --num_train_epochs 3 \
-    --per_device_train_batch_size 1 \
-    --per_device_eval_batch_size 1 \
-    --gradient_accumulation_steps 16 \
+CUDA_VISIBLE_DEVICES=0  python qlora_finetune.py \
+    --model_name_or_path /userhome/jianzhnie/checkpoints/baichuan7b \
+    --dataset_name oasst1 \
+    --data_dir /userhome/jianzhnie/prompt_datasets \
+    --load_from_local \
+    --output_dir ./work_dir/oasst1-baichuan-7b \
+    --num_train_epochs 4 \
+    --per_device_train_batch_size 4 \
+    --per_device_eval_batch_size 4 \
+    --gradient_accumulation_steps 8 \
     --evaluation_strategy steps \
-    --eval_steps 2000 \
-    --max_train_samples 100 \
-    --max_eval_samples 10 \
+    --eval_steps 50 \
     --save_strategy steps \
     --save_total_limit 5 \
-    --save_steps 500 \
+    --save_steps 100 \
     --logging_strategy steps \
-    --logging_steps 10 \
+    --logging_steps 1 \
     --learning_rate 0.0002 \
     --warmup_ratio 0.03 \
     --weight_decay 0.0 \
@@ -34,5 +34,7 @@ python qlora_finetune.py \
     --gradient_checkpointing \
     --trust_remote_code \
     --do_train \
+    --do_eval \
+    --sample_generate \
     --data_seed 42 \
     --seed 0
