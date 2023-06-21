@@ -14,7 +14,7 @@ from transformers import (AutoModelForCausalLM, AutoTokenizer,
 from chatllms.data.data_utils import make_data_module
 from chatllms.data.sft_dataset import (DataCollatorForSupervisedDataset,
                                        SupervisedDataset)
-from chatllms.utils.callbacks import MMLUEvalCallback
+from chatllms.utils.callbacks import MMLUEvalCallback, SampleGenerateCallback
 from chatllms.utils.config import (DataArguments, GenerationArguments,
                                    LoraArguments, ModelArguments,
                                    QuantArgments, TrainingArguments)
@@ -237,6 +237,13 @@ def main():
     # Add callback to save adapter model.
     if not args.full_finetune:
         trainer.add_callback(SavePeftModelCallback)
+
+    if args.sample_generate:
+        trainer.add_callback(
+            SampleGenerateCallback(
+                tokenizer=tokenizer,
+                generation_config=training_args.generation_config))
+
     if args.do_mmlu_eval:
         eval_callback = MMLUEvalCallback(
             trainer=trainer,

@@ -1,15 +1,17 @@
 python qlora_finetune.py \
-    --model_name_or_path decapoda-research/llama-7b-hf \
+    --model_name_or_path facebook/opt-125m \
     --dataset_name oasst1 \
     --data_dir /home/robin/prompt_data/ \
     --load_from_local \
     --output_dir ./work_dir/oasst1-llama-7b \
     --num_train_epochs 3 \
+    --max_train_samples 100 \
+    --max_eval_samples 100 \
     --per_device_train_batch_size 4 \
     --per_device_eval_batch_size 4 \
     --gradient_accumulation_steps 8 \
     --evaluation_strategy steps \
-    --eval_steps 200 \
+    --eval_steps 2000 \
     --save_strategy steps \
     --save_total_limit 5 \
     --save_steps 100 \

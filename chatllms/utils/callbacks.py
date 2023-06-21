@@ -122,8 +122,10 @@ class SampleGenerateCallback(TrainerCallback):
     """
     def __init__(self,
                  tokenizer: PreTrainedTokenizer,
+                 generation_config: argparse.Namespace,
                  max_new_tokens: int = 70):
         self.tokenizer = tokenizer
+        self.generation_config = generation_config
         self.max_new_tokens = max_new_tokens
 
         # Define input prompts to generate text from
@@ -159,19 +161,19 @@ class SampleGenerateCallback(TrainerCallback):
             for sample_input in self.sample_inputs:
                 # Preprocess input prompt and convert to tensor
                 inputs = f'Below is an instruction that describes a task. Write a response that appropriately completes the request.\n\n### Instruction:\n{sample_input}\n\n### Response: '
-                input_ids = self.tokenizer.encode(inputs, return_tensors='pt')
-                input_ids = input_ids.to(model.device)
+                inputs = self.tokenizer(inputs, return_tensors='pt')
+                inputs = inputs.to(model.device)
 
                 # Generate text from input prompt
                 generation_output = model.generate(
-                    input_ids=input_ids,
-                    max_length=len(input_ids[0]) + self.max_new_tokens,
+                    **inputs,
+                    generation_config=self.generation_config,
                 )
 
                 # Decode generated text and log it
                 generated_text = self.tokenizer.decode(generation_output[0])
-                logger.info(f'Input prompt: {sample_input}')
-                logger.info(f'Generated text: {generated_text}')
+                print(f'Input prompt: {sample_input}')
+                print(f'Generated text: {generated_text}')
 
         else:
             logger.info(
@@ -251,7 +253,7 @@ class MMLUEvalCallback(TrainerCallback):
             target_max_len=args.target_max_len,
             train_on_source=args.train_on_source,
             predict_with_generate=args.predict_with_generate,
-        ) if args.do_predict else None
+        )
 
     def on_evaluate(
         self,
