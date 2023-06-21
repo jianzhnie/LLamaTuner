@@ -1,6 +1,6 @@
 import argparse
-import logging
 import os
+import time
 from typing import Dict, Optional
 
 import torch
@@ -25,13 +25,13 @@ from chatllms.utils.model_utils import (SavePeftModelCallback,
                                         print_trainable_parameters,
                                         verify_dtypes)
 from chatllms.utils.training import predict_and_save, train_and_evaluate
+from chatllms.utils.utils import get_root_logger
 
 torch.backends.cuda.matmul.allow_tf32 = True
-logger = logging.getLogger(__name__)
 
 
-def get_accelerate_model(args: Dict,
-                         checkpoint_dir: Optional[str]) -> torch.nn.Module:
+def get_accelerate_model(args: Dict, checkpoint_dir: Optional[str],
+                         logger: None) -> torch.nn.Module:
     """
     Returns a language model for text generation that can be trained with mixed precision.
 
@@ -56,7 +56,7 @@ def get_accelerate_model(args: Dict,
     # Check if we are doing full finetuning.
     if args.full_finetune: assert args.bits in [16, 32]
 
-    print(f'Loading base model {args.model_name_or_path}...')
+    logger.info(f'Loading base model {args.model_name_or_path}...')
     compute_dtype = (torch.float16 if args.fp16 else
                      (torch.bfloat16 if args.bf16 else torch.float32))
     torch_dtype = (torch.float32 if args.fp16 else
@@ -87,11 +87,11 @@ def get_accelerate_model(args: Dict,
     if compute_dtype == torch.float16 and args.bits == 4:
         major, minor = torch.cuda.get_device_capability()
         if major >= 8:
-            print('=' * 80)
-            print(
+            logger.info('=' * 80)
+            logger.info(
                 'Your GPU supports bfloat16, you can accelerate training with the argument --bf16'
             )
-            print('=' * 80)
+            logger.info('=' * 80)
 
     # Enable model parallelism.
     setattr(model, 'model_parallel', True)
@@ -111,7 +111,7 @@ def get_accelerate_model(args: Dict,
     if not args.full_finetune:
         if checkpoint_dir is not None:
             # Load pre-trained adapters from checkpoint directory.
-            print('Loading adapters from checkpoint.')
+            logger.info('Loading adapters from checkpoint.')
             model = PeftModel.from_pretrained(model,
                                               os.path.join(
                                                   checkpoint_dir,
@@ -119,7 +119,7 @@ def get_accelerate_model(args: Dict,
                                               is_trainable=True)
         else:
             # Add LoRA modules to the model.
-            print('Adding LoRA modules...')
+            logger.info('Adding LoRA modules...')
             modules = find_all_linear_names(args, model)
             config = LoraConfig(
                 r=args.lora_r,
@@ -164,14 +164,20 @@ def main():
     args = argparse.Namespace(**vars(model_args), **vars(data_args),
                               **vars(training_args), **vars(lora_args),
                               **vars(quant_args))
+
+    # init the logger before other steps
+    timestamp = time.strftime('%Y%m%d_%H%M%S', time.localtime())
+    log_file = os.path.join(args.output_dir, f'{timestamp}.log')
+    logger = get_root_logger(log_file=log_file, log_level='INFO')
+
     checkpoint_dir, completed_training = get_last_checkpoint(args.output_dir)
     if completed_training:
-        print('Detected that training was already completed!')
+        logger('Detected that training was already completed!')
 
-    model = get_accelerate_model(args, checkpoint_dir)
+    model = get_accelerate_model(args, checkpoint_dir, logger)
     model.config.use_cache = False
     print_trainable_parameters(args, model)
-    print('loaded model')
+    logger.info('loaded model')
     set_seed(args.seed)
 
     # Tokenizer
@@ -190,7 +196,7 @@ def main():
     # Check and add them if missing to prevent them from being parsed into different tokens.
     # Note that these are present in the vocabulary.
     # Note also that `model.config.pad_token_id` is 0 which corresponds to `<unk>` token.
-    print('Adding special tokens.')
+    logger.info('Adding special tokens.')
     if 'llama' in args.model_name_or_path or 'baichuan' in args.model_name_or_path:
         add_special_tokens_if_missing(tokenizer, model)
 
@@ -257,9 +263,9 @@ def main():
     verify_dtypes(model)
     assert args.do_train or args.do_eval or args.do_predict
     if args.do_train or args.do_eval:
-        train_and_evaluate(trainer, args)
+        train_and_evaluate(trainer, args, logger)
     if args.do_predict:
-        predict_and_save(trainer, tokenizer, predict_dataset, args)
+        predict_and_save(trainer, tokenizer, predict_dataset, args, logger)
 
 
 if __name__ == '__main__':
