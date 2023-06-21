@@ -18,6 +18,7 @@ from chatllms.utils.callbacks import MMLUEvalCallback, SampleGenerateCallback
 from chatllms.utils.config import (DataArguments, GenerationArguments,
                                    LoraArguments, ModelArguments,
                                    QuantArgments, TrainingArguments)
+from chatllms.utils.logging import get_root_logger
 from chatllms.utils.model_utils import (SavePeftModelCallback,
                                         add_special_tokens_if_missing,
                                         find_all_linear_names,
@@ -25,7 +26,6 @@ from chatllms.utils.model_utils import (SavePeftModelCallback,
                                         print_trainable_parameters,
                                         verify_dtypes)
 from chatllms.utils.training import predict_and_save, train_and_evaluate
-from chatllms.utils.utils import get_root_logger
 
 torch.backends.cuda.matmul.allow_tf32 = True
 
@@ -167,12 +167,14 @@ def main():
 
     # init the logger before other steps
     timestamp = time.strftime('%Y%m%d_%H%M%S', time.localtime())
+    if not os.path.exists(args.output_dir):
+        os.makedirs(args.output_dir)
     log_file = os.path.join(args.output_dir, f'{timestamp}.log')
     logger = get_root_logger(log_file=log_file, log_level='INFO')
 
     checkpoint_dir, completed_training = get_last_checkpoint(args.output_dir)
     if completed_training:
-        logger('Detected that training was already completed!')
+        logger.info('Detected that training was already completed!')
 
     model = get_accelerate_model(args, checkpoint_dir, logger)
     model.config.use_cache = False
@@ -248,7 +250,9 @@ def main():
         trainer.add_callback(
             SampleGenerateCallback(
                 tokenizer=tokenizer,
-                generation_config=training_args.generation_config))
+                generation_config=training_args.generation_config,
+                logger=logger,
+            ))
 
     if args.do_mmlu_eval:
         eval_callback = MMLUEvalCallback(
