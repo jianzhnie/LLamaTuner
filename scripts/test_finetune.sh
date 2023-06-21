@@ -3,7 +3,7 @@ python qlora_finetune.py \
     --dataset_name oasst1 \
     --data_dir /home/robin/prompt_data/ \
     --load_from_local \
-    --output_dir ./work_dir/oasst1-llama-7b \
+    --output_dir ./work_dir/run_test \
     --num_train_epochs 3 \
     --max_train_samples 100 \
     --max_eval_samples 100 \
@@ -11,7 +11,7 @@ python qlora_finetune.py \
     --per_device_eval_batch_size 4 \
     --gradient_accumulation_steps 8 \
     --evaluation_strategy steps \
-    --eval_steps 2000 \
+    --eval_steps 50 \
     --save_strategy steps \
     --save_total_limit 5 \
     --save_steps 100 \
