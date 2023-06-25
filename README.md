@@ -35,9 +35,9 @@ We provide a number of models in the [Hugging Face model hub](https://huggingfac
 | Pretrained | Base Model                                                   | Finetune Mode | Adapter | Instruct Datasets | Train Script | Inference Script |
 | ---------- | ------------------------------------------------------------ | ------------- | ------- | ----------------- | ------------ | ---------------- |
 | LLama      | [llama-7b](https://huggingface.co/decapoda-research/llama-7b-hf) | Full Finetune | –       |                   |              |                  |
-| LLama      | [llama-7b](https://huggingface.co/decapoda-research/llama-7b-hf) | PEFT          | LoRA    |                   | [0000]()     | [0000]()         |
+| LLama      | [llama-7b](https://huggingface.co/decapoda-research/llama-7b-hf) | PEFT          | LoRA    | [timdettmers/openassistant-guanaco](https://huggingface.co/datasets/timdettmers/openassistant-guanaco)                  | [finetune_lamma7b](./scripts/finetune_llama_guanaco7b.sh)     | [gradio_qlora_webserver](./scripts/server/gradio_qlora_webserver.sh)         |
 | LLama      | [llama-7b](https://huggingface.co/decapoda-research/llama-7b-hf) |               |         |                   |              |                  |
-| Baichuan   | [baichuan7b]()                                               | PEFT          | LoRA    |                   | [0000]()     | [0000]()         |
+| Baichuan   | [baichuan7b]()                                               | PEFT          | LoRA    |       [timdettmers/openassistant-guanaco](https://huggingface.co/datasets/timdettmers/openassistant-guanaco)                       | [finetune_baichuan7b](./scripts/finetune_baichuan_7b.sh)    | [gradio_qlora_webserver](./scripts/server/gradio_qlora_webserver.sh)         |
 
 ## Installation
 
