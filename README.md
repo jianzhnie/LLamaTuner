@@ -32,15 +32,17 @@ We present QLoRA, an efficient finetuning approach that reduces memory usage eno
 
 We provide a number of models in the [Hugging Face model hub](https://huggingface.co/decapoda-research). These models are trained with QLoRA and can be used for inference and finetuning. We provide the following models:
 
-|Base Model |Adapter| Instruct Datasets | Train Scripts| Inference Scripts|
-|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| [decapoda-research/llama-7b-hf](https://huggingface.co/decapoda-research/llama-7b-hf) | [jianzhnie/Chinese-Guanaco](https://huggingface.co/jianzhnie/Chinese-Guanaco) | [jianzhnie/Chinese-LLaMA-7B](https://huggingface.co/jianzhnie/Chinese-LLaMA-7B) |
-
-
+| Pretrained | Base Model                                                   | Finetune Mode | Adapter | Instruct Datasets | Train Script | Inference Script |
+| ---------- | ------------------------------------------------------------ | ------------- | ------- | ----------------- | ------------ | ---------------- |
+| LLama      | [llama-7b](https://huggingface.co/decapoda-research/llama-7b-hf) | Full Finetune | –       |                   |              |                  |
+| LLama      | [llama-7b](https://huggingface.co/decapoda-research/llama-7b-hf) | PEFT          | LoRA    |                   | [0000]()     | [0000]()         |
+| LLama      | [llama-7b](https://huggingface.co/decapoda-research/llama-7b-hf) |               |         |                   |              |                  |
+| Baichuan   | [baichuan7b]()                                               | PEFT          | LoRA    |                   | [0000]()     | [0000]()         |
 
 ## Installation
 
 ### Install required packages
+
 To load models in 4bits with transformers and bitsandbytes, you have to install accelerate and transformers from source and make sure you have the latest version of the bitsandbytes library (0.39.0). You can achieve the above with the following commands:
 ```bash
 pip install -q -U bitsandbytes
