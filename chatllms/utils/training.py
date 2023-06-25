@@ -1,6 +1,5 @@
 import argparse
 import json
-import logging
 import os
 from typing import Any, Dict
 
@@ -8,11 +7,9 @@ import numpy as np
 import transformers
 from torch.utils.data import Dataset
 
-logger = logging.getLogger(__name__)
 
-
-def train_and_evaluate(trainer: transformers.Trainer,
-                       args: argparse.Namespace) -> None:
+def train_and_evaluate(trainer: transformers.Trainer, args: argparse.Namespace,
+                       logger: None) -> None:
     """
     Trains and evaluates a machine learning model.
 
@@ -65,8 +62,8 @@ def train_and_evaluate(trainer: transformers.Trainer,
 
 def predict_and_save(trainer: transformers.Trainer,
                      tokenizer: transformers.PreTrainedTokenizer,
-                     predict_dataset: Dataset,
-                     args: argparse.Namespace) -> None:
+                     predict_dataset: Dataset, args: argparse.Namespace,
+                     logger: None) -> None:
     """
     Make predictions on new data, save them to a file along with input examples,
     and update the overall metrics.
