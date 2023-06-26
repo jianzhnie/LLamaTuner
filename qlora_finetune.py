@@ -9,7 +9,8 @@ from peft import (LoraConfig, PeftModel, get_peft_model,
                   prepare_model_for_kbit_training)
 from peft.tuners.lora import LoraLayer
 from transformers import (AutoModelForCausalLM, AutoTokenizer,
-                          BitsAndBytesConfig, Trainer, set_seed)
+                          BitsAndBytesConfig, GenerationConfig, Trainer,
+                          set_seed)
 
 from chatllms.data.data_utils import make_data_module
 from chatllms.data.sft_dataset import (DataCollatorForSupervisedDataset,
@@ -158,8 +159,7 @@ def main():
         generation_args,
         extra_args,
     ) = parser.parse_args_into_dataclasses(return_remaining_strings=True)
-    training_args.generation_config = transformers.GenerationConfig(
-        **vars(generation_args))
+    training_args.generation_config = GenerationConfig(**vars(generation_args))
 
     args = argparse.Namespace(**vars(model_args), **vars(data_args),
                               **vars(training_args), **vars(lora_args),
@@ -172,6 +172,8 @@ def main():
     log_file = os.path.join(args.output_dir, f'{timestamp}.log')
     logger = get_root_logger(log_file=log_file, log_level='INFO')
 
+    logger.info('Training/evaluation parameters %s', args)
+    # Check if training was already completed.
     checkpoint_dir, completed_training = get_last_checkpoint(args.output_dir)
     if completed_training:
         logger.info('Detected that training was already completed!')
@@ -246,11 +248,12 @@ def main():
     if not args.full_finetune:
         trainer.add_callback(SavePeftModelCallback)
 
+    # Add callback to generate samples.
     if args.sample_generate:
         trainer.add_callback(
             SampleGenerateCallback(
                 tokenizer=tokenizer,
-                generation_config=training_args.generation_config,
+                generation_config=GenerationConfig(**vars(generation_args)),
                 logger=logger,
             ))
 

@@ -23,7 +23,7 @@ class ModelArguments:
 
 @dataclass
 class DataArguments:
-    dataset_name: str = field(
+    dataset_name: Optional[str] = field(
         default='alpaca',
         metadata={
             'help': 'Which dataset to finetune on. See datamodule for options.'
@@ -168,7 +168,7 @@ class GenerationArguments:
     # generation parameters
     # Length arguments
     max_new_tokens: Optional[int] = field(
-        default=256,
+        default=512,
         metadata={
             'help':
             'Maximum number of new tokens to be generated in evaluation or prediction loops'

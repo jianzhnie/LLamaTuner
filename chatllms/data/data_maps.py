@@ -65,5 +65,7 @@ def get_dataset_path(dataset_name: str,
             ),
             'dolly-15k':
             'databricks/databricks-dolly-15k',
+            'olcc':
+            os.path.join(data_dir, 'olcc/olcc_alpaca.json'),
         }
     return dataset_map[dataset_name]

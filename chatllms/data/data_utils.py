@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 import numpy as np
 import pandas as pd
 import torch
-from datasets import Dataset, DatasetDict, load_dataset
+from datasets import Dataset, DatasetDict, concatenate_datasets, load_dataset
 from torch.nn.utils.rnn import pad_sequence
 from transformers import PreTrainedTokenizer
 
@@ -28,6 +28,11 @@ ALPACA_PROMPT_DICT = {
     ('Below is an instruction that describes a task. '
      'Write a response that appropriately completes the request.\n\n'
      '### Instruction:\n{instruction}\n\n### Response: '),
+}
+
+PROMPT_DICT = {
+    'prompt_input': ('{instruction}\n\n### Input:\n{input}### Response:'),
+    'prompt_no_input': ('{instruction}\n\n### Response:'),
 }
 
 
@@ -105,7 +110,17 @@ def extract_vicuna_dataset(example: Dict[str, Any]) -> Dict[str, str]:
     return {'input': input_str, 'output': output_str}
 
 
-def local_dataset(dataset_path: str) -> Tuple[Dataset, Dataset]:
+def extract_instruct_dataset(example: Dict[str, Any]) -> Dict[str, str]:
+
+    if example.get('input', '') != '':
+        prompt_format = PROMPT_DICT['prompt_input']
+    else:
+        prompt_format = PROMPT_DICT['prompt_no_input']
+    return {'input': prompt_format.format(**example)}
+
+
+def local_dataset(dataset_path: str,
+                  eval_dataset_size: float = 0.1) -> Tuple[Dataset, Dataset]:
     """
     Reads in a dataset from a file and returns it as a split train-test dataset.
 
@@ -132,8 +147,12 @@ def local_dataset(dataset_path: str) -> Tuple[Dataset, Dataset]:
             pd.read_csv(dataset_path, delimiter='\t'))
     else:
         raise ValueError(f'Unsupported dataset format: {dataset_path}')
-
-    return full_dataset
+    if 'train' not in full_dataset:
+        split_dataset = full_dataset.train_test_split(
+            test_size=eval_dataset_size)
+        return split_dataset
+    else:
+        return full_dataset
 
 
 def load_data(dataset_name: str,
@@ -213,11 +232,9 @@ def format_dataset(dataset: Dataset,
         dataset = dataset.map(lambda x: {'input': '', 'output': x['text']})
     elif dataset_name == 'vicuna':
         dataset = dataset.map(extract_vicuna_dataset)
-    elif os.path.exists(dataset_name):
-        dataset = dataset.map(extract_alpaca_dataset,
-                              remove_columns=['instruction'])
     else:
-        return None  # invalid format
+        dataset = dataset.map(extract_instruct_dataset,
+                              remove_columns=['instruction'])
 
     # Remove unused columns.
     dataset = dataset.remove_columns([
@@ -231,7 +248,7 @@ def split_train_eval(
     dataset: Dataset,
     do_eval: bool = False,
     do_predict: bool = False,
-    eval_dataset_size: float = 0.2,
+    eval_dataset_size: float = 0.1,
     max_eval_samples: int = None,
     do_train: bool = True,
     max_train_samples: int = None,
@@ -332,26 +349,60 @@ def make_data_module(args):
         - vicuna
 
     """
-    if args.load_from_local:
-        dataset_path = get_dataset_path(args.dataset_name,
-                                        data_dir=args.data_dir,
-                                        load_from_local=True)
-    else:
-        dataset_path = get_dataset_path(args.dataset_name,
-                                        data_dir=args.data_dir,
-                                        load_from_local=False)
+    train_datasets = []
+    eval_datasets = []
+    predict_datasets = []
+    dataset_name_list = args.dataset_name.split('_')
+    print(f'Loading datasets: {dataset_name_list}')
+    for dataset_name in dataset_name_list:
+        if args.load_from_local:
+            dataset_path = get_dataset_path(dataset_name,
+                                            data_dir=args.data_dir,
+                                            load_from_local=True)
+        else:
+            dataset_path = get_dataset_path(dataset_name,
+                                            data_dir=args.data_dir,
+                                            load_from_local=False)
 
-    dataset = load_data(args.dataset_name, dataset_path)
-    dataset = format_dataset(dataset, dataset_name=args.dataset_name)
-    dataset_dict = split_train_eval(
-        dataset,
-        do_eval=args.do_eval,
-        do_predict=args.do_predict,
-        eval_dataset_size=args.eval_dataset_size,
-        max_eval_samples=args.max_eval_samples,
-        do_train=args.do_train,
-        max_train_samples=args.max_train_samples,
-    )
+        dataset = load_data(dataset_name, dataset_path)
+        dataset = format_dataset(dataset, dataset_name=dataset_name)
+
+        dataset_dict = split_train_eval(
+            dataset,
+            do_eval=args.do_eval,
+            do_predict=args.do_predict,
+            eval_dataset_size=args.eval_dataset_size,
+            max_eval_samples=args.max_eval_samples,
+            do_train=args.do_train,
+            max_train_samples=args.max_train_samples,
+        )
+        print('=' * 80)
+        print('loaded dataset', dataset_name, len(dataset_dict['train']))
+
+        train_datasets.append(dataset_dict['train'])
+        eval_datasets.append(dataset_dict['eval'])
+        predict_datasets.append(dataset_dict['predict'])
+
+    concate_train = concatenate_datasets(
+        train_datasets) if args.do_train else None
+    concate_eval = concatenate_datasets(
+        eval_datasets) if args.do_eval else None
+    concate_pred = concatenate_datasets(
+        predict_datasets) if args.do_predict else None
+
+    print('=' * 80)
+    if args.do_train:
+        print(f'Concatenate train dataset size: {len(concate_train)}')
+    if args.do_eval:
+        print(f'Concatenate eval dataset size: {len(concate_eval)}')
+    if args.do_predict:
+        print(f'Concatenate eval dataset size: {len(concate_pred)}')
+
+    dataset_dict = {
+        'train': concate_train,
+        'eval': concate_eval,
+        'predict': concate_pred,
+    }
 
     return dataset_dict
 
