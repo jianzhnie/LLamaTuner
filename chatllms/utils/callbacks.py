@@ -131,6 +131,7 @@ class SampleGenerateCallback(TrainerCallback):
             '中国是否应该推出刺激政策救楼市？',
             '如何更好地融入新工作圈子',
         ]
+        self.PROMPT_DICT = ('{instruction}\n\n### Response:')
 
     def on_evaluate(self, args: Any, state: Dict[str, Any], control: Any,
                     **kwargs: Any) -> None:
@@ -157,7 +158,7 @@ class SampleGenerateCallback(TrainerCallback):
             # Generate text for each input prompt
             for sample_input in self.sample_inputs:
                 # Preprocess input prompt and convert to tensor
-                inputs = f'Below is an instruction that describes a task. Write a response that appropriately completes the request.\n\n### Instruction:\n{sample_input}\n\n### Response: '
+                inputs = self.PROMPT_DICT.format(**sample_input)
                 inputs = self.tokenizer(inputs, return_tensors='pt')
                 inputs = inputs.to(model.device)
 
