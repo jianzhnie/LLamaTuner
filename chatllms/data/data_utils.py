@@ -119,7 +119,8 @@ def extract_instruct_dataset(example: Dict[str, Any]) -> Dict[str, str]:
     return {'input': prompt_format.format(**example)}
 
 
-def local_dataset(dataset_path: str) -> Tuple[Dataset, Dataset]:
+def local_dataset(dataset_path: str,
+                  eval_dataset_size: float = 0.1) -> Tuple[Dataset, Dataset]:
     """
     Reads in a dataset from a file and returns it as a split train-test dataset.
 
@@ -147,7 +148,8 @@ def local_dataset(dataset_path: str) -> Tuple[Dataset, Dataset]:
     else:
         raise ValueError(f'Unsupported dataset format: {dataset_path}')
     if 'train' not in full_dataset:
-        split_dataset = full_dataset.train_test_split(test_size=0.1)
+        split_dataset = full_dataset.train_test_split(
+            test_size=eval_dataset_size)
         return split_dataset
     else:
         return full_dataset
@@ -246,7 +248,7 @@ def split_train_eval(
     dataset: Dataset,
     do_eval: bool = False,
     do_predict: bool = False,
-    eval_dataset_size: float = 0.2,
+    eval_dataset_size: float = 0.1,
     max_eval_samples: int = None,
     do_train: bool = True,
     max_train_samples: int = None,
