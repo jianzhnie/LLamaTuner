@@ -32,12 +32,13 @@ We present QLoRA, an efficient finetuning approach that reduces memory usage eno
 
 We provide a number of models in the [Hugging Face model hub](https://huggingface.co/decapoda-research). These models are trained with QLoRA and can be used for inference and finetuning. We provide the following models:
 
-| Pretrained | Base Model                                                   | Finetune Mode | Adapter | Instruct Datasets | Train Script | Inference Script |
-| ---------- | ------------------------------------------------------------ | ------------- | ------- | ----------------- | ------------ | ---------------- |
-| LLama      | [llama-7b](https://huggingface.co/decapoda-research/llama-7b-hf) | Full Finetune | –       |                   |              |                  |
-| LLama      | [llama-7b](https://huggingface.co/decapoda-research/llama-7b-hf) | PEFT          | LoRA    | [timdettmers/openassistant-guanaco](https://huggingface.co/datasets/timdettmers/openassistant-guanaco)                  | [finetune_lamma7b](./scripts/finetune_llama_guanaco7b.sh)     | [gradio_qlora_webserver](./scripts/server/gradio_qlora_webserver.sh)         |
-| LLama      | [llama-7b](https://huggingface.co/decapoda-research/llama-7b-hf) |               |         |                   |              |                  |
-| Baichuan   | [baichuan7b]()                                               | PEFT          | LoRA    |       [timdettmers/openassistant-guanaco](https://huggingface.co/datasets/timdettmers/openassistant-guanaco)                       | [finetune_baichuan7b](./scripts/finetune_baichuan_7b.sh)    | [gradio_qlora_webserver](./scripts/server/gradio_qlora_webserver.sh)         |
+| Pretrained | Base Model                                                   | Finetune Mode | Adapter | Instruct Datasets                                            | Train Script                                              | Log                                                          | Model on Huggingface                                         |
+| ---------- | ------------------------------------------------------------ | ------------- | ------- | ------------------------------------------------------------ | --------------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| LLama      | [llama-7b](https://huggingface.co/decapoda-research/llama-7b-hf) | Full Finetune | –       |                                                              |                                                           |                                                              |                                                              |
+| LLama      | [llama-7b](https://huggingface.co/decapoda-research/llama-7b-hf) | PEFT          | QLoRA   | [openassistant-guanaco](https://huggingface.co/datasets/timdettmers/openassistant-guanaco) | [finetune_lamma7b](./scripts/finetune_llama_guanaco7b.sh) | [wandb log](https://wandb.ai/jianzhnie/huggingface/runs/1e2km7b1) | [GaussianTech/llama-7b-sft](https://huggingface.co/GaussianTech/llama-7b-sft) |
+| LLama      | [llama-7b](https://huggingface.co/decapoda-research/llama-7b-hf) | PEFT          | QLoRA   | [OL-CC](https://data.baai.ac.cn/details/OL-CC)               | [finetune_lamma7b](./scripts/finetune_llama_guanaco7b.sh) |                                                              |                                                              |
+| Baichuan   | [baichuan7b](https://huggingface.co/baichuan-inc/baichuan-7B) | PEFT          | QLoRA   | [openassistant-guanaco](https://huggingface.co/datasets/timdettmers/openassistant-guanaco) | [finetune_baichuan7b](./scripts/finetune_baichuan_7b.sh)  | [wandb log](https://wandb.ai/jianzhnie/huggingface/runs/41lq9joa) | [GaussianTech/baichuan-7b-sft](https://huggingface.co/GaussianTech/baichuan-7b-sft) |
+| Baichuan   | [baichuan7b](https://huggingface.co/baichuan-inc/baichuan-7B) | PEFT          | QLoRA   | [OL-CC](https://data.baai.ac.cn/details/OL-CC)               | [finetune_baichuan7b](./scripts/finetune_baichuan_7b.sh)  | [wandb log](https://wandb.ai/jianzhnie/huggingface/runs/1lw2bmvn) |                                                              |
 
 ## Installation
 
@@ -52,6 +53,7 @@ pip install -q -U git+https://github.com/huggingface/accelerate.git
 ```
 
 ### Clone the code
+
 1. Clone this repository and navigate to the Efficient-Tuning-LLMs folder
 ```bash
 git clone https://github.com/jianzhnie/Efficient-Tuning-LLMs.git
