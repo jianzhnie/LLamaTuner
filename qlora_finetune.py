@@ -172,6 +172,8 @@ def main():
     log_file = os.path.join(args.output_dir, f'{timestamp}.log')
     logger = get_root_logger(log_file=log_file, log_level='INFO')
 
+    logger.info('Training/evaluation parameters %s', args)
+    # Check if training was already completed.
     checkpoint_dir, completed_training = get_last_checkpoint(args.output_dir)
     if completed_training:
         logger.info('Detected that training was already completed!')
