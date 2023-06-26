@@ -146,7 +146,6 @@ class SampleGenerateCallback(TrainerCallback):
             '编写一个简单的自动化脚本，用于批量操作文件或目录。脚本功能可以自由选择，如复制、压缩、重命名、删除等。脚本语言可使用Python、Shell、Perl等，代码长度不少于100行。',
             '音乐可以洗涤人的灵魂吗？'
         ]
-        self.PROMPT_DICT = ('{instruction}\n\n### Response:')
 
     def on_evaluate(self, args: Any, state: Dict[str, Any], control: Any,
                     **kwargs: Any) -> None:
@@ -171,9 +170,9 @@ class SampleGenerateCallback(TrainerCallback):
             model = kwargs['model']
 
             # Generate text for each input prompt
-            for sample_input in self.sample_inputs:
+            for instruction in self.sample_inputs:
                 # Preprocess input prompt and convert to tensor
-                inputs = self.PROMPT_DICT.format(**sample_input)
+                inputs = f'### Instruction:\n{instruction}\n\n### Response: '
                 inputs = self.tokenizer(inputs, return_tensors='pt')
                 inputs = inputs.to(model.device)
 
@@ -185,7 +184,7 @@ class SampleGenerateCallback(TrainerCallback):
 
                 # Decode generated text and log it
                 generated_text = self.tokenizer.decode(generation_output[0])
-                logger.info(f'Input prompt: {sample_input}')
+                logger.info(f'Input prompt: {instruction}')
                 logger.info(f'Generated text: {generated_text}')
 
         else:

@@ -23,7 +23,7 @@ class ModelArguments:
 
 @dataclass
 class DataArguments:
-    dataset_name: str = field(
+    dataset_name: Optional[str] = field(
         default='alpaca',
         metadata={
             'help': 'Which dataset to finetune on. See datamodule for options.'

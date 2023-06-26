@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 import numpy as np
 import pandas as pd
 import torch
-from datasets import Dataset, DatasetDict, load_dataset
+from datasets import Dataset, DatasetDict, concatenate_datasets, load_dataset
 from torch.nn.utils.rnn import pad_sequence
 from transformers import PreTrainedTokenizer
 
@@ -349,26 +349,60 @@ def make_data_module(args):
         - vicuna
 
     """
-    if args.load_from_local:
-        dataset_path = get_dataset_path(args.dataset_name,
-                                        data_dir=args.data_dir,
-                                        load_from_local=True)
-    else:
-        dataset_path = get_dataset_path(args.dataset_name,
-                                        data_dir=args.data_dir,
-                                        load_from_local=False)
+    train_datasets = []
+    eval_datasets = []
+    predict_datasets = []
+    dataset_name_list = args.dataset_name.split('_')
+    print(f'Loading datasets: {dataset_name_list}')
+    for dataset_name in dataset_name_list:
+        if args.load_from_local:
+            dataset_path = get_dataset_path(dataset_name,
+                                            data_dir=args.data_dir,
+                                            load_from_local=True)
+        else:
+            dataset_path = get_dataset_path(dataset_name,
+                                            data_dir=args.data_dir,
+                                            load_from_local=False)
 
-    dataset = load_data(args.dataset_name, dataset_path)
-    dataset = format_dataset(dataset, dataset_name=args.dataset_name)
-    dataset_dict = split_train_eval(
-        dataset,
-        do_eval=args.do_eval,
-        do_predict=args.do_predict,
-        eval_dataset_size=args.eval_dataset_size,
-        max_eval_samples=args.max_eval_samples,
-        do_train=args.do_train,
-        max_train_samples=args.max_train_samples,
-    )
+        dataset = load_data(dataset_name, dataset_path)
+        dataset = format_dataset(dataset, dataset_name=dataset_name)
+
+        dataset_dict = split_train_eval(
+            dataset,
+            do_eval=args.do_eval,
+            do_predict=args.do_predict,
+            eval_dataset_size=args.eval_dataset_size,
+            max_eval_samples=args.max_eval_samples,
+            do_train=args.do_train,
+            max_train_samples=args.max_train_samples,
+        )
+        print('=' * 80)
+        print('loaded dataset', dataset_name, len(dataset_dict['train']))
+
+        train_datasets.append(dataset_dict['train'])
+        eval_datasets.append(dataset_dict['eval'])
+        predict_datasets.append(dataset_dict['predict'])
+
+    concate_train = concatenate_datasets(
+        train_datasets) if args.do_train else None
+    concate_eval = concatenate_datasets(
+        eval_datasets) if args.do_eval else None
+    concate_pred = concatenate_datasets(
+        predict_datasets) if args.do_predict else None
+
+    print('=' * 80)
+    if args.do_train:
+        print(f'Concatenate train dataset size: {len(concate_train)}')
+    if args.do_eval:
+        print(f'Concatenate eval dataset size: {len(concate_eval)}')
+    if args.do_predict:
+        print(f'Concatenate eval dataset size: {len(concate_pred)}')
+
+    dataset_dict = {
+        'train': concate_train,
+        'eval': concate_eval,
+        'predict': concate_pred,
+    }
 
     return dataset_dict
 
