@@ -30,6 +30,11 @@ ALPACA_PROMPT_DICT = {
      '### Instruction:\n{instruction}\n\n### Response: '),
 }
 
+PROMPT_DICT = {
+    'prompt_input': ('{instruction}\n\n### Input:\n{input}### Response:'),
+    'prompt_no_input': ('{instruction}\n\n### Response:'),
+}
+
 
 def extract_alpaca_dataset(example: Dict[str, Any]) -> Dict[str, str]:
     """
@@ -105,6 +110,15 @@ def extract_vicuna_dataset(example: Dict[str, Any]) -> Dict[str, str]:
     return {'input': input_str, 'output': output_str}
 
 
+def extract_instruct_dataset(example: Dict[str, Any]) -> Dict[str, str]:
+
+    if example.get('input', '') != '':
+        prompt_format = PROMPT_DICT['prompt_input']
+    else:
+        prompt_format = PROMPT_DICT['prompt_no_input']
+    return {'input': prompt_format.format(**example)}
+
+
 def local_dataset(dataset_path: str) -> Tuple[Dataset, Dataset]:
     """
     Reads in a dataset from a file and returns it as a split train-test dataset.
@@ -132,8 +146,11 @@ def local_dataset(dataset_path: str) -> Tuple[Dataset, Dataset]:
             pd.read_csv(dataset_path, delimiter='\t'))
     else:
         raise ValueError(f'Unsupported dataset format: {dataset_path}')
-
-    return full_dataset
+    if 'train' not in full_dataset:
+        split_dataset = full_dataset.train_test_split(test_size=0.1)
+        return split_dataset
+    else:
+        return full_dataset
 
 
 def load_data(dataset_name: str,
@@ -213,11 +230,9 @@ def format_dataset(dataset: Dataset,
         dataset = dataset.map(lambda x: {'input': '', 'output': x['text']})
     elif dataset_name == 'vicuna':
         dataset = dataset.map(extract_vicuna_dataset)
-    elif os.path.exists(dataset_name):
-        dataset = dataset.map(extract_alpaca_dataset,
-                              remove_columns=['instruction'])
     else:
-        return None  # invalid format
+        dataset = dataset.map(extract_instruct_dataset,
+                              remove_columns=['instruction'])
 
     # Remove unused columns.
     dataset = dataset.remove_columns([
