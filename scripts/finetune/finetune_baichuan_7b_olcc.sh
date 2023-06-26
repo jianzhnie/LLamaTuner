@@ -1,17 +1,15 @@
 python qlora_finetune.py \
-    --model_name_or_path facebook/opt-125m \
+    --model_name_or_path /home/robin/work_dir/llm/llm_pretrain_model/baichuan \
     --dataset_name olcc \
     --data_dir /home/robin/prompt_data/ \
     --load_from_local \
-    --output_dir ./work_dir/run_test \
-    --num_train_epochs 3 \
-    --max_train_samples 100 \
-    --max_eval_samples 100 \
+    --output_dir ./work_dir/olcc-baichuan-7b \
+    --num_train_epochs 4 \
     --per_device_train_batch_size 4 \
     --per_device_eval_batch_size 4 \
     --gradient_accumulation_steps 8 \
     --evaluation_strategy steps \
-    --eval_steps 50 \
+    --eval_steps 20 \
     --save_strategy steps \
     --save_total_limit 5 \
     --save_steps 100 \
