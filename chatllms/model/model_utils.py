@@ -1,6 +1,7 @@
+import argparse
 import os
 from os.path import exists, join
-from typing import Dict, Optional, Tuple
+from typing import Optional, Tuple
 
 import torch
 from peft import (LoraConfig, PeftModel, get_peft_model,
@@ -20,7 +21,7 @@ check_min_version('4.29.1')
 
 
 def load_model_tokenizer(
-    args: Dict = None,
+    args: argparse.Namespace = None,
     checkpoint_dir: Optional[str] = None,
     output_embedding_layer_name: Optional[str] = 'lm_head',
     is_trainable: Optional[bool] = False,
@@ -32,6 +33,7 @@ def load_model_tokenizer(
 
     :param args: A dictionary containing various hyperparameters.
     :param checkpoint_dir: A directory containing pre-trained adapters for the model.
+    :param output_embedding_layer_name: The name of the output embedding layer in the model.
     :param is_trainable: A bool indicating whether the model can be trained or not.
     :param logger: A logger object to log messages during execution.
     :return: A tuple containing an instance of the language model and an instance of the tokenizer.
@@ -78,7 +80,7 @@ def load_model_tokenizer(
     # Set compute and torch dtypes based on hyperparameters.
     compute_dtype = (torch.float16 if args.fp16 else
                      (torch.bfloat16 if args.bf16 else torch.float32))
-    torch_dtype = (torch.fp16 if args.fp16 else
+    torch_dtype = (torch.float16 if args.fp16 else
                    (torch.bfloat16 if args.bf16 else torch.float32))
 
     # Set quantization configurations using bitsandbytes library.
@@ -113,8 +115,11 @@ def load_model_tokenizer(
     # Load and prepare pretrained models (without valuehead).
     model = AutoModelForCausalLM.from_pretrained(
         args.model_name_or_path,
+        cache_dir=args.cache_dir,
         device_map=device_map,
+        max_memory=max_memory,
         low_cpu_mem_usage=True,
+        torch_dtype=torch_dtype,
         **config_kwargs,
     )
 
@@ -161,10 +166,9 @@ def load_model_tokenizer(
             # Load pre-trained adapters from checkpoint directory.
             logger.info('Loading adapters from checkpoint... ')
             adapter_model_path = join(checkpoint_dir, 'adapter_model')
-            assert exists(os.apth.join(
-                adapter_model_path, CONFIG_NAME)) and exists(
-                    join(adapter_model_path, WEIGHTS_NAME)), ValueError(
-                        'The given checkpoint may be not a LoRA checkpoint')
+            assert exists(join(adapter_model_path, CONFIG_NAME)) and exists(
+                join(adapter_model_path, WEIGHTS_NAME)), ValueError(
+                    'The given checkpoint may be not a LoRA checkpoint')
 
             model = PeftModel.from_pretrained(model,
                                               adapter_model_path,
