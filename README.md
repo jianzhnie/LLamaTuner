@@ -14,33 +14,37 @@
 
 # Efficient Finetuning of Quantized LLMs  --- 低资源的大语言模型量化训练/部署方案
 
-This is the repo for the `Efficient Finetuning of Quantized LLMs` project, which aims to build and share instruction-following Chinese `baichuan-7b/LLaMA/Pythia/GLM`model tuning methods which can be trained on **a single Nvidia RTX-2080TI**, multi-round chatbot which can be trained on **a single Nvidia RTX-3090** with the context len 2048.
+This is the repo for the `Efficient Finetuning of Quantized LLMs` project, which aims to build and share instruction-following Chinese `baichuan-7b/LLaMA/Pythia/GLM` model tuning methods which can be trained on **a single Nvidia RTX-2080TI**, multi-round chatbot which can be trained on **a single Nvidia RTX-3090** with the context len 2048.
 
 We uses [bitsandbytes](https://github.com/TimDettmers/bitsandbytes) for quantization and is integrated with Huggingface's [PEFT](https://github.com/huggingface/peft) and [transformers](https://github.com/huggingface/transformers/) libraries.
 
-The repo contains:
-- code for finetune the model
-- code for generation based on trained model
-- code for run on CPU (fp16 or int4 is support, in purely C++)
+## Introductionn
 
+QLora 是一种有效的微调方法，可以在单个48GB GPU上微调65B参数模型，同时保持完整的16位微调任务性能。QLora 使用一种低精度的存储数据类型（NF4）来压缩预训练的语言模型。通过冻结 LM 参数，将相对少量的可训练参数以 Low-Rank Adapters 的形式添加到模型中，LoRA 层是在训练期间更新的唯一参数，使得模型体量大幅压缩同时推理效果几乎没有受到影响。从QLora的名字可以看出，QLora实际上是Quantize+LoRA技术。
 
-## Overview
+我们开源的 Guanaco 模型在 Vicuna 基准测试中优于所有以前的公开发布模型，达到了 ChatGPT 的性能水平 99.3%，而在单个 GPU 上只需要 24 小时的微调。
 
-We present QLoRA, an efficient finetuning approach that reduces memory usage enough to finetune a 65B parameter model on a single 48GB GPU while preserving full 16-bit finetuning task performance. QLoRA backpropagates gradients through a frozen, 4-bit quantized pretrained language model into Low Rank Adapters (LoRA). Our best model family, which we name Guanaco, outperforms all previous openly released models on the Vicuna benchmark, reaching 99.3% of the performance level of ChatGPT while only requiring 24 hours of finetuning on a single GPU. QLoRA introduces a number of innovations to save memory without sacrificing performance: (a) 4-bit NormalFloat (NF4), a new data type that is information theoretically optimal for normally distributed weights (b) Double Quantization to reduce the average memory footprint by quantizing the quantization constants, and (c) Paged Optimizers to manage memory spikes. We use QLoRA to finetune more than 1,000 models, providing a detailed analysis of instruction following and chatbot performance across 8 instruction datasets, multiple model types (LLaMA, T5), and model scales that would be infeasible to run with regular finetuning (e.g. 33B and 65B parameter models). Our results show that QLoRA finetuning on a small high-quality dataset leads to state-of-the-art results, even when using smaller models than the previous SoTA. We provide a detailed analysis of chatbot performance based on both human and GPT-4 evaluations showing that GPT-4 evaluations are a cheap and reasonable alternative to human evaluation. Furthermore, we find that current chatbot benchmarks are not trustworthy to accurately evaluate the performance levels of chatbots. We release all of our models and code, including CUDA kernels for 4-bit training.
+QLora 引入了多种创新，旨在在不牺牲性能的情况下减少内存使用：
+
+1. 4-bit NormalFloat：这是一种理论上针对正态分布数据的最优的量化数据类型，优于当前普遍使用的FP4与Int4。
+2. Double Quantization：相比于当前的模型量化方法，更加节省显存空间。每个参数平均节省0.37bit，对于65B的LLaMA模型，大约能节省3GB显存空间。
+3. Paged Optimizers：使用NVIDIA统一内存来避免在处理小批量的长序列时出现的梯度 Checkppints 内存峰值。
+4. 增加 Adapter：4-bit NormalFloat与Double Quantization，节省了很多空间，但带来了性能损失，作者通过插入更多adapter来弥补这种性能损失。在LoRA中，一般会选择在query和value的全连接层处插入adapter。而QLora则在所有全连接层处都插入了adapter，增加了训练参数，弥补精度带来的性能损失。
 
 ## News
+
 - [23/06/25] We release the supervised finetune baichuan-7B model ( [GaussianTech/baichuan-7b-sft](https://huggingface.co/GaussianTech/baichuan-7b-sft) ) and the corresponding training script.
 - [23/06/24] We release the supervised finetune llama-7B model ([GaussianTech/llama-7b-sft](https://huggingface.co/GaussianTech/llama-7b-sft) ) and the corresponding training script.
-- [23/06/15] Now we support training the baichuan-7B model in this repo. Try --model_name_or_path baichuan-inc/baichuan-7B to use the baichuan-7B model.
-- [23/06/03] Now we support quantized training and inference (aka QLoRA). Try --bits 4/8 argument to work with quantized model.
-- [23/05/31] Now we support training the LLAMA & BLOOM models in this repo. Try --model_name_or_path bigscience/bloom to use the BLOOMZ model and --model_name_or_path decapoda-research/llama-7b-hf to use the LLAMA model .
+- [23/06/15] Now we support training the baichuan-7B model in this repo. Try `--model_name_or_path baichuan-inc/baichuan-7B` to use the baichuan-7B model.
+- [23/06/03] Now we support quantized training and inference (aka QLoRA). Try `--bits 4/8` argument to work with quantized model.
+- [23/05/31] Now we support training the LLAMA & BLOOM models in this repo. Try `--model_name_or_path bigscience/bloom` to use the BLOOMZ model and `--model_name_or_path decapoda-research/llama-7b-hf` to use the LLAMA model .
 
 ## Supported Models
 
-- LLaMA (7B/13B/33B/65B)
-- BLOOM & BLOOMZ (560M/1.1B/1.7B/3B/7.1B/176B)
-- baichuan (7B)
-- OPT (125M/350M/1.3B/2.7B/6.7B/66B )
+- [LLaMA](https://github.com/facebookresearch/llama) (7B/13B/33B/65B)
+- [BLOOM](https://huggingface.co/bigscience/bloom) & [BLOOMZ](https://huggingface.co/bigscience/bloomz) (560M/1.1B/1.7B/3B/7.1B/176B)
+- [baichuan](https://huggingface.co/baichuan-inc/baichuan-7B) (7B)
+- [OPT](https://huggingface.co/docs/transformers/model_doc/opt) (125M/350M/1.3B/2.7B/6.7B/66B )
 
 ## Model Zoo
 
@@ -56,6 +60,15 @@ We provide a number of models in the [Hugging Face model hub](https://huggingfac
 
 ## Installation
 
+### Requirement
+
+- CUDA >= 11.0
+
+- Python 3.8+ and PyTorch 1.13.1+
+- 🤗Transformers, Datasets, Accelerate, PEFT and bitsandbytes
+- jieba, rouge_chinese and nltk (used at evaluation)
+- gradio (used in gradio_webserver.py)
+
 ### Install required packages
 
 To load models in 4bits with transformers and bitsandbytes, you have to install accelerate and transformers from source and make sure you have the latest version of the bitsandbytes library (0.39.0). You can achieve the above with the following commands:
@@ -68,7 +81,8 @@ pip install -q -U git+https://github.com/huggingface/accelerate.git
 
 ### Clone the code
 
-1. Clone this repository and navigate to the Efficient-Tuning-LLMs folder
+Clone this repository and navigate to the Efficient-Tuning-LLMs folder
+
 ```bash
 git clone https://github.com/jianzhnie/Efficient-Tuning-LLMs.git
 cd Efficient-Tuning-LLMs
@@ -76,7 +90,8 @@ cd Efficient-Tuning-LLMs
 
 ## Getting Started
 
-## QLora int8 Finetune
+### QLora int8 Finetune
+
 ```bash
 python qlora_int8_finetune.py \
     --model_name_or_path  decapoda-research/llama-7b-hf  \
@@ -99,64 +114,62 @@ python qlora_int8_finetune.py \
     --fp16 True
 ```
 
-## QLora int4 Finetune
+### QLora int4 Finetune
 
-The `qlora_int4_finetune.py` code is a starting point for finetuning and inference on various datasets.
+The `qlora_finetune.py` code is a starting point for finetuning and inference on various datasets.
 Basic command for finetuning a baseline model on the Alpaca dataset:
+
 ```bash
-python qlora_int4_finetune.py --model_name_or_path <path_or_name>
+python qlora_finetune.py --model_name_or_path <path_or_name>
 ```
 
 For models larger than 13B, we recommend adjusting the learning rate:
 ```bash
-python qlora_int4_finetune.py –learning_rate 0.0001 --model_name_or_path <path_or_name>
+python qlora_finetune.py –learning_rate 0.0001 --model_name_or_path <path_or_name>
 ```
 
 We can also tweak our hyperparameters:
 
 ```bash
-python qlora_int4_finetune.py \
-    --model_name_or_path huggyllama/llama-7b \
-    --output_dir ./output/guanaco-7b \
-    --logging_steps 10 \
-    --save_strategy steps \
-    --data_seed 42 \
-    --save_steps 500 \
-    --save_total_limit 40 \
+python qlora_finetune.py \
+    --model_name_or_path ~/checkpoints/baichuan7b \
+    --dataset_name oasst1 \
+    --data_dir ~/prompt_datasets \
+    --load_from_local \
+    --output_dir ./work_dir/oasst1-baichuan-7b \
+    --num_train_epochs 4 \
+    --per_device_train_batch_size 4 \
+    --per_device_eval_batch_size 4 \
+    --gradient_accumulation_steps 8 \
     --evaluation_strategy steps \
-    --eval_dataset_size 1024 \
-    --max_eval_samples 1000 \
-    --per_device_eval_batch_size 1 \
-    --max_new_tokens 32 \
-    --dataloader_num_workers 3 \
-    --group_by_length \
+    --eval_steps 50 \
+    --save_strategy steps \
+    --save_total_limit 5 \
+    --save_steps 100 \
     --logging_strategy steps \
-    --remove_unused_columns False \
-    --do_train \
-    --do_eval \
-    --do_mmlu_eval \
-    --lora_r 64 \
-    --lora_alpha 16 \
-    --lora_modules all \
-    --double_quant \
-    --quant_type nf4 \
-    --bf16 \
-    --bits 4 \
-    --warmup_ratio 0.03 \
-    --lr_scheduler_type constant \
-    --gradient_checkpointing \
-    --dataset oasst1 \
-    --source_max_len 16 \
-    --target_max_len 512 \
-    --per_device_train_batch_size 1 \
-    --gradient_accumulation_steps 16 \
-    --max_steps 1875 \
-    --eval_steps 187 \
+    --logging_steps 1 \
     --learning_rate 0.0002 \
+    --warmup_ratio 0.03 \
+    --weight_decay 0.0 \
+    --lr_scheduler_type constant \
     --adam_beta2 0.999 \
     --max_grad_norm 0.3 \
+    --max_new_tokens 32 \
+    --source_max_len 512 \
+    --target_max_len 512 \
+    --lora_r 64 \
+    --lora_alpha 16 \
     --lora_dropout 0.1 \
-    --weight_decay 0.0 \
+    --double_quant \
+    --quant_type nf4 \
+    --fp16 \
+    --bits 4 \
+    --gradient_checkpointing \
+    --trust_remote_code \
+    --do_train \
+    --do_eval \
+    --sample_generate \
+    --data_seed 42 \
     --seed 0
 ```
 
@@ -187,8 +200,6 @@ Quantization parameters are controlled from the `BitsandbytesConfig` ([see HF do
 
 ## Tutorials and Demonstrations
 
-
-
 We provide two Google Colab notebooks to demonstrate the use of 4bit models in inference and fine-tuning. These notebooks are intended to be a starting point for further research and development.
 - [Basic usage Google Colab notebook](https://colab.research.google.com/drive/1ge2F1QSK8Q7h0hn3YKuBCOAS0bK8E0wf?usp=sharing) - This notebook shows how to use 4bit models in inference with all their variants, and how to run GPT-neo-X (a 20B parameter model) on a free Google Colab instance 🤯
 - [Fine tuning Google Colab notebook](https://colab.research.google.com/drive/1VoYNfYDKcKRQRor98Zbf2-9VQTtGJ24k?usp=sharing) - This notebook shows how to fine-tune a 4bit model on a downstream task using the Hugging Face ecosystem. We show that it is possible to fine tune GPT-neo-X 20B on a Google Colab instance!
@@ -202,12 +213,12 @@ You can specify the path to your dataset using the --dataset argument. If the --
 
 - Training with an alpaca format dataset:
 ```python
-python qlora_int4_finetune.py --dataset="path/to/your/dataset"
+python qlora_finetune.py --dataset="path/to/your/dataset"
 ```
 - Training with a self-instruct format dataset:
 
 ```python
-python qlora_int4_finetune.py --dataset="path/to/your/dataset" --dataset_format="self-instruct"
+python qlora_finetune.py --dataset="path/to/your/dataset" --dataset_format="self-instruct"
 ```
 
 ## Multi GPU
