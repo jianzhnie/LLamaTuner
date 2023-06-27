@@ -5,9 +5,9 @@ from typing import Any, Dict, List, Tuple
 
 import bitsandbytes as bnb
 import torch
-import transformers
 from transformers import PreTrainedModel, PreTrainedTokenizer
-from transformers.trainer_utils import PREFIX_CHECKPOINT_DIR
+from transformers.generation.logits_process import LogitsProcessor
+from transformers.generation.utils import LogitsProcessorList
 
 from chatllms.data.data_utils import (DEFAULT_BOS_TOKEN, DEFAULT_EOS_TOKEN,
                                       DEFAULT_PAD_TOKEN, DEFAULT_UNK_TOKEN)
@@ -247,93 +247,17 @@ def get_last_checkpoint(checkpoint_dir: str) -> Tuple[str, bool]:
     return None, False
 
 
-class SavePeftModelCallback(transformers.TrainerCallback):
-    """
-    A TrainerCallback that saves the PEFT model checkpoint during training.
-    """
-    def save_model(self, args: Any, state: transformers.TrainingArguments,
-                   kwargs: Dict[str, Any]) -> None:
-        """
-        Saves the PEFT model checkpoint.
+# Avoid runtime error in model.generate(do_sample=True).
+class InvalidScoreLogitsProcessor(LogitsProcessor):
+    def __call__(self, input_ids: torch.LongTensor,
+                 scores: torch.FloatTensor) -> torch.FloatTensor:
+        if torch.isnan(scores).any() or torch.isinf(scores).any():
+            scores.zero_()
+            scores[..., 0] = 1.0
+        return scores
 
-        Args:
-            args (Any): The command line arguments passed to the script.
-            state (transformers.TrainingArguments): The current state of training.
-            kwargs (Dict[str, Any]): A dictionary of additional keyword arguments.
 
-        Raises:
-            TypeError: If `state` is not an instance of `transformers.TrainingArguments`.
-        """
-        print('Saving PEFT checkpoint...')
-
-        if state.best_model_checkpoint is not None:
-            # If best model checkpoint exists, use its directory as the checkpoint folder
-            checkpoint_folder = os.path.join(state.best_model_checkpoint,
-                                             'adapter_model')
-        else:
-            # Otherwise, create a new checkpoint folder using the output directory and current global step
-            checkpoint_folder = os.path.join(
-                args.output_dir,
-                f'{PREFIX_CHECKPOINT_DIR}-{state.global_step}')
-
-        # Create path for the PEFT model
-        peft_model_path = os.path.join(checkpoint_folder, 'adapter_model')
-        kwargs['model'].save_pretrained(peft_model_path)
-
-        # Create path for the PyTorch model binary file and remove it if it already exists
-        pytorch_model_path = os.path.join(checkpoint_folder,
-                                          'pytorch_model.bin')
-        if os.path.exists(pytorch_model_path):
-            os.remove(pytorch_model_path)
-
-    def on_save(
-        self, args: Any, state: transformers.TrainingArguments,
-        control: transformers.trainer_callback.TrainerControl,
-        **kwargs: Dict[str,
-                       Any]) -> transformers.trainer_callback.TrainerControl:
-        """
-        Callback method that calls save_model() and returns `control` argument.
-
-        Args:
-            args (Any): The command line arguments passed to the script.
-            state (transformers.TrainingArguments): The current state of training.
-            control (transformers.trainer_callback.TrainerControl): \
-                The current state of the TrainerCallback's control flow.
-            kwargs (Dict[str, Any]): A dictionary of additional keyword arguments.
-
-        Returns:
-            transformers.trainer_callback.TrainerControl: The current state of the TrainerCallback's control flow.
-
-        Raises:
-            TypeError: If `state` is not an instance of `transformers.TrainingArguments`.
-        """
-        self.save_model(args, state, kwargs)
-        return control
-
-    def on_train_end(self, args: Any, state: transformers.TrainingArguments,
-                     control: transformers.trainer_callback.TrainerControl,
-                     **kwargs: Dict[str, Any]) -> None:
-        """
-        Callback method that saves the model checkpoint and creates a 'completed' file in the output directory.
-
-        Args:
-            args (Any): The command line arguments passed to the script.
-            state (transformers.TrainingArguments): The current state of training.
-            control (transformers.trainer_callback.TrainerControl): \
-                The current state of the TrainerCallback's control flow.
-            kwargs (Dict[str, Any]): A dictionary of additional keyword arguments.
-
-        Raises:
-            TypeError: If `state` is not an instance of `transformers.TrainingArguments`.
-        """
-
-        # Define a helper function to create a 'completed' file in the output directory
-        def touch(fname, times=None):
-            with open(fname, 'a'):
-                os.utime(fname, times)
-
-        # Create the 'completed' file in the output directory
-        touch(os.path.join(args.output_dir, 'completed'))
-
-        # Save the model checkpoint
-        self.save_model(args, state, kwargs)
+def get_logits_processor() -> LogitsProcessorList:
+    logits_processor = LogitsProcessorList()
+    logits_processor.append(InvalidScoreLogitsProcessor())
+    return logits_processor
