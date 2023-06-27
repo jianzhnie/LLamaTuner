@@ -28,6 +28,20 @@ The repo contains:
 
 We present QLoRA, an efficient finetuning approach that reduces memory usage enough to finetune a 65B parameter model on a single 48GB GPU while preserving full 16-bit finetuning task performance. QLoRA backpropagates gradients through a frozen, 4-bit quantized pretrained language model into Low Rank Adapters (LoRA). Our best model family, which we name Guanaco, outperforms all previous openly released models on the Vicuna benchmark, reaching 99.3% of the performance level of ChatGPT while only requiring 24 hours of finetuning on a single GPU. QLoRA introduces a number of innovations to save memory without sacrificing performance: (a) 4-bit NormalFloat (NF4), a new data type that is information theoretically optimal for normally distributed weights (b) Double Quantization to reduce the average memory footprint by quantizing the quantization constants, and (c) Paged Optimizers to manage memory spikes. We use QLoRA to finetune more than 1,000 models, providing a detailed analysis of instruction following and chatbot performance across 8 instruction datasets, multiple model types (LLaMA, T5), and model scales that would be infeasible to run with regular finetuning (e.g. 33B and 65B parameter models). Our results show that QLoRA finetuning on a small high-quality dataset leads to state-of-the-art results, even when using smaller models than the previous SoTA. We provide a detailed analysis of chatbot performance based on both human and GPT-4 evaluations showing that GPT-4 evaluations are a cheap and reasonable alternative to human evaluation. Furthermore, we find that current chatbot benchmarks are not trustworthy to accurately evaluate the performance levels of chatbots. We release all of our models and code, including CUDA kernels for 4-bit training.
 
+## News
+[23/06/25] We release the supervised finetune baichuan-7B model ( [GaussianTech/baichuan-7b-sft](https://huggingface.co/GaussianTech/baichuan-7b-sft) ) and the corresponding training script.
+[23/06/24] We release the supervised finetune llama-7B model ([GaussianTech/llama-7b-sft](https://huggingface.co/GaussianTech/llama-7b-sft) ) and the corresponding training script.
+[23/06/15] Now we support training the baichuan-7B model in this repo. Try --model_name_or_path baichuan-inc/baichuan-7B to use the baichuan-7B model.
+[23/06/03] Now we support quantized training and inference (aka QLoRA). Try --bits 4/8 argument to work with quantized model.
+[23/05/31] Now we support training the LLAMA & BLOOM models in this repo. Try --model_name_or_path bigscience/bloom to use the BLOOMZ model and --model_name_or_path decapoda-research/llama-7b-hf to use the LLAMA model .
+
+## Supported Models
+
+- LLaMA (7B/13B/33B/65B)
+- BLOOM & BLOOMZ (560M/1.1B/1.7B/3B/7.1B/176B)
+- baichuan (7B)
+- OPT (125M/350M/1.3B/2.7B/6.7B/66B )
+
 ## Model Zoo
 
 We provide a number of models in the [Hugging Face model hub](https://huggingface.co/decapoda-research). These models are trained with QLoRA and can be used for inference and finetuning. We provide the following models:
