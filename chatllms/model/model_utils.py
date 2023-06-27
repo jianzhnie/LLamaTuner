@@ -1,10 +1,12 @@
 import os
+from os.path import exists, join
 from typing import Dict, Optional, Tuple
 
 import torch
 from peft import (LoraConfig, PeftModel, get_peft_model,
                   prepare_model_for_kbit_training)
 from peft.tuners.lora import LoraLayer
+from peft.utils import CONFIG_NAME, WEIGHTS_NAME
 from transformers import (AutoModelForCausalLM, AutoTokenizer,
                           BitsAndBytesConfig)
 from transformers.modeling_utils import PreTrainedModel
@@ -18,18 +20,29 @@ check_min_version('4.29.1')
 
 
 def load_model_tokenizer(
-        args: Dict, checkpoint_dir: Optional[str],
-        logger: None) -> Tuple[PreTrainedModel, PreTrainedTokenizer]:
+    args: Dict = None,
+    checkpoint_dir: Optional[str] = None,
+    output_embedding_layer_name: Optional[str] = 'lm_head',
+    is_trainable: Optional[bool] = False,
+    logger=None,
+) -> Tuple[PreTrainedModel, PreTrainedTokenizer]:
     """
-    Returns a language model for text generation that can be trained with mixed precision.
+    Returns a language model and tokenizer for text generation that can be trained with mixed precision.
+    Support both training and inference.
 
-    Args:
-        args (Dict): A dictionary containing various hyperparameters.
-        checkpoint_dir (str, optional): A directory containing pre-trained adapters for the model.
-
-    Returns:
-        torch.nn.Module: An instance of the language model.
+    :param args: A dictionary containing various hyperparameters.
+    :param checkpoint_dir: A directory containing pre-trained adapters for the model.
+    :param is_trainable: A bool indicating whether the model can be trained or not.
+    :param logger: A logger object to log messages during execution.
+    :return: A tuple containing an instance of the language model and an instance of the tokenizer.
     """
+
+    # Log a warning message if the checkpoint is not found at evaluation time.
+    if not is_trainable and checkpoint_dir is None:
+        logger.warning(
+            'Checkpoint is not found at evaluation, load the original model.')
+
+    # Determine number of GPUs and max memory per device.
     n_gpus = torch.cuda.device_count()
     max_memory = f'{args.max_memory_MB}MB'
     max_memory = {i: max_memory for i in range(n_gpus)}
@@ -41,33 +54,34 @@ def load_model_tokenizer(
         device_map = {'': local_rank}
         max_memory = {'': max_memory[local_rank]}
 
+    # Set configuration kwargs for tokenizer.
     config_kwargs = {
         'cache_dir': args.cache_dir,
-        'revision': args.model_revision,
         'use_auth_token': args.use_auth_token,
         'trust_remote_code': args.trust_remote_code,
     }
 
-    # Tokenizer
+    # Instantiate tokenizer.
     tokenizer = AutoTokenizer.from_pretrained(
         args.model_name_or_path,
         padding_side='right',
         use_fast=False,
-        # Fast tokenizer giving issues.
         tokenizer_type='llama' if 'llama' in args.model_name_or_path else None,
-        # Needed for HF name change
-        **config_kwargs)
+        **config_kwargs,
+    )
 
-    # Check if we are doing full finetuning.
+    # If full finetuning is enabled, check that bits are either 16 or 32.
     if args.full_finetune: assert args.bits in [16, 32]
 
     logger.info(f'Loading base model {args.model_name_or_path}...')
+
+    # Set compute and torch dtypes based on hyperparameters.
     compute_dtype = (torch.float16 if args.fp16 else
                      (torch.bfloat16 if args.bf16 else torch.float32))
     torch_dtype = (torch.fp16 if args.fp16 else
                    (torch.bfloat16 if args.bf16 else torch.float32))
 
-    # Quantization configurations (using bitsandbytes library).
+    # Set quantization configurations using bitsandbytes library.
     if args.bits == 8:
         require_version('bitsandbytes>=0.37.0',
                         'To fix: pip install bitsandbytes>=0.37.0')
@@ -97,10 +111,12 @@ def load_model_tokenizer(
         )
 
     # Load and prepare pretrained models (without valuehead).
-    model = AutoModelForCausalLM.from_pretrained(args.model_name_or_path,
-                                                 device_map=device_map,
-                                                 low_cpu_mem_usage=True,
-                                                 **config_kwargs)
+    model = AutoModelForCausalLM.from_pretrained(
+        args.model_name_or_path,
+        device_map=device_map,
+        low_cpu_mem_usage=True,
+        **config_kwargs,
+    )
 
     # Print a message if the GPU supports bfloat16.
     if compute_dtype == torch.float16 and args.bits == 4:
@@ -126,18 +142,41 @@ def load_model_tokenizer(
     # Enable gradient checkpointing if specified.
     if args.gradient_checkpointing:
         model.gradient_checkpointing_enable()
+        model.config.use_cache = False  # turn off when gradient checkpointing is enabled
+
+    if not args.full_finetune and hasattr(model, output_embedding_layer_name):
+        output_embedding_layer: torch.nn.Linear = getattr(
+            model, output_embedding_layer_name)
+        input_dtype = output_embedding_layer.weight.dtype
+
+        class CastOutputToFloat(torch.nn.Sequential):
+            def forward(self, x: torch.Tensor) -> torch.Tensor:
+                return super().forward(x.to(input_dtype)).to(torch.float32)
+
+        setattr(model, output_embedding_layer_name,
+                CastOutputToFloat(output_embedding_layer))
 
     if not args.full_finetune:
         if checkpoint_dir is not None:
             # Load pre-trained adapters from checkpoint directory.
-            logger.info('Loading adapters from checkpoint.')
+            logger.info('Loading adapters from checkpoint... ')
+            adapter_model_path = join(checkpoint_dir, 'adapter_model')
+            assert exists(os.apth.join(
+                adapter_model_path, CONFIG_NAME)) and exists(
+                    join(adapter_model_path, WEIGHTS_NAME)), ValueError(
+                        'The given checkpoint may be not a LoRA checkpoint')
+
             model = PeftModel.from_pretrained(model,
-                                              os.path.join(
-                                                  checkpoint_dir,
-                                                  'adapter_model'),
-                                              is_trainable=True)
+                                              adapter_model_path,
+                                              is_trainable=is_trainable)
+            model = model.merge_and_unload()
+            logger.info(
+                'Loaded fine-tuned model from checkpoint(s): {}'.format(
+                    adapter_model_path))
+
         else:
             # Add LoRA modules to the model.
+            logger.info('No checkpoint_dir founded, will init adapters...')
             logger.info('Adding LoRA modules...')
             modules = find_all_linear_names(args, model)
             config = LoraConfig(
@@ -161,4 +200,8 @@ def load_model_tokenizer(
             if hasattr(module, 'weight'):
                 if args.bf16 and module.weight.dtype == torch.float32:
                     module = module.to(torch.bfloat16)
+
+    if not is_trainable:
+        model.requires_grad_(False)
+
     return model, tokenizer
