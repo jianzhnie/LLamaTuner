@@ -24,19 +24,21 @@ def load_model_tokenizer(
     args: argparse.Namespace = None,
     checkpoint_dir: Optional[str] = None,
     output_embedding_layer_name: Optional[str] = 'lm_head',
-    is_trainable: Optional[bool] = False,
+    is_trainable: Optional[bool] = True,
     logger=None,
 ) -> Tuple[PreTrainedModel, PreTrainedTokenizer]:
     """
     Returns a language model and tokenizer for text generation that can be trained with mixed precision.
     Support both training and inference.
 
-    :param args: A dictionary containing various hyperparameters.
-    :param checkpoint_dir: A directory containing pre-trained adapters for the model.
-    :param output_embedding_layer_name: The name of the output embedding layer in the model.
-    :param is_trainable: A bool indicating whether the model can be trained or not.
-    :param logger: A logger object to log messages during execution.
-    :return: A tuple containing an instance of the language model and an instance of the tokenizer.
+    Args:
+        args: A dictionary containing various hyperparameters.
+        checkpoint_dir: A directory containing pre-trained adapters for the model.
+        output_embedding_layer_name: The name of the output embedding layer in the model.
+        is_trainable: A bool indicating whether the model can be trained or not.
+        logger: A logger object to log messages during execution.
+    Returns:
+        A tuple containing an instance of the language model and an instance of the tokenizer.
     """
 
     # Log a warning message if the checkpoint is not found at evaluation time.
@@ -63,36 +65,12 @@ def load_model_tokenizer(
         'trust_remote_code': args.trust_remote_code,
     }
 
-    # Instantiate tokenizer.
-    tokenizer = AutoTokenizer.from_pretrained(
-        args.model_name_or_path,
-        padding_side='right',
-        use_fast=False,
-        tokenizer_type='llama' if 'llama' in args.model_name_or_path else None,
-        **config_kwargs,
-    )
-
     # If full finetuning is enabled, check that bits are either 16 or 32.
     if args.full_finetune: assert args.bits in [16, 32]
-
-    logger.info(f'Loading base model {args.model_name_or_path}...')
-
-    # Set compute and torch dtypes based on hyperparameters.
-    compute_dtype = (torch.float16 if args.fp16 else
-                     (torch.bfloat16 if args.bf16 else torch.float32))
-    torch_dtype = (torch.float16 if args.fp16 else
-                   (torch.bfloat16 if args.bf16 else torch.float32))
-
     # Set quantization configurations using bitsandbytes library.
     if args.bits == 8:
         require_version('bitsandbytes>=0.37.0',
                         'To fix: pip install bitsandbytes>=0.37.0')
-        config_kwargs['load_in_8bit'] = True
-        config_kwargs['quantization_config'] = BitsAndBytesConfig(
-            load_in_8bit=True,
-            llm_int8_threshold=6.0,
-        )
-
     elif args.bits == 4:
         require_version('bitsandbytes>=0.39.0',
                         'To fix: pip install bitsandbytes>=0.39.0')
@@ -104,25 +82,33 @@ def load_model_tokenizer(
             'peft>=0.4.0.dev0',
             'To fix: pip install git+https://github.com/huggingface/peft.git')
 
-        config_kwargs['load_in_4bit'] = True
-        config_kwargs['quantization_config'] = BitsAndBytesConfig(
-            load_in_4bit=args.bits is True,
-            bnb_4bit_compute_dtype=compute_dtype,
-            bnb_4bit_use_double_quant=args.double_quant,
-            bnb_4bit_quant_type=args.quant_type,
-        )
+    # Set compute and torch dtypes based on hyperparameters.
+    compute_dtype = (torch.float16 if args.fp16 else
+                     (torch.bfloat16 if args.bf16 else torch.float32))
+    torch_dtype = (torch.float32 if args.fp16 else
+                   (torch.bfloat16 if args.bf16 else torch.float32))
 
+    logger.info(f'Loading base model {args.model_name_or_path}...')
     # Load and prepare pretrained models (without valuehead).
     model = AutoModelForCausalLM.from_pretrained(
         args.model_name_or_path,
-        cache_dir=args.cache_dir,
         device_map=device_map,
         max_memory=max_memory,
         low_cpu_mem_usage=True,
+        load_in_4bit=args.bits == 4,
+        load_in_8bit=args.bits == 8,
+        quantization_config=BitsAndBytesConfig(
+            load_in_4bit=args.bits == 4,
+            load_in_8bit=args.bits == 8,
+            llm_int8_threshold=6.0,
+            llm_int8_has_fp16_weight=False,
+            bnb_4bit_compute_dtype=compute_dtype,
+            bnb_4bit_use_double_quant=args.double_quant,
+            bnb_4bit_quant_type=args.quant_type  # {'fp4', 'nf4'}
+        ),
         torch_dtype=torch_dtype,
         **config_kwargs,
     )
-
     # Print a message if the GPU supports bfloat16.
     if compute_dtype == torch.float16 and args.bits == 4:
         major, minor = torch.cuda.get_device_capability()
@@ -207,5 +193,15 @@ def load_model_tokenizer(
 
     if not is_trainable:
         model.requires_grad_(False)
+
+    # Instantiate tokenizer.
+    logger.info('Loading tokenizer...')
+    tokenizer = AutoTokenizer.from_pretrained(
+        args.model_name_or_path,
+        padding_side='right',
+        use_fast=False,
+        tokenizer_type='llama' if 'llama' in args.model_name_or_path else None,
+        **config_kwargs,
+    )
 
     return model, tokenizer
