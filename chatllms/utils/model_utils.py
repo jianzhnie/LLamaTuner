@@ -6,6 +6,8 @@ from typing import Any, Dict, List, Tuple
 import bitsandbytes as bnb
 import torch
 from transformers import PreTrainedModel, PreTrainedTokenizer
+from transformers.generation.logits_process import LogitsProcessor
+from transformers.generation.utils import LogitsProcessorList
 
 from chatllms.data.data_utils import (DEFAULT_BOS_TOKEN, DEFAULT_EOS_TOKEN,
                                       DEFAULT_PAD_TOKEN, DEFAULT_UNK_TOKEN)
@@ -243,3 +245,19 @@ def get_last_checkpoint(checkpoint_dir: str) -> Tuple[str, bool]:
 
     # The directory does not exist, meaning this is the first time the training is being run
     return None, False
+
+
+# Avoid runtime error in model.generate(do_sample=True).
+class InvalidScoreLogitsProcessor(LogitsProcessor):
+    def __call__(self, input_ids: torch.LongTensor,
+                 scores: torch.FloatTensor) -> torch.FloatTensor:
+        if torch.isnan(scores).any() or torch.isinf(scores).any():
+            scores.zero_()
+            scores[..., 0] = 1.0
+        return scores
+
+
+def get_logits_processor() -> LogitsProcessorList:
+    logits_processor = LogitsProcessorList()
+    logits_processor.append(InvalidScoreLogitsProcessor())
+    return logits_processor

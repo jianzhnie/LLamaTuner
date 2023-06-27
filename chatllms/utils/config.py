@@ -5,6 +5,45 @@ import transformers
 
 
 @dataclass
+class ModelInferenceArguments:
+    cache_dir: Optional[str] = field(default=None)
+    model_name_or_path: Optional[str] = field(
+        default='facebook/opt-125m',
+        metadata={'help': 'Path to pre-trained model'})
+    checkpoint_dir: Optional[str] = field(
+        default=None, metadata={'help': 'Path to pre-trained lora model'})
+    double_quant: bool = field(
+        default=True,
+        metadata={
+            'help':
+            'Compress the quantization statistics through double quantization.'
+        })
+    quant_type: str = field(
+        default='nf4',
+        metadata={
+            'help':
+            'Quantization data type to use. Should be one of `fp4` or `nf4`.'
+        })
+    bits: int = field(default=4, metadata={'help': 'How many bits to use.'})
+    fp16: bool = field(default=False, metadata={'help': 'Use fp16.'})
+    bf16: bool = field(default=False, metadata={'help': 'Use bf16.'})
+    max_memory_MB: int = field(default=8000,
+                               metadata={'help': 'Free memory per gpu.'})
+    trust_remote_code: Optional[bool] = field(
+        default=False,
+        metadata={
+            'help':
+            'Enable unpickling of arbitrary code in AutoModelForCausalLM#from_pretrained.'
+        })
+    use_auth_token: Optional[bool] = field(
+        default=False,
+        metadata={
+            'help':
+            'Enables using Huggingface auth token from Git Credentials.'
+        })
+
+
+@dataclass
 class ModelArguments:
     model_name_or_path: Optional[str] = field(default='facebook/opt-125m')
     trust_remote_code: Optional[bool] = field(

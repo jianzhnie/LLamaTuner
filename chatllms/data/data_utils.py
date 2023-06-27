@@ -352,7 +352,7 @@ def make_data_module(args):
     train_datasets = []
     eval_datasets = []
     predict_datasets = []
-    dataset_name_list = args.dataset_name.split('_')
+    dataset_name_list = args.dataset_name.split(',')
     print(f'Loading datasets: {dataset_name_list}')
     for dataset_name in dataset_name_list:
         if args.load_from_local:
