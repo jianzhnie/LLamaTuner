@@ -3,34 +3,38 @@ from typing import List, Optional
 
 
 @dataclass
-class Template:
+class PromptTemplate(object):
+    """
+    A template for formatting a conversation prompt.
+    """
+
     name: str
 
     def __post_init__(self):
-
+        """
+        Initializes the instance of the class.
+        """
         if self.name == 'vanilla':
-            r"""
+            """
             Supports language model inference without histories.
             """
             self.register_template(prefix='',
                                    prompt='{query}',
                                    sep='',
                                    use_history=False)
-
         elif self.name == 'default':
-            r"""
+            """
             Default template.
             """
             self.register_template(
                 prefix=
-                'A chat between a curious user and an artificial intelligence assistant.'
-                "The assistant gives helpful, detailed, and polite answers to the user's questions.",
+                'A chat between a curious user and an artificial intelligence assistant. '
+                'The assistant gives helpful, detailed, and polite answers to the user\'s questions.',
                 prompt='Human: {query}\nAssistant: ',
                 sep='\n',
                 use_history=True)
-
         elif self.name == 'alpaca':
-            r"""
+            """
             Supports: https://huggingface.co/tatsu-lab/alpaca-7b-wdiff
                       https://github.com/ymcui/Chinese-LLaMA-Alpaca
             """
@@ -40,77 +44,78 @@ class Template:
                 prompt='### Instruction:\n{query}\n\n### Response:\n',
                 sep='\n\n',
                 use_history=True)
-
         elif self.name == 'vicuna':
-            r"""
+            """
             Supports: https://huggingface.co/lmsys/vicuna-7b-delta-v1.1
                       https://huggingface.co/lmsys/vicuna-13b-delta-v1.1
             """
             self.register_template(
                 prefix=
                 'A chat between a curious user and an artificial intelligence assistant. '
-                "The assistant gives helpful, detailed, and polite answers to the user's questions.",
+                'The assistant gives helpful, detailed, and polite answers to the user\'s questions.',
                 prompt='USER: {query} ASSISTANT: ',
                 sep='</s>',
                 use_history=True)
-
         elif self.name == 'belle':
-            r"""
+            """
             Supports: https://huggingface.co/BelleGroup/BELLE-LLaMA-EXT-13B
             """
             self.register_template(prefix='',
                                    prompt='Human: {query}\n\nBelle: ',
                                    sep='\n\n',
                                    use_history=True)
-
         elif self.name == 'linly':
-            r"""
+            """
             Supports: https://github.com/CVI-SZU/Linly
             """
             self.register_template(prefix='',
                                    prompt='User: {query}\nBot: ',
                                    sep='\n',
                                    use_history=True)
-
         elif self.name == 'billa':
-            r"""
+            """
             Supports: https://github.com/Neutralzz/BiLLa
             """
             self.register_template(prefix='',
                                    prompt='Human: {query}\nAssistant: ',
                                    sep='\n',
                                    use_history=True)
-
         elif self.name == 'ziya':
-            r"""
+            """
             Supports: https://huggingface.co/IDEA-CCNL/Ziya-LLaMA-13B-v1
             """
             self.register_template(prefix='',
                                    prompt='<human>:{query}\n<bot>:',
                                    sep='\n',
                                    use_history=True)
-
         elif self.name == 'aquila':
-            r"""
+            """
             Supports: https://huggingface.co/qhduan/aquilachat-7b
             """
             self.register_template(
                 prefix=
                 'A chat between a curious human and an artificial intelligence assistant. '
-                "The assistant gives helpful, detailed, and polite answers to the human's questions.",
+                'The assistant gives helpful, detailed, and polite answers to the human\'s questions.',
                 prompt='Human: {query}###Assistant: ',
                 sep='###',
                 use_history=True)
-
         else:
-            raise ValueError('Template {} does not exist.'.format(self.name))
+            raise ValueError(f'Template {self.name} does not exist.')
 
     def get_prompt(self,
                    query: str,
                    history: Optional[list] = None,
                    prefix: Optional[str] = '') -> str:
-        r"""
+        """
         Returns a string containing prompt without response.
+
+        Args:
+            query (str): The input query text.
+            history (Optional[list], optional): The conversation history. Defaults to None.
+            prefix (Optional[str], optional): The prefix text for the prompt. Defaults to ''.
+
+        Returns:
+            str: A string containing prompt without response.
         """
         return ''.join(self.format_example(query, history, prefix))
 
@@ -119,8 +124,17 @@ class Template:
                    resp: str,
                    history: Optional[list] = None,
                    prefix: Optional[str] = '') -> List[str]:
-        r"""
+        """
         Returns a list containing 2 * n elements where the 2k-th is a query and the (2k+1)-th is a response.
+
+        Args:
+            query (str): The input query text.
+            resp (str): The response text.
+            history (Optional[list], optional): The conversation history. Defaults to None.
+            prefix (Optional[str], optional): The prefix text for the prompt. Defaults to ''.
+
+        Returns:
+            List[str]: A list containing 2 * n elements where the 2k-th is a query and the (2k+1)-th is a response.
         """
         return self.format_example(query, history, prefix) + [resp]
 
@@ -129,6 +143,15 @@ class Template:
                           prompt: str,
                           sep: str,
                           use_history: Optional[bool] = True) -> None:
+        """
+        Registers a new conversation template.
+
+        Args:
+            prefix (str): The prefix text for the prompt.
+            prompt (str): The prompt text.
+            sep (str): The separator between different prompts.
+            use_history (Optional[bool], optional): Whether to include conversation history. Defaults to True.
+        """
         self.prefix = prefix
         self.prompt = prompt
         self.sep = sep
@@ -138,6 +161,17 @@ class Template:
                        query: str,
                        history: Optional[list] = None,
                        prefix: Optional[str] = '') -> List[str]:
+        """
+        Formats the conversation example.
+
+        Args:
+            query (str): The input query text.
+            history (Optional[list], optional): The conversation history. Defaults to None.
+            prefix (Optional[str], optional): The prefix text for the prompt. Defaults to ''.
+
+        Returns:
+            List[str]: A list containing formatted conversation examples.
+        """
         prefix = prefix if prefix else self.prefix  # use prefix if provided
         prefix = prefix + self.sep if prefix else ''  # add separator for non-empty prefix
         history = history if (history and self.use_history) else []

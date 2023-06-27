@@ -159,7 +159,6 @@ def load_model_tokenizer(
             model = PeftModel.from_pretrained(model,
                                               adapter_model_path,
                                               is_trainable=is_trainable)
-            model = model.merge_and_unload()
             logger.info(
                 'Loaded fine-tuned model from checkpoint(s): {}'.format(
                     adapter_model_path))

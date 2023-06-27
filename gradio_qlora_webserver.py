@@ -1,13 +1,14 @@
 import argparse
-from dataclasses import dataclass, field
-from typing import Optional, Union
+import logging
+from typing import Union
 
 import gradio as gr
 import torch
 import transformers
-from transformers import AutoTokenizer, GenerationConfig
+from transformers import GenerationConfig
 
-from chatllms.model.get_server_model import get_server_model
+from chatllms.model.load_pretrain_model import load_model_tokenizer
+from chatllms.utils.config import ModelInferenceArguments
 from chatllms.utils.stream_server import Iteratorize, Stream
 
 ALPACA_PROMPT_DICT = {
@@ -26,6 +27,8 @@ PROMPT_DICT = {
     'prompt_input': ('{instruction}\n\n### Response:'),
     'prompt_no_input': ('{instruction}\n\n### Response:'),
 }
+
+logger = logging.getLogger(__name__)
 
 
 class Prompter:
@@ -85,64 +88,17 @@ class Prompter:
         return output.split(self.reponse_split)[1].strip()
 
 
-@dataclass
-class ModelServerArguments:
-    cache_dir: Optional[str] = field(default=None)
-    model_name_or_path: Optional[str] = field(
-        default='facebook/opt-125m',
-        metadata={'help': 'Path to pre-trained model'})
-    lora_model_name_or_path: Optional[str] = field(
-        default=None, metadata={'help': 'Path to pre-trained lora model'})
-    double_quant: bool = field(
-        default=True,
-        metadata={
-            'help':
-            'Compress the quantization statistics through double quantization.'
-        })
-    quant_type: str = field(
-        default='nf4',
-        metadata={
-            'help':
-            'Quantization data type to use. Should be one of `fp4` or `nf4`.'
-        })
-    bits: int = field(default=4, metadata={'help': 'How many bits to use.'})
-    fp16: bool = field(default=False, metadata={'help': 'Use fp16.'})
-    bf16: bool = field(default=False, metadata={'help': 'Use bf16.'})
-    max_memory_MB: int = field(default=80000,
-                               metadata={'help': 'Free memory per gpu.'})
-    trust_remote_code: Optional[bool] = field(
-        default=False,
-        metadata={
-            'help':
-            'Enable unpickling of arbitrary code in AutoModelForCausalLM#from_pretrained.'
-        })
-    use_auth_token: Optional[bool] = field(
-        default=False,
-        metadata={
-            'help':
-            'Enables using Huggingface auth token from Git Credentials.'
-        })
-
-
 def main():
-    parser = transformers.HfArgumentParser(ModelServerArguments)
+    parser = transformers.HfArgumentParser(ModelInferenceArguments)
     model_server_args, _ = parser.parse_args_into_dataclasses(
         return_remaining_strings=True)
     args = argparse.Namespace(**vars(model_server_args))
     args.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    model = get_server_model(args)
-    # Tokenizer
-    tokenizer = AutoTokenizer.from_pretrained(
-        args.model_name_or_path,
-        cache_dir=args.cache_dir,
-        padding_side='right',
-        use_fast=False,  # Fast tokenizer giving issues.
-        tokenizer_type='llama' if 'llama' in args.model_name_or_path else
-        None,  # Needed for HF name change
-        use_auth_token=args.use_auth_token,
-        trust_remote_code=args.trust_remote_code,
-    )
+    model, tokenizer = load_model_tokenizer(args,
+                                            checkpoint_dir=args.checkpoint_dir,
+                                            is_trainable=False,
+                                            logger=logger)
     prompter = Prompter()
 
     def evaluate(

@@ -1,5 +1,5 @@
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import asdict, dataclass, field
+from typing import Any, Dict, Optional
 
 import transformers
 
@@ -7,11 +7,29 @@ import transformers
 @dataclass
 class ModelInferenceArguments:
     cache_dir: Optional[str] = field(default=None)
+    full_finetune: bool = field(
+        default=False,
+        metadata={'help': 'Finetune the entire model without adapters.'})
+    gradient_checkpointing: bool = field(
+        default=True,
+        metadata={'help': 'Use gradient checkpointing. You want to use this.'})
     model_name_or_path: Optional[str] = field(
         default='facebook/opt-125m',
         metadata={'help': 'Path to pre-trained model'})
     checkpoint_dir: Optional[str] = field(
         default=None, metadata={'help': 'Path to pre-trained lora model'})
+    prompt_template: Optional[str] = field(
+        default='default',
+        metadata={
+            'help':
+            'Which template to use for constructing prompts in training and inference.'
+        })
+    source_prefix: Optional[str] = field(
+        default=None,
+        metadata={
+            'help':
+            'A prefix to add before every source text. Use `|` to separate multiple prefixes.'
+        })
     double_quant: bool = field(
         default=True,
         metadata={
@@ -201,6 +219,12 @@ class QuantArgments:
         })
     bits: int = field(default=4, metadata={'help': 'How many bits to use.'})
 
+    def __post_init__(self):
+        if self.bits is not None:
+            assert self.bits in [
+                4, 8
+            ], 'We only accept 4-bit or 8-bit quantization.'
+
 
 @dataclass
 class GenerationArguments:
@@ -217,8 +241,14 @@ class GenerationArguments:
         default=None,
         metadata={'help': 'Minimum number of new tokens to generate.'})
 
+    max_length: Optional[int] = field(
+        default=None,
+        metadata={
+            'help':
+            'The maximum length the generated tokens can have. It can be overridden by max_new_tokens.'
+        })
     # Generation strategy
-    do_sample: Optional[bool] = field(default=False)
+    do_sample: Optional[bool] = field(default=True)
     num_beams: Optional[int] = field(default=1)
     num_beam_groups: Optional[int] = field(default=1)
     penalty_alpha: Optional[float] = field(default=None)
@@ -233,3 +263,9 @@ class GenerationArguments:
     repetition_penalty: Optional[float] = field(default=1.0)
     length_penalty: Optional[float] = field(default=1.0)
     no_repeat_ngram_size: Optional[int] = field(default=0)
+
+    def to_dict(self) -> Dict[str, Any]:
+        args = asdict(self)
+        if args.get('max_new_tokens', None):
+            args.pop('max_length', None)
+        return args
