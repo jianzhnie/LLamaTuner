@@ -1,5 +1,5 @@
 import os
-from typing import Dict, List, Literal, Optional, Tuple
+from typing import Dict, Optional, Tuple
 
 import torch
 from peft import (LoraConfig, PeftModel, get_peft_model,
@@ -52,9 +52,10 @@ def load_model_tokenizer(
     tokenizer = AutoTokenizer.from_pretrained(
         args.model_name_or_path,
         padding_side='right',
-        use_fast=False,  # Fast tokenizer giving issues.
-        tokenizer_type='llama' if 'llama' in args.model_name_or_path else
-        None,  # Needed for HF name change
+        use_fast=False,
+        # Fast tokenizer giving issues.
+        tokenizer_type='llama' if 'llama' in args.model_name_or_path else None,
+        # Needed for HF name change
         **config_kwargs)
 
     # Check if we are doing full finetuning.
@@ -72,7 +73,9 @@ def load_model_tokenizer(
                         'To fix: pip install bitsandbytes>=0.37.0')
         config_kwargs['load_in_8bit'] = True
         config_kwargs['quantization_config'] = BitsAndBytesConfig(
-            load_in_8bit=True, llm_int8_threshold=6.0)
+            load_in_8bit=True,
+            llm_int8_threshold=6.0,
+        )
 
     elif args.bits == 4:
         require_version('bitsandbytes>=0.39.0',
@@ -87,13 +90,15 @@ def load_model_tokenizer(
 
         config_kwargs['load_in_4bit'] = True
         config_kwargs['quantization_config'] = BitsAndBytesConfig(
-            load_in_4bit=args.bits == True,
+            load_in_4bit=args.bits is True,
             bnb_4bit_compute_dtype=compute_dtype,
             bnb_4bit_use_double_quant=args.double_quant,
-            bnb_4bit_quant_type=args.quant_type)
+            bnb_4bit_quant_type=args.quant_type,
+        )
 
     # Load and prepare pretrained models (without valuehead).
     model = AutoModelForCausalLM.from_pretrained(args.model_name_or_path,
+                                                 device_map=device_map,
                                                  low_cpu_mem_usage=True,
                                                  **config_kwargs)
 
