@@ -32,13 +32,13 @@ We present QLoRA, an efficient finetuning approach that reduces memory usage eno
 
 We provide a number of models in the [Hugging Face model hub](https://huggingface.co/decapoda-research). These models are trained with QLoRA and can be used for inference and finetuning. We provide the following models:
 
-| Pretrained | Base Model                                                   | Finetune Mode | Adapter | Instruct Datasets                                            | Train Script                                              | Log                                                          | Model on Huggingface                                         |
-| ---------- | ------------------------------------------------------------ | ------------- | ------- | ------------------------------------------------------------ | --------------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
-| LLama      | [llama-7b](https://huggingface.co/decapoda-research/llama-7b-hf) | Full Finetune | –       |                                                              |                                                           |                                                              |                                                              |
-| LLama      | [llama-7b](https://huggingface.co/decapoda-research/llama-7b-hf) | PEFT          | QLoRA   | [openassistant-guanaco](https://huggingface.co/datasets/timdettmers/openassistant-guanaco) | [finetune_lamma7b](./scripts/finetune_llama_guanaco7b.sh) | [wandb log](https://wandb.ai/jianzhnie/huggingface/runs/1e2km7b1) | [GaussianTech/llama-7b-sft](https://huggingface.co/GaussianTech/llama-7b-sft) |
-| LLama      | [llama-7b](https://huggingface.co/decapoda-research/llama-7b-hf) | PEFT          | QLoRA   | [OL-CC](https://data.baai.ac.cn/details/OL-CC)               | [finetune_lamma7b](./scripts/finetune_llama_guanaco7b.sh) |                                                              |                                                              |
-| Baichuan   | [baichuan7b](https://huggingface.co/baichuan-inc/baichuan-7B) | PEFT          | QLoRA   | [openassistant-guanaco](https://huggingface.co/datasets/timdettmers/openassistant-guanaco) | [finetune_baichuan7b](./scripts/finetune_baichuan_7b.sh)  | [wandb log](https://wandb.ai/jianzhnie/huggingface/runs/41lq9joa) | [GaussianTech/baichuan-7b-sft](https://huggingface.co/GaussianTech/baichuan-7b-sft) |
-| Baichuan   | [baichuan7b](https://huggingface.co/baichuan-inc/baichuan-7B) | PEFT          | QLoRA   | [OL-CC](https://data.baai.ac.cn/details/OL-CC)               | [finetune_baichuan7b](./scripts/finetune_baichuan_7b.sh)  | [wandb log](https://wandb.ai/jianzhnie/huggingface/runs/1lw2bmvn) |                                                              |
+| Base Model                                                   | Adapter      | Instruct Datasets                                            | Train Script                                              | Log                                                          | Model on Huggingface                                         |
+| ------------------------------------------------------------ | ------------ | ------------------------------------------------------------ | --------------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| [llama-7b](https://huggingface.co/decapoda-research/llama-7b-hf) | FullFinetune | -                                                            | -                                                         | -                                                            |                                                              |
+| [llama-7b](https://huggingface.co/decapoda-research/llama-7b-hf) | QLoRA        | [openassistant-guanaco](https://huggingface.co/datasets/timdettmers/openassistant-guanaco) | [finetune_lamma7b](./scripts/finetune_llama_guanaco7b.sh) | [wandb log](https://wandb.ai/jianzhnie/huggingface/runs/1e2km7b1) | [GaussianTech/llama-7b-sft](https://huggingface.co/GaussianTech/llama-7b-sft) |
+| [llama-7b](https://huggingface.co/decapoda-research/llama-7b-hf) | QLoRA        | [OL-CC](https://data.baai.ac.cn/details/OL-CC)               | [finetune_lamma7b](./scripts/finetune_llama_guanaco7b.sh) |                                                              |                                                              |
+| [baichuan7b](https://huggingface.co/baichuan-inc/baichuan-7B) | QLoRA        | [openassistant-guanaco](https://huggingface.co/datasets/timdettmers/openassistant-guanaco) | [finetune_baichuan7b](./scripts/finetune_baichuan_7b.sh)  | [wandb log](https://wandb.ai/jianzhnie/huggingface/runs/41lq9joa) | [GaussianTech/baichuan-7b-sft](https://huggingface.co/GaussianTech/baichuan-7b-sft) |
+| [baichuan7b](https://huggingface.co/baichuan-inc/baichuan-7B) | QLoRA        | [OL-CC](https://data.baai.ac.cn/details/OL-CC)               | [finetune_baichuan7b](./scripts/finetune_baichuan_7b.sh)  | [wandb log](https://wandb.ai/jianzhnie/huggingface/runs/1lw2bmvn) | -                                                            |
 
 ## Installation
 
@@ -66,7 +66,7 @@ cd Efficient-Tuning-LLMs
 ```bash
 python qlora_int8_finetune.py \
     --model_name_or_path  decapoda-research/llama-7b-hf  \
-    --data_path tatsu-lab/alpaca  \
+    --data_path tatsu-lab/alpaca  \ßßßß
     --output_dir work_dir_lora/ \
     --num_train_epochs 3 \
     --per_device_train_batch_size 4 \
