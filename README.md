@@ -207,6 +207,23 @@ max_memory = {i: '46000MB' for i in range(torch.cuda.device_count())}
 
 ## Inference
 
+### 终端交互式对话
+
+运行下面的脚本，可以在终端和你的ChatBot进行交互。
+
+```bash
+python cli_demo.py \
+    --model_name_or_path ~/checkpoints/baichuan7b \ # base model
+    --checkpoint_dir ./work_dir/checkpoint-700  \ # 训练的模型权重
+    --trust_remote_code  \
+    --double_quant \
+    --quant_type nf4 \
+    --fp16 \
+    --bits 4
+```
+
+### 使用 Gradio 进行网页端交互
+
 This file reads the foundation model from the Hugging Face model hub and the LoRA weights from `path/to/your/model_dir`, and runs a Gradio interface for inference on a specified input. Users should treat this as example code for the use of the model, and modify it as needed.
 
 Example usage:
