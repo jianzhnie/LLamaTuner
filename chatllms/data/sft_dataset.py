@@ -59,7 +59,6 @@ class SupervisedDataset(Dataset):
             source_txt,
             max_length=self.source_max_len,
             truncation=True,
-            add_special_tokens=False,
         )
         # Tokenize the target text
         target_txt = f"{example['output']}{self.tokenizer.eos_token}"
