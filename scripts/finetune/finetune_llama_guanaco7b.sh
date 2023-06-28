@@ -1,4 +1,4 @@
-python qlora_finetune.py \
+python train_qlora.py \
     --model_name_or_path decapoda-research/llama-7b-hf \
     --dataset_name oasst1 \
     --data_dir /home/robin/prompt_data/ \

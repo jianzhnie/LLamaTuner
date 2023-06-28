@@ -93,7 +93,7 @@ cd Efficient-Tuning-LLMs
 ### QLora int8 Finetune
 
 ```bash
-python qlora_int8_finetune.py \
+python train_lora.py \
     --model_name_or_path  decapoda-research/llama-7b-hf  \
     --data_path tatsu-lab/alpaca  \ßßßß
     --output_dir work_dir_lora/ \
@@ -116,22 +116,22 @@ python qlora_int8_finetune.py \
 
 ### QLora int4 Finetune
 
-The `qlora_finetune.py` code is a starting point for finetuning and inference on various datasets.
+The `train_qlora.py` code is a starting point for finetuning and inference on various datasets.
 Basic command for finetuning a baseline model on the Alpaca dataset:
 
 ```bash
-python qlora_finetune.py --model_name_or_path <path_or_name>
+python train_qlora.py --model_name_or_path <path_or_name>
 ```
 
 For models larger than 13B, we recommend adjusting the learning rate:
 ```bash
-python qlora_finetune.py –learning_rate 0.0001 --model_name_or_path <path_or_name>
+python train_qlora.py –learning_rate 0.0001 --model_name_or_path <path_or_name>
 ```
 
 We can also tweak our hyperparameters:
 
 ```bash
-python qlora_finetune.py \
+python train_qlora.py \
     --model_name_or_path ~/checkpoints/baichuan7b \
     --dataset_name oasst1 \
     --data_dir ~/prompt_datasets \
@@ -213,12 +213,12 @@ You can specify the path to your dataset using the --dataset argument. If the --
 
 - Training with an alpaca format dataset:
 ```python
-python qlora_finetune.py --dataset="path/to/your/dataset"
+python train_qlora.py --dataset="path/to/your/dataset"
 ```
 - Training with a self-instruct format dataset:
 
 ```python
-python qlora_finetune.py --dataset="path/to/your/dataset" --dataset_format="self-instruct"
+python train_qlora.py --dataset="path/to/your/dataset" --dataset_format="self-instruct"
 ```
 
 ## Multi GPU

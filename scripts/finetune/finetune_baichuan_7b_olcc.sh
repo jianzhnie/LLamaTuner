@@ -1,4 +1,4 @@
-python qlora_finetune.py \
+python train_qlora.py \
     --model_name_or_path /home/robin/work_dir/llm/llm_pretrain_model/baichuan \
     --dataset_name olcc \
     --data_dir /home/robin/prompt_data/ \

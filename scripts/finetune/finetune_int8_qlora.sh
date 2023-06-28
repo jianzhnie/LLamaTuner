@@ -1,4 +1,4 @@
-python qlora_int8_finetune.py \
+python train_lora.py \
     --model_name_or_path  decapoda-research/llama-7b-hf  \
     --data_path tatsu-lab/alpaca  \
     --output_dir work_dir_lora/ \
