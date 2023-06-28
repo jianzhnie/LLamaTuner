@@ -54,7 +54,9 @@ def main():
     logger.info('Training/evaluation parameters %s', args)
     # Check if training was already completed.
     checkpoint_dir, completed_training = get_last_checkpoint(args.output_dir)
+    args.checkpoint_dir = checkpoint_dir
     if completed_training:
+        logger.info('=' * 40, 'Attention', '=' * 40)
         logger.info('Detected that training was already completed!')
 
     # # load model and tokenizer
@@ -64,10 +66,11 @@ def main():
         is_trainable=args.do_train,
         logger=logger,
     )
+    logger.info('Loaded model...')
+    logger.info('Print the  trainable parameters of the model')
     print_trainable_parameters(args, model)
-    logger.info('loaded model')
-    set_seed(args.seed)
 
+    set_seed(args.seed)
     # LLaMA tokenizer may not have correct special tokens set.
     # Check and add them if missing to prevent them from being parsed into different tokens.
     # Note that these are present in the vocabulary.
@@ -75,6 +78,10 @@ def main():
     logger.info('Adding special tokens.')
     if 'llama' in args.model_name_or_path or 'baichuan' in args.model_name_or_path:
         add_special_tokens_if_missing(tokenizer, model)
+
+    # Verify dtypes
+    logger.info('Verifying dtypes...')
+    verify_dtypes(model)
 
     dataset_dict = make_data_module(args)
     train_dataset = SupervisedDataset(
@@ -138,8 +145,6 @@ def main():
         )
         trainer.add_callback(eval_callback)
 
-    # Verify dtypes
-    verify_dtypes(model)
     assert args.do_train or args.do_eval or args.do_predict
     if args.do_train or args.do_eval:
         train_and_evaluate(trainer, args, logger)
