@@ -52,6 +52,8 @@ def smart_tokenizer_and_embedding_resize(special_tokens_dict: Dict[str, str],
                                          tokenizer: PreTrainedTokenizer,
                                          model: PreTrainedModel) -> None:
     """Resize tokenizer and embedding to accommodate new special tokens.
+    改变tokenizer和embedding的尺寸。
+    一般需要将tokenizer和embedding的尺寸设置为64的倍数，方便GPU加速。
 
     Args:
         special_tokens_dict (Dict[str, str]): A dictionary of special tokens to be added to the tokenizer.
@@ -67,9 +69,11 @@ def smart_tokenizer_and_embedding_resize(special_tokens_dict: Dict[str, str],
     and sets those values for the new special token embeddings. This is done separately for the input
     embeddings and output embeddings of the model.
     """
+    # 添加特殊token字典，并且得到新加入字典的token数量
     num_new_tokens = tokenizer.add_special_tokens(special_tokens_dict)
 
     # Resize token embeddings to match tokenizer
+    # 更改token_embeddings的尺寸
     model.resize_token_embeddings(len(tokenizer))
 
     if num_new_tokens > 0:
@@ -77,12 +81,16 @@ def smart_tokenizer_and_embedding_resize(special_tokens_dict: Dict[str, str],
         output_embeddings = model.get_output_embeddings().weight.data
 
         # Compute average embeddings of existing tokens
+        # 下面的操作实现使用已训练好的embedding的均值，来初始化新token对应的embedding
+        # input_embeddings的已训练好的embedding的均值，保持embedding的shape
         input_embeddings_avg = input_embeddings[:-num_new_tokens].mean(
             dim=0, keepdim=True)
+        # output_embeddings的已训练好的embedding的均值，保持embedding的shape
         output_embeddings_avg = output_embeddings[:-num_new_tokens].mean(
             dim=0, keepdim=True)
 
         # Set average embeddings for new special token embeddings
+        # 分别给input_embeddings和output_embeddings的新token对应的embedding赋值
         input_embeddings[-num_new_tokens:] = input_embeddings_avg
         output_embeddings[-num_new_tokens:] = output_embeddings_avg
 
@@ -91,6 +99,10 @@ def find_all_linear_names(args: argparse.Namespace,
                           model: torch.nn.Module) -> List[str]:
     """
     Returns a list of names of all linear layers present in the given model.
+    如果args.bits是4，使用bitsandbytes库中的bnb.nn.Linear4bit层；
+    如果args.bits是8，使用bitsandbytes库中的bnb.nn.Linear8bitLt层；
+    否则，使用torch.nn.Linear层；
+    并记录下这些层的名称，保存在lora_module_names集合中。
 
     Args:
         args (argparse.Namespace): A namespace containing arguments of the script.
@@ -127,6 +139,7 @@ def find_all_linear_names(args: argparse.Namespace,
         if isinstance(module, cls):
             # If yes, split the name of the module into its component parts and add the first or last part to the set
             names = name.split('.')
+            # 只保留最后的名称，前缀不保留
             lora_module_names.add(names[0] if len(names) == 1 else names[-1])
 
     # Remove 'lm_head' from the set if present (needed for 16-bit)
