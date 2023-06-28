@@ -234,7 +234,7 @@ max_memory = {i: '46000MB' for i in range(torch.cuda.device_count())}
 
 ### 终端交互式对话
 
-运行下面的脚本，可以在终端和你的ChatBot进行交互。
+运行下面的脚本，程序会在命令行中和你的ChatBot进行交互式的对话，在命令行中输入指示并回车即可生成回复，输入 `clear` 可以清空对话历史，输入 `stop` 终止程序。
 
 ```bash
 python cli_demo.py \
