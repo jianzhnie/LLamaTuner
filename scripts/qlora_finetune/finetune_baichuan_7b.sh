@@ -1,4 +1,4 @@
-CUDA_VISIBLE_DEVICES=0  python qlora_finetune.py \
+CUDA_VISIBLE_DEVICES=0  python train_qlora.py \
     --model_name_or_path /userhome/jianzhnie/checkpoints/baichuan7b \
     --dataset_name oasst1 \
     --data_dir /userhome/jianzhnie/prompt_datasets \

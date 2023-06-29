@@ -1,15 +1,15 @@
-python qlora_finetune.py \
-    --model_name_or_path decapoda-research/llama-7b-hf \
-    --dataset_name oasst1 \
+python train_qlora.py \
+    --model_name_or_path /home/robin/work_dir/llm/llm_pretrain_model/baichuan \
+    --dataset_name olcc \
     --data_dir /home/robin/prompt_data/ \
     --load_from_local \
-    --output_dir ./work_dir/oasst1-llama-7b \
-    --num_train_epochs 3 \
+    --output_dir ./work_dir/olcc-baichuan-7b \
+    --num_train_epochs 4 \
     --per_device_train_batch_size 4 \
     --per_device_eval_batch_size 4 \
     --gradient_accumulation_steps 8 \
     --evaluation_strategy steps \
-    --eval_steps 200 \
+    --eval_steps 20 \
     --save_strategy steps \
     --save_total_limit 5 \
     --save_steps 100 \
@@ -32,6 +32,7 @@ python qlora_finetune.py \
     --fp16 \
     --bits 4 \
     --gradient_checkpointing \
+    --trust_remote_code \
     --do_train \
     --do_eval \
     --sample_generate \

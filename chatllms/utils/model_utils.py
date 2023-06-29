@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Tuple
 
 import bitsandbytes as bnb
 import torch
-from transformers import PreTrainedModel, PreTrainedTokenizer
+from transformers import PreTrainedModel, PreTrainedTokenizer, Trainer
 from transformers.generation.logits_process import LogitsProcessor
 from transformers.generation.utils import LogitsProcessorList
 
@@ -258,6 +258,18 @@ def get_last_checkpoint(checkpoint_dir: str) -> Tuple[str, bool]:
 
     # The directory does not exist, meaning this is the first time the training is being run
     return None, False
+
+
+def safe_save_model_for_hf_trainer(trainer: Trainer, output_dir: str):
+    """Collects the state dict and dump to disk."""
+    state_dict = trainer.model.state_dict()
+    if trainer.args.should_save:
+        cpu_state_dict = {
+            key: value.cpu()
+            for key, value in state_dict.items()
+        }
+        del state_dict
+        trainer._save(output_dir, state_dict=cpu_state_dict)  # noqa
 
 
 # Avoid runtime error in model.generate(do_sample=True).

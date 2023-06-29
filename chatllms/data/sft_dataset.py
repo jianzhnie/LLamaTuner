@@ -5,13 +5,121 @@ from typing import Dict, List
 
 import datasets
 import torch
+from datasets import load_dataset
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import Dataset
 from transformers import PreTrainedTokenizer
 
-from chatllms.data.data_utils import IGNORE_INDEX
+from chatllms.data.data_utils import (ALPACA_PROMPT_DICT, IGNORE_INDEX,
+                                      PROMPT_DICT)
 
 logger = logging.getLogger(__name__)
+
+
+class AlpacaDataset(Dataset):
+    """
+    Dataset for supervised fine-tuning.
+
+    Attributes:
+        PROMPT_DICT (dict): A dictionary containing prompts for the model to complete.
+
+    Methods:
+        __init__(self, data_path: str, tokenizer: PreTrainedTokenizer): Initializes a SupervisedDataset object.
+        __len__(self) -> int: Returns the length of the dataset.
+        __getitem__(self, idx) -> Dict[str, torch.Tensor]: Retrieves an example from the dataset at the specified index.
+
+    """
+    def __init__(
+        self,
+        data_path: str,
+        tokenizer: PreTrainedTokenizer,
+        prompt_temptlate='alpaca',
+        max_length: int = 1024,
+    ):
+        """
+        Initializes a SupervisedDataset object.
+
+        Args:
+            data_path (str): The path to the training data file.
+            tokenizer (PreTrainedTokenizer): The tokenizer object used to tokenize the input examples.
+
+        """
+        super(AlpacaDataset, self).__init__()
+
+        if prompt_temptlate == 'alpaca':
+            self.PROMPT_DICT = ALPACA_PROMPT_DICT
+
+        else:
+            self.PROMPT_DICT = PROMPT_DICT
+
+        logging.warning(f'Loading dataset from {data_path}')
+        if data_path.endswith('.json') or data_path.endswith('.jsonl'):
+            list_data_dict = load_dataset('json',
+                                          data_files=data_path)['train']
+        else:
+            list_data_dict = load_dataset(data_path)['train']
+
+        logging.warning('Found %d rows', list_data_dict.num_rows)
+        prompt_input, prompt_no_input = self.PROMPT_DICT[
+            'prompt_input'], self.PROMPT_DICT['prompt_no_input']
+        self.sources = [
+            prompt_input.format_map(example) if example.get('input', '') != ''
+            else prompt_no_input.format_map(example)
+            for example in list_data_dict
+        ]
+        self.targets = [example['output'] for example in list_data_dict]
+        self.tokenizer = tokenizer
+        self.max_length = max_length
+
+    def __len__(self) -> int:
+        """
+        Returns the length of the dataset.
+
+        Returns:
+            int: The number of examples in the dataset.
+
+        """
+        return len(self.sources)
+
+    def __getitem__(self, idx) -> Dict[str, torch.Tensor]:
+        """
+        Retrieves an example from the dataset at the specified index.
+
+        Args:
+            idx (int): The index of the example to retrieve.
+
+        Returns:
+            dict[str, torch.Tensor]: A dictionary containing the input_ids, labels, input_len, source_input_ids, and
+            source_len tensors.
+
+        """
+        src_txt = self.sources[idx]
+        src_txt = f'{self.tokenizer.bos_token}{src_txt}'
+        tokenized_src = self.tokenizer(
+            src_txt,
+            max_length=self.max_length,
+            truncation=True,
+        )
+        tgt_txt = self.sources[idx]
+        tgt_txt = f'{tgt_txt}{self.tokenizer.eos_token}'
+        # Tokenize the example and source text
+        tokenized_tgt = self.tokenizer(
+            tgt_txt,
+            max_length=self.max_length,
+            truncation=True,
+        )
+        src_ids = tokenized_src['input_ids']
+        tgt_ids = tokenized_tgt['input_ids']
+
+        # Extract the input_ids tensor
+        input_ids = torch.tensor(src_ids + tgt_ids)
+        # Create the labels tensor
+        labels = input_ids.clone()
+        labels[:len(src_ids)] = IGNORE_INDEX
+        return {
+            'input_ids': input_ids,
+            'labels': labels,
+        }
 
 
 @dataclass

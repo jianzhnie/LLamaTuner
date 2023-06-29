@@ -1,7 +1,7 @@
-python qlora_int8_finetune.py \
-    --model_name_or_path  decapoda-research/llama-7b-hf  \
-    --data_path tatsu-lab/alpaca  \
-    --output_dir work_dir_lora/ \
+python train.py \
+    --model_name_or_path  facebook/opt-125m \
+    --data_path ~/prompt_data/InstructionWild/instinwild_en.json  \
+    --output_dir work_dir/alpaca_full-finetune \
     --num_train_epochs 3 \
     --per_device_train_batch_size 4 \
     --per_device_eval_batch_size 4 \
@@ -10,10 +10,9 @@ python qlora_int8_finetune.py \
     --save_strategy "steps" \
     --save_steps 500 \
     --save_total_limit 5 \
-    --learning_rate 1e-4 \
+    --learning_rate 2e-5 \
     --weight_decay 0. \
     --warmup_ratio 0.03 \
     --lr_scheduler_type "cosine" \
-    --model_max_length 2048 \
     --logging_steps 1 \
-    --fp16 True
+    --gradient_checkpointing True
