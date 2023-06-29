@@ -53,9 +53,18 @@ class TrainingArguments(transformers.TrainingArguments):
 
 
 def load_model_tokenizer(args) -> Tuple[PreTrainedModel, PreTrainedTokenizer]:
-    # Determine number of GPUs and max memory per device.
-    torch_dtype = (torch.float16 if args.fp16 else
-                   (torch.bfloat16 if args.bf16 else torch.float32))
+    """
+    Load a pre-trained model and tokenizer for natural language processing tasks.
+
+    Args:
+        args: An object containing the input arguments.
+
+    Returns:
+        A tuple containing the loaded model and tokenizer.
+    """
+    # Determine the torch data type based on the input arguments
+    torch_dtype = torch.float16 if args.fp16 else (
+        torch.bfloat16 if args.bf16 else torch.float32)
 
     config_kwargs = {
         'cache_dir': args.cache_dir,
@@ -63,19 +72,20 @@ def load_model_tokenizer(args) -> Tuple[PreTrainedModel, PreTrainedTokenizer]:
         'trust_remote_code': args.trust_remote_code,
     }
 
-    # Load the pre-trained model and tokenizer
-    print(f'Loading Model form {args.model_name_or_path}...')
+    # Load the pre-trained model
+    print(f'Loading Model from {args.model_name_or_path}...')
     model = AutoModelForCausalLM.from_pretrained(
         args.model_name_or_path,
         torch_dtype=torch_dtype,
         **config_kwargs,
     )
-    # Enable model parallelism.
-    # 设置两个和并行操作相关的参数
+
+    # Enable model parallelism
     setattr(model, 'model_parallel', True)
     setattr(model, 'is_parallelizable', True)
 
-    print('Loading tokenizer form {args.model_name_or_path}...')
+    # Load the tokenizer
+    print(f'Loading tokenizer from {args.model_name_or_path}...')
     tokenizer = AutoTokenizer.from_pretrained(
         args.model_name_or_path,
         padding_side='right',
@@ -83,6 +93,7 @@ def load_model_tokenizer(args) -> Tuple[PreTrainedModel, PreTrainedTokenizer]:
         tokenizer_type='llama' if 'llama' in args.model_name_or_path else None,
         **config_kwargs,
     )
+
     return model, tokenizer
 
 
