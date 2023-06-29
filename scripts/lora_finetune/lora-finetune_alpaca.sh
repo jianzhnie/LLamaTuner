@@ -1,0 +1,19 @@
+python train_lora.py \
+    --model_name_or_path  facebook/opt-125m \
+    --data_path ~/prompt_data/InstructionWild/instinwild_en.json  \
+    --output_dir work_dir/alpaca_full-finetune \
+    --num_train_epochs 3 \
+    --per_device_train_batch_size 4 \
+    --per_device_eval_batch_size 4 \
+    --gradient_accumulation_steps 8 \
+    --evaluation_strategy "no" \
+    --save_strategy "steps" \
+    --save_steps 500 \
+    --save_total_limit 5 \
+    --learning_rate 1e-4 \
+    --weight_decay 0. \
+    --warmup_ratio 0.03 \
+    --lr_scheduler_type "cosine" \
+    --max_length 2048 \
+    --logging_steps 1 \
+    --gradient_checkpointing True
