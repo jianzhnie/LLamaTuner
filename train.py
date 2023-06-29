@@ -84,6 +84,11 @@ def load_model_tokenizer(args) -> Tuple[PreTrainedModel, PreTrainedTokenizer]:
     setattr(model, 'model_parallel', True)
     setattr(model, 'is_parallelizable', True)
 
+    if args.gradient_checkpointing:
+        logging.warning('Using gradient checkpointing...')
+        model.enable_input_require_grads()
+        model.config.use_cache = False  # Turn off when gradient checkpointing is enabled
+
     # Load the tokenizer
     print(f'Loading tokenizer from {args.model_name_or_path}...')
     tokenizer = AutoTokenizer.from_pretrained(
@@ -117,11 +122,13 @@ def train() -> None:
     args = argparse.Namespace(**vars(model_args), **vars(data_args),
                               **vars(training_args))
     # load model and tokenizer
+    logging.warning('Loading model and tokenizer...')
     model, tokenizer = load_model_tokenizer(args=args)
     logging.warning('Successfully loaded model and tokenizer.')
 
-    logging.warning('Adding special tokens.')
     if 'llama' in args.model_name_or_path or 'baichuan' in args.model_name_or_path:
+        logging.warning(
+            f'Adding special tokens for {args.model_name_or_path}.')
         add_special_tokens_if_missing(tokenizer, model)
 
     # Create the training dataset and data collator
@@ -143,8 +150,7 @@ def train() -> None:
         eval_dataset=None,
         data_collator=data_collator,
     )
-    model.config.use_cache = False
-    logging.warning('Training')
+    logging.warning('Start Training...')
     if list(pathlib.Path(training_args.output_dir).glob('checkpoint-*')):
         trainer.train(resume_from_checkpoint=True)
     else:
