@@ -3,7 +3,7 @@ import logging
 import os
 import pathlib
 from dataclasses import dataclass, field
-from typing import List, Tuple
+from typing import Dict, List, Tuple, Union
 
 import torch
 from deepspeed import zero
@@ -17,8 +17,7 @@ from transformers import (AutoModelForCausalLM, AutoTokenizer,
 from chatllms.data.sft_dataset import (AlpacaDataset,
                                        DataCollatorForSupervisedDataset)
 from chatllms.utils.model_utils import add_special_tokens_if_missing
-
-from .train import DataArguments, ModelArguments, TrainingArguments
+from train import DataArguments, ModelArguments, TrainingArguments
 
 
 @dataclass
@@ -29,20 +28,52 @@ class LoraArguments:
     lora_target_modules: List[str] = field(
         default_factory=lambda: ['q_proj', 'v_proj'])
     lora_weight_path: str = ''
-    bias: str = 'none'
+    lora_bias: str = 'none'
     q_lora: bool = False
 
 
-def maybe_zero_3(param):
+def maybe_zero_3(param: Union[torch.Tensor, object]) -> torch.Tensor:
+    """
+    Applies zero.GatheredParameters to gather the parameter if it has ds_id attribute,
+    and clones and detaches the tensor data if ds_status is ZeroParamStatus.NOT_AVAILABLE.
+
+    Args:
+        param: The parameter to be processed.
+
+    Returns:
+        The modified parameter.
+
+    Raises:
+        AssertionError: If `param` has ds_id attribute but ds_status is not ZeroParamStatus.NOT_AVAILABLE.
+    """
     if hasattr(param, 'ds_id'):
-        assert param.ds_status == ZeroParamStatus.NOT_AVAILABLE
+        assert param.ds_status == ZeroParamStatus.NOT_AVAILABLE, 'Invalid ds_status'
+
         with zero.GatheredParameters([param]):
             param = param.data.cpu().clone().detach()
+    else:
+        param = param.detach().cpu().clone()
     return param
 
 
 # Borrowed from peft.utils.get_peft_model_state_dict
-def get_peft_state_maybe_zero_3(named_params, bias):
+def get_peft_state_maybe_zero_3(named_params: List[Tuple[str, torch.Tensor]],
+                                bias: str) -> Dict[str, torch.Tensor]:
+    """
+    Filters and processes named parameters based on the specified bias.
+
+    Args:
+        named_params: An iterable containing tuples of parameter names and their corresponding values.
+        bias: The bias type.
+
+    Returns:
+        A dictionary containing the filtered and possibly modified named parameters.
+
+    Raises:
+        NotImplementedError: If an unsupported bias type is provided.
+    """
+    to_return: Dict[str, torch.Tensor] = {}
+
     if bias == 'none':
         to_return = {k: t for k, t in named_params if 'lora_' in k}
     elif bias == 'all':
@@ -51,9 +82,9 @@ def get_peft_state_maybe_zero_3(named_params, bias):
             for k, t in named_params if 'lora_' in k or 'bias' in k
         }
     elif bias == 'lora_only':
-        to_return = {}
-        maybe_lora_bias = {}
-        lora_bias_names = set()
+        maybe_lora_bias: Dict[str, torch.Tensor] = {}
+        lora_bias_names: set() = set()
+
         for k, t in named_params:
             if 'lora_' in k:
                 to_return[k] = t
@@ -61,12 +92,16 @@ def get_peft_state_maybe_zero_3(named_params, bias):
                 lora_bias_names.add(bias_name)
             elif 'bias' in k:
                 maybe_lora_bias[k] = t
-        for k, t in maybe_lora_bias:
+
+        for k, t in maybe_lora_bias.items():
+            bias_name = k.split('bias')[0] + 'bias'
             if bias_name in lora_bias_names:
                 to_return[bias_name] = t
     else:
-        raise NotImplementedError
+        raise NotImplementedError('Unsupported bias type')
+
     to_return = {k: maybe_zero_3(v) for k, v in to_return.items()}
+
     return to_return
 
 
@@ -80,20 +115,21 @@ def load_model_tokenizer(args) -> Tuple[PreTrainedModel, PreTrainedTokenizer]:
     Returns:
         A tuple containing the loaded model and tokenizer.
     """
-    device_map = None
+    device_map: Union[str, None] = 'auto'
     if args.q_lora:
         world_size = int(os.environ.get('WORLD_SIZE', 1))
         device_map = ({
             '': int(os.environ.get('LOCAL_RANK') or 0)
         } if world_size != 1 else None)
         if len(args.fsdp) > 0 or deepspeed.is_deepspeed_zero3_enabled():
-            logging.warn(
+            logging.warning(
                 'FSDP and ZeRO3 are both currently incompatible with QLoRA.')
 
     # Determine the torch data type based on the input arguments
     compute_dtype = torch.float16 if args.fp16 else (
         torch.bfloat16 if args.bf16 else torch.float32)
 
+    # Set configuration kwargs for tokenizer.
     config_kwargs = {
         'cache_dir': args.cache_dir,
         'use_auth_token': args.use_auth_token,
@@ -107,6 +143,8 @@ def load_model_tokenizer(args) -> Tuple[PreTrainedModel, PreTrainedTokenizer]:
         device_map=device_map,
         quantization_config=BitsAndBytesConfig(
             load_in_4bit=True,
+            llm_int8_threshold=6.0,
+            llm_int8_has_fp16_weight=False,
             bnb_4bit_use_double_quant=True,
             bnb_4bit_quant_type='nf4',
             bnb_4bit_compute_dtype=compute_dtype,
@@ -114,6 +152,7 @@ def load_model_tokenizer(args) -> Tuple[PreTrainedModel, PreTrainedTokenizer]:
         torch_dtype=compute_dtype,
         **config_kwargs,
     )
+    logging.warning('Adding LoRA modules...')
     lora_config = LoraConfig(
         r=args.lora_r,
         lora_alpha=args.lora_alpha,
@@ -126,14 +165,16 @@ def load_model_tokenizer(args) -> Tuple[PreTrainedModel, PreTrainedTokenizer]:
         model = prepare_model_for_kbit_training(
             model, use_gradient_checkpointing=args.gradient_checkpointing)
         if torch.cuda.device_count() > 1:
-            # keeps Trainer from trying its own DataParallelism when more than 1 gpu is available
+            # Keeps Trainer from trying its own DataParallelism when more than 1 GPU is available
             setattr(model, 'model_parallel', True)
             setattr(model, 'is_parallelizable', True)
 
     model = get_peft_model(model, lora_config)
 
     if args.gradient_checkpointing:
+        logging.warning('Using gradient checkpointing...')
         model.enable_input_require_grads()
+        model.config.use_cache = False  # Turn off when gradient checkpointing is enabled
 
     # Load the tokenizer
     print(f'Loading tokenizer from {args.model_name_or_path}...')
@@ -151,12 +192,6 @@ def load_model_tokenizer(args) -> Tuple[PreTrainedModel, PreTrainedTokenizer]:
 def train() -> None:
     """Trains a language model using Hugging Face's Transformers library.
 
-    Args:
-        model_args (ModelArguments): The arguments for the model configuration.
-        data_args (DataArguments): The arguments for the data configuration.
-        training_args (TrainingArguments): The arguments for the training configuration.
-        lora_args (LoraArguments): The arguments for low-rank factorization.
-
     Returns:
         None
     """
@@ -170,11 +205,13 @@ def train() -> None:
     model, tokenizer = load_model_tokenizer(args=args)
     logging.warning('Successfully loaded model and tokenizer.')
 
-    logging.warning('Adding special tokens.')
     if 'llama' in args.model_name_or_path or 'baichuan' in args.model_name_or_path:
+        logging.warning(
+            f'Adding special tokens for {args.model_name_or_path}.')
         add_special_tokens_if_missing(tokenizer, model)
 
     # Create a supervised dataset and Trainer, then train the model
+    logging.warning('Creating a supervised dataset and DataCollator...')
     train_dataset = AlpacaDataset(
         data_path=args.data_path,
         tokenizer=tokenizer,
@@ -182,6 +219,8 @@ def train() -> None:
     )
     data_collator = DataCollatorForSupervisedDataset(tokenizer=tokenizer)
 
+    # Create a Trainer object and start training
+    logging.warning('Creating a Trainer...')
     trainer = Trainer(
         model=model,
         tokenizer=tokenizer,
@@ -190,9 +229,11 @@ def train() -> None:
         eval_dataset=None,
         data_collator=data_collator,
     )
-    model.config.use_cache = False
+
+    logging.warning('Starting training...')
     if training_args.resume_from_checkpoint and list(
             pathlib.Path(training_args.output_dir).glob('checkpoint-*')):
+        logging.warning('Resuming from checkpoint...')
         trainer.train(resume_from_checkpoint=True)
     else:
         trainer.train()
