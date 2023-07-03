@@ -42,7 +42,7 @@ class TrainingArguments(transformers.TrainingArguments):
     cache_dir: Optional[str] = field(default=None)
     optim: str = field(default='adamw_torch')
     max_length: int = field(
-        default=2048,
+        default=256,
         metadata={
             'help':
             'Maximum sequence length. Sequences will be right padded (and possibly truncated).'
@@ -72,6 +72,7 @@ def train():
         tokenizer=tokenizer,
         lazy_preprocess=args.lazy_preprocess,
         data_path=args.data_path,
+        max_length=args.max_length,
     )
 
     # Initialize the Trainer object and start training

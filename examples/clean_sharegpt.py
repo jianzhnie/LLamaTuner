@@ -130,8 +130,8 @@ def filter_wrong_data(
                 if conv.get('from') == roles[j % 2]:
                     new_convs.append(conv)
 
-            collect_data.append({'id': id, 'conversations': new_convs})
-
+            if len(new_convs) >= 2:
+                collect_data.append({'id': id, 'conversations': new_convs})
     return collect_data
 
 
