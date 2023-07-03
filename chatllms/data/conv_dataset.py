@@ -29,27 +29,22 @@ def extract_conversations_from_raw_data(sources):
     # Apply prompt templates
     conversations = []
     for i, source in enumerate(sources):
-        if len(source) >= 2:
-            print(source)
-            if roles[source[0]['from']] != conv.roles[0]:
-                # Skip the first message if it is not from the human
-                source = source[1:]
+        if roles[source[0]['from']] != conv.roles[0]:
+            # Skip the first message if it is not from the human
+            source = source[1:]
 
-            conv.messages = []
-            for j, sentence in enumerate(source):
-                role = roles[sentence['from']]
-                assert role == conv.roles[j % 2], f'{i}'  # noqa
-                conv.append_message(role, sentence['value'])
-            conversations.append(conv.get_prompt())
+        conv.messages = []
+        for j, sentence in enumerate(source):
+            role = roles[sentence['from']]
+            assert role == conv.roles[j % 2], f'{i}'  # noqa
+            conv.append_message(role, sentence['value'])
+        conversations.append(conv.get_prompt())
 
     return conversations
 
 
-def preprocess(
-    sources: Sequence[Dict[str, str]],
-    tokenizer: PreTrainedTokenizer,
-    max_length: int = 2048,
-) -> Dict[str, List[int]]:
+def preprocess(sources: Sequence[Dict[str, str]],
+               tokenizer: PreTrainedTokenizer) -> Dict[str, List[int]]:
     """
     Preprocesses the data by tokenizing it.
 
@@ -87,24 +82,23 @@ def preprocess(
     # Apply prompt templates
     conversations = []
     for i, source in enumerate(sources):
-        if len(source) >= 2:
-            if roles[source[0]['from']] != conv.roles[0]:
-                # Skip the first message if it is not from the human
-                source = source[1:]
+        if roles[source[0]['from']] != conv.roles[0]:
+            # Skip the first message if it is not from the human
+            source = source[1:]
 
-            conv.messages = []
-            for j, sentence in enumerate(source):
-                role = roles[sentence['from']]
-                assert role == conv.roles[j % 2], f'{i}'
-                conv.append_message(role, sentence['value'])
-            conversations.append(conv.get_prompt())
+        conv.messages = []
+        for j, sentence in enumerate(source):
+            role = roles[sentence['from']]
+            assert role == conv.roles[j % 2], f'{i}'
+            conv.append_message(role, sentence['value'])
+        conversations.append(conv.get_prompt())
 
     # Tokenize conversations
     input_ids = tokenizer(
         conversations,
         return_tensors='pt',
         padding='max_length',
-        max_length=max_length,
+        max_length=tokenizer.model_max_length,
         truncation=True,
     ).input_ids
     targets = input_ids.clone()
@@ -157,10 +151,8 @@ class SupervisedDataset(Dataset):
         raw_data (List[Dict]): Raw input data.
         tokenizer (PreTrainedTokenizer): Tokenizer for preprocessing the data.
     """
-    def __init__(self,
-                 raw_data: List[Dict[str, List[str]]],
-                 tokenizer: PreTrainedTokenizer,
-                 max_length: int = 1024) -> None:
+    def __init__(self, raw_data: List[Dict[str, List[str]]],
+                 tokenizer: PreTrainedTokenizer) -> None:
         super().__init__()
 
         print('Formatting inputs...')
@@ -169,7 +161,7 @@ class SupervisedDataset(Dataset):
         sources = [example['conversations'] for example in raw_data]
 
         # Preprocess the input data using the provided tokenizer
-        data_dict = preprocess(sources, tokenizer, max_length=max_length)
+        data_dict = preprocess(sources, tokenizer)
 
         # Assign preprocessed data to class attributes
         self.input_ids = data_dict['input_ids']
@@ -201,10 +193,11 @@ class LazySupervisedDataset(Dataset):
     """
     Dataset for supervised fine-tuning.
     """
-    def __init__(self,
-                 raw_data: List[Dict[str, str]],
-                 tokenizer: PreTrainedTokenizer,
-                 max_length: int = 1024):
+    def __init__(
+        self,
+        raw_data: List[Dict[str, str]],
+        tokenizer: PreTrainedTokenizer,
+    ):
         """
         Initialize the LazySupervisedDataset.
 
@@ -216,7 +209,6 @@ class LazySupervisedDataset(Dataset):
         self.tokenizer = tokenizer
         self.raw_data = raw_data
         self.cached_data_dict: Dict[int, Dict[str, torch.Tensor]] = {}
-        self.max_length = max_length
 
     def __len__(self) -> int:
         """
@@ -241,9 +233,10 @@ class LazySupervisedDataset(Dataset):
         if i in self.cached_data_dict:
             return self.cached_data_dict[i]
 
-        ret = preprocess([self.raw_data[i]['conversations']],
-                         tokenizer=self.tokenizer,
-                         max_length=self.max_length)
+        ret = preprocess(
+            [self.raw_data[i]['conversations']],
+            tokenizer=self.tokenizer,
+        )
 
         ret = {
             'input_ids': ret['input_ids'][0],
@@ -286,9 +279,11 @@ class VicunaDataset(Dataset):
         return ret
 
 
-def make_supervised_data_module(tokenizer: PreTrainedTokenizer,
-                                lazy_preprocess: bool, data_path: str,
-                                max_length: int) -> Dict[str, Dataset]:
+def make_supervised_data_module(
+    tokenizer: PreTrainedTokenizer,
+    lazy_preprocess: bool,
+    data_path: str,
+) -> Dict[str, Dataset]:
     """
     Make dataset and collator for supervised fine-tuning.
 
@@ -296,7 +291,6 @@ def make_supervised_data_module(tokenizer: PreTrainedTokenizer,
         tokenizer (PreTrainedTokenizer): The tokenizer object.
         lazy_preprocess (bool): Flag indicating whether to use lazy preprocessing.
         data_path (str): The path to the data file or directory.
-        max_length (int): The maximum length of the sequences in the dataset.
 
     Returns:
         dict: A dictionary containing the train_dataset and eval_dataset.
@@ -322,11 +316,7 @@ def make_supervised_data_module(tokenizer: PreTrainedTokenizer,
     print(f'#train {len(train_raw_data)}, #eval {len(eval_raw_data)}')
 
     # Create train and eval datasets using the chosen dataset class
-    train_dataset = dataset_cls(train_raw_data,
-                                tokenizer=tokenizer,
-                                max_length=max_length)
-    eval_dataset = dataset_cls(eval_raw_data,
-                               tokenizer=tokenizer,
-                               max_length=max_length)
+    train_dataset = dataset_cls(train_raw_data, tokenizer=tokenizer)
+    eval_dataset = dataset_cls(eval_raw_data, tokenizer=tokenizer)
 
     return {'train_dataset': train_dataset, 'eval_dataset': eval_dataset}
