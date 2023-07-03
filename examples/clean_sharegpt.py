@@ -2,7 +2,11 @@
 
 import argparse
 import json
+import sys
 from typing import Any, Dict, List, Tuple
+
+sys.path.append('../')
+from chatllms.data.conv_dataset import extract_conversations_from_raw_data
 
 
 def json_dump(json_data, out_file):
@@ -189,6 +193,10 @@ def get_clean_data(args: Any) -> Any:
     print(f'clean data1 len: {len(clean_data1)}')
     print(f'clean data2 len: {len(clean_data2)}')
 
+    # extract conversations from raw_data
+    sources = [example['conversations'] for example in clean_data2]
+    convs_data = extract_conversations_from_raw_data(sources)
+    json_dump(convs_data, 'convs_data.json')
     return clean_data2
 
 
