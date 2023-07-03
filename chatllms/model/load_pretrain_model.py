@@ -144,28 +144,6 @@ def load_model_tokenizer(
         model.gradient_checkpointing_enable()
         model.config.use_cache = False  # turn off when gradient checkpointing is enabled
 
-        if hasattr(model, 'enable_input_require_grads'):
-            model.enable_input_require_grads()
-        else:
-
-            def make_inputs_require_grad(module, input, output):
-                output.requires_grad_(True)
-
-            model.get_input_embeddings().register_forward_hook(
-                make_inputs_require_grad)
-
-    if not args.full_finetune and hasattr(model, output_embedding_layer_name):
-        output_embedding_layer: torch.nn.Linear = getattr(
-            model, output_embedding_layer_name)
-        input_dtype = output_embedding_layer.weight.dtype
-
-        class CastOutputToFloat(torch.nn.Sequential):
-            def forward(self, x: torch.Tensor) -> torch.Tensor:
-                return super().forward(x.to(input_dtype)).to(torch.float32)
-
-        setattr(model, output_embedding_layer_name,
-                CastOutputToFloat(output_embedding_layer))
-
     if not args.full_finetune:
         if checkpoint_dir is not None:
             # Load pre-trained adapters from checkpoint directory.
