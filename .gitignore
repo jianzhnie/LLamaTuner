@@ -168,3 +168,4 @@ prompt_data
 work_dir_lora/
 output/
 outputs/
+*.json
