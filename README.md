@@ -14,7 +14,7 @@
 
 # Efficient Finetuning of Quantized LLMs  --- 低资源的大语言模型量化训练/部署方案
 
-This is the repo for the `Efficient Finetuning of Quantized LLMs` project, which aims to build and share instruction-following Chinese `baichuan-7b/LLaMA/Pythia/GLM` model tuning methods which can be trained on **a single Nvidia RTX-2080TI**, multi-round chatbot which can be trained on **a single Nvidia RTX-3090** with the context len 2048.
+This is the repo for the `Efficient Finetuning of Quantized LLMs` project, which aims to build and share instruction-following Chinese `baichuan-7b/LLaMA/Pythia/GLM` model tuning methods which can be trained on **a single Nvidia RTX-2080TI**, multi-round chatbot which can be trained on **a single Nvidia RTX-3090** with the context len 2048.
 
 We uses [bitsandbytes](https://github.com/TimDettmers/bitsandbytes) for quantization and is integrated with Huggingface's [PEFT](https://github.com/huggingface/peft) and [transformers](https://github.com/huggingface/transformers/) libraries.
 
@@ -45,6 +45,19 @@ QLora 引入了多种创新，旨在在不牺牲性能的情况下减少内存�
 - [BLOOM](https://huggingface.co/bigscience/bloom) & [BLOOMZ](https://huggingface.co/bigscience/bloomz) (560M/1.1B/1.7B/3B/7.1B/176B)
 - [baichuan](https://huggingface.co/baichuan-inc/baichuan-7B) (7B)
 - [OPT](https://huggingface.co/docs/transformers/model_doc/opt) (125M/350M/1.3B/2.7B/6.7B/66B )
+
+## Supported Training Approaches
+
+- (Continually) pre-training
+  - Full-parameter tuning
+  - Partial-parameter tuning
+  - [LoRA](https://arxiv.org/abs/2106.09685)
+  - [QLoRA](https://arxiv.org/abs/2305.14314)
+- Supervised fine-tuning
+  - Full-parameter tuning
+  - Partial-parameter tuning
+  - [LoRA](https://arxiv.org/abs/2106.09685)
+  - [QLoRA](https://arxiv.org/abs/2305.14314)
 
 ## Model Zoo
 
