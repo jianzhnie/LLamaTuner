@@ -14,13 +14,6 @@ def json_dump(json_data, out_file):
         json.dump(json_data, f, indent=2, ensure_ascii=False)
 
 
-def check_adjacent_duplicates(lst):
-    for i in range(1, len(lst)):
-        if lst[i] == lst[i - 1]:
-            return True
-    return False
-
-
 def get_statistics(
         raw_data: List[Dict[str,
                             any]]) -> Tuple[List[str], Dict[str, List[str]]]:
@@ -103,7 +96,8 @@ def format_roles(
 def filter_wrong_data(
         raw_data: List[Dict[str,
                             any]]) -> List[Dict[str, List[Dict[str, any]]]]:
-    """Filter out incorrect data from raw_data.
+    """
+    Filter out incorrect conversation data from raw_data.
 
     Args:
         raw_data: A list of dictionaries containing conversation data.
@@ -111,32 +105,40 @@ def filter_wrong_data(
     Returns:
         A list of dictionaries containing filtered conversation data.
     """
+
     roles = ['human', 'gpt']
-    collect_data = []
+    filtered_data = []
 
     for idx, contents in enumerate(raw_data):
+        # Get conversations and id from the current dictionary
         convs = contents.get('conversations', [])
         id = contents.get('id')
-        new_convs = []
 
-        if convs[0].get('from') != 'human':
+        # Remove first conversation if it is not from 'human' role
+        if convs and convs[0].get('from') != 'human':
             convs = convs[1:]
 
+        # Check if number of conversations is less than 2
         if len(convs) < 2:
             continue
 
-        role_lst = [conv['from'] for conv in convs]
+        # Truncate convs to have an even number of conversations
+        convs = convs[:len(convs) // 2 * 2]
 
-        if check_adjacent_duplicates(role_lst):
-            continue
-        else:
-            for j, conv in enumerate(convs):
-                if conv.get('from') == roles[j % 2]:
-                    new_convs.append(conv)
+        valid = True
+        for j, conv in enumerate(convs):
+            # Check if role of conversation alternates between 'human' and 'gpt'
+            if conv.get('from') != roles[j % 2]:
+                valid = False
+                break
 
-            if len(new_convs) >= 2:
-                collect_data.append({'id': id, 'conversations': new_convs})
-    return collect_data
+        assert len(convs) % 2 == 0, "Number of conversations must be even."
+
+        if valid:
+            # Append filtered data to the result
+            filtered_data.append({'id': id, 'conversations': convs})
+
+    return filtered_data
 
 
 def get_clean_data(args: Any) -> Any:
@@ -206,6 +208,6 @@ if __name__ == '__main__':
     parser.add_argument('--out-file', type=str)
     args = parser.parse_args()
     args.in_file = '/home/robin/prompt_data/anon8231489123/ShareGPT_Vicuna_unfiltered/ShareGPT_V3_unfiltered_cleaned_split.json'
-    args.out_file = '/home/robin/work_dir/llm/Chinese-Guanaco/examples/sharegpt_formate_role_filter.json'
+    args.out_file = '/home/robin/work_dir/llm/Chinese-Guanaco/examples/sharegpt_clean.json'
     clean_data2 = get_clean_data(args)
     json_dump(clean_data2, args.out_file)
