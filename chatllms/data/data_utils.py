@@ -247,7 +247,6 @@ def format_dataset(dataset: Dataset,
 def split_train_eval(
     dataset: Dataset,
     do_eval: bool = False,
-    do_predict: bool = False,
     eval_dataset_size: float = 0.1,
     max_eval_samples: int = None,
     do_train: bool = True,
@@ -292,23 +291,6 @@ def split_train_eval(
                 eval_dataset) > max_eval_samples:
             eval_dataset = eval_dataset.select(np.arange(max_eval_samples))
 
-    if do_predict:
-        if 'test' in dataset:
-            test_dataset = dataset['test']
-        else:
-            # Split train dataset in train and validation according to `eval_dataset_size`
-            print(
-                'Splitting train dataset in train and validation according to `eval_dataset_size`'
-            )
-            dataset = dataset['train'].train_test_split(
-                test_size=eval_dataset_size, shuffle=True, seed=42)
-            test_dataset = dataset['test']
-
-        # Reduce evaluation dataset size (if specified)
-        if max_eval_samples is not None and len(
-                test_dataset) > max_eval_samples:
-            test_dataset = test_dataset.select(np.arange(max_eval_samples))
-
     # Prepare training dataset
     if do_train:
         train_dataset = dataset['train']
@@ -321,7 +303,6 @@ def split_train_eval(
     return dict(
         train=train_dataset if do_train else None,
         eval=eval_dataset if do_eval else None,
-        predict=test_dataset if do_predict else None,
     )
 
 
@@ -351,7 +332,6 @@ def make_data_module(args):
     """
     train_datasets = []
     eval_datasets = []
-    predict_datasets = []
     dataset_name_list = args.dataset_name.split(',')
     print(f'Loading datasets: {dataset_name_list}')
     for dataset_name in dataset_name_list:
@@ -370,7 +350,6 @@ def make_data_module(args):
         dataset_dict = split_train_eval(
             dataset,
             do_eval=args.do_eval,
-            do_predict=args.do_predict,
             eval_dataset_size=args.eval_dataset_size,
             max_eval_samples=args.max_eval_samples,
             do_train=args.do_train,
@@ -381,29 +360,21 @@ def make_data_module(args):
 
         train_datasets.append(dataset_dict['train'])
         eval_datasets.append(dataset_dict['eval'])
-        predict_datasets.append(dataset_dict['predict'])
 
     concate_train = concatenate_datasets(
         train_datasets) if args.do_train else None
     concate_eval = concatenate_datasets(
         eval_datasets) if args.do_eval else None
-    concate_pred = concatenate_datasets(
-        predict_datasets) if args.do_predict else None
-
     print('=' * 80)
     if args.do_train:
         print(f'Concatenate train dataset size: {len(concate_train)}')
     if args.do_eval:
         print(f'Concatenate eval dataset size: {len(concate_eval)}')
-    if args.do_predict:
-        print(f'Concatenate eval dataset size: {len(concate_pred)}')
 
     dataset_dict = {
         'train': concate_train,
         'eval': concate_eval,
-        'predict': concate_pred,
     }
-
     return dataset_dict
 
 

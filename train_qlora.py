@@ -5,10 +5,8 @@ import time
 import torch
 import transformers
 from transformers import GenerationConfig, Trainer, set_seed
-
-from chatllms.data.data_utils import make_data_module
-from chatllms.data.sft_dataset import (DataCollatorForSupervisedDataset,
-                                       SupervisedDataset)
+from chatllms.data.conv_dataset import make_conversation_data_module
+from chatllms.data.sft_dataset import make_supervised_data_module
 from chatllms.model.load_pretrain_model import load_model_tokenizer
 from chatllms.model.save_peft_model_callback import SavePeftModelCallback
 from chatllms.utils.callbacks import MMLUEvalCallback, SampleGenerateCallback
@@ -20,7 +18,7 @@ from chatllms.utils.model_utils import (add_special_tokens_if_missing,
                                         get_last_checkpoint,
                                         print_trainable_parameters,
                                         verify_dtypes)
-from chatllms.utils.training import predict_and_save, train_and_evaluate
+from chatllms.utils.training import train_and_evaluate
 
 torch.backends.cuda.matmul.allow_tf32 = True
 
@@ -29,15 +27,8 @@ def main():
     parser = transformers.HfArgumentParser(
         (ModelArguments, DataArguments, TrainingArguments, LoraArguments,
          QuantArgments, GenerationArguments))
-    (
-        model_args,
-        data_args,
-        training_args,
-        lora_args,
-        quant_args,
-        generation_args,
-        extra_args,
-    ) = parser.parse_args_into_dataclasses(return_remaining_strings=True)
+    (model_args, data_args, training_args, lora_args, quant_args,
+     generation_args) = parser.parse_args_into_dataclasses()
     training_args.generation_config = GenerationConfig(**vars(generation_args))
 
     args = argparse.Namespace(**vars(model_args), **vars(data_args),
@@ -83,46 +74,20 @@ def main():
     logger.info('Verifying dtypes...')
     verify_dtypes(model)
 
-    dataset_dict = make_data_module(args)
-    train_dataset = SupervisedDataset(
-        dataset_dict['train'],
-        tokenizer=tokenizer,
-        source_max_len=args.source_max_len,
-        target_max_len=args.target_max_len,
-        train_on_source=args.train_on_source,
-        predict_with_generate=args.predict_with_generate,
-    ) if args.do_train else None
+    if not args.multiturn_dialogue:
+        logger.info('Training data is not a multiturn_dialogue formate')
+        data_module = make_supervised_data_module(tokenizer=tokenizer,
+                                                  args=args)
+    else:
+        logger.info('Training data is a multiturn_dialogue formate')
+        data_module = make_conversation_data_module(tokenizer=tokenizer,
+                                                    lazy_preprocess=True,
+                                                    data_path=args.data_path)
 
-    eval_dataset = SupervisedDataset(
-        dataset_dict['eval'],
-        tokenizer=tokenizer,
-        source_max_len=args.source_max_len,
-        target_max_len=args.target_max_len,
-        train_on_source=args.train_on_source,
-        predict_with_generate=args.predict_with_generate,
-    ) if args.do_eval else None
-
-    predict_dataset = SupervisedDataset(
-        dataset_dict['predict'],
-        tokenizer=tokenizer,
-        source_max_len=args.source_max_len,
-        target_max_len=args.target_max_len,
-        train_on_source=args.train_on_source,
-        predict_with_generate=args.predict_with_generate,
-    ) if args.do_predict else None
-
-    print(train_dataset, eval_dataset, predict_dataset)
-    data_collator = DataCollatorForSupervisedDataset(
-        tokenizer=tokenizer, predict_with_generate=args.predict_with_generate)
-
-    trainer = Trainer(
-        model=model,
-        tokenizer=tokenizer,
-        args=training_args,
-        train_dataset=train_dataset,
-        eval_dataset=eval_dataset,
-        data_collator=data_collator,
-    )
+    trainer = Trainer(model=model,
+                      tokenizer=tokenizer,
+                      args=training_args,
+                      **data_module)
     # Add callback to save adapter model.
     if not args.full_finetune:
         trainer.add_callback(SavePeftModelCallback)
@@ -148,8 +113,6 @@ def main():
     assert args.do_train or args.do_eval or args.do_predict
     if args.do_train or args.do_eval:
         train_and_evaluate(trainer, args, logger)
-    if args.do_predict:
-        predict_and_save(trainer, tokenizer, predict_dataset, args, logger)
 
 
 if __name__ == '__main__':

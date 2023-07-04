@@ -80,11 +80,22 @@ class ModelArguments:
 
 @dataclass
 class DataArguments:
+    multiturn_dialogue: Optional[str] = field(
+        default=False,
+        metadata={
+            'help': 'The dataset is a multiturn_dialogue dataset or not'
+        })
     # 微调数据集是alpaca，那么可以试试中文的效果。Llama、Bloom和OPT，或者MPT等等
     dataset_name: Optional[str] = field(
         default='alpaca',
         metadata={
             'help': 'Which dataset to finetune on. See datamodule for options.'
+        })
+    data_path: str = field(
+        default='./data',
+        metadata={
+            'help':
+            'where is dataset in local dir. See datamodule for options.'
         })
     # 数据集的本地路径，如果load_from_local为True，那么就从本地加载数据集
     data_dir: str = field(

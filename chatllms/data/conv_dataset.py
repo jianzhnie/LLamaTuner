@@ -279,7 +279,7 @@ class VicunaDataset(Dataset):
         return ret
 
 
-def make_supervised_data_module(
+def make_conversation_data_module(
     tokenizer: PreTrainedTokenizer,
     lazy_preprocess: bool,
     data_path: str,

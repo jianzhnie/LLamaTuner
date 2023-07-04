@@ -11,9 +11,40 @@ from torch.utils.data import Dataset
 from transformers import PreTrainedTokenizer
 
 from chatllms.data.data_utils import (ALPACA_PROMPT_DICT, IGNORE_INDEX,
-                                      PROMPT_DICT)
+                                      PROMPT_DICT, make_data_module)
 
 logger = logging.getLogger(__name__)
+
+
+def make_supervised_data_module(tokenizer: PreTrainedTokenizer, args):
+    dataset_dict = make_data_module(args)
+    train_dataset = SupervisedDataset(
+        dataset_dict['train'],
+        tokenizer=tokenizer,
+        source_max_len=args.source_max_len,
+        target_max_len=args.target_max_len,
+        train_on_source=args.train_on_source,
+        predict_with_generate=args.predict_with_generate,
+    ) if args.do_train else None
+
+    eval_dataset = SupervisedDataset(
+        dataset_dict['eval'],
+        tokenizer=tokenizer,
+        source_max_len=args.source_max_len,
+        target_max_len=args.target_max_len,
+        train_on_source=args.train_on_source,
+        predict_with_generate=args.predict_with_generate,
+    ) if args.do_eval else None
+
+    print(train_dataset, eval_dataset)
+    data_collator = DataCollatorForSupervisedDataset(
+        tokenizer=tokenizer, predict_with_generate=args.predict_with_generate)
+
+    return {
+        'train_dataset': train_dataset,
+        'eval_dataset': eval_dataset,
+        'data_collator': data_collator
+    }
 
 
 class AlpacaDataset(Dataset):
