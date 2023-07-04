@@ -74,9 +74,9 @@ def split_one_sample(sample: Dict[str, any],
 
     # Iterate through conversations and create new samples based on length constraints
     for end_idx in range(0, len(conversations), 2):
-        tmp_len = tokenized_lens[end_idx] + tokenized_lens[end_idx + 1]
-        if cur_len + tmp_len > max_length:
-            sub_sample = make_sample(sample, start_idx)
+        round_len = tokenized_lens[end_idx] + tokenized_lens[end_idx + 1]
+        if cur_len + round_len > max_length:
+            sub_sample = make_sample(sample, start_idx, end_idx + 2)
             if sub_sample:
                 new_samples.append(sub_sample)
             start_idx = end_idx
@@ -85,49 +85,8 @@ def split_one_sample(sample: Dict[str, any],
             sub_sample = make_sample(sample, start_idx, end_idx + 2)
             if sub_sample:
                 new_samples.append(sub_sample)
-        cur_len += tmp_len
+        cur_len += round_len
 
-    return new_samples
-
-
-def split_one_sample(sample: Dict[str, any]) -> List[Dict[str, any]]:
-    """
-    Split a single sample into multiple samples based on conversation lengths.
-
-    Args:
-        sample (Dict[str, any]): The original sample dictionary.
-
-    Returns:
-        List[Dict[str, any]]: The list of new sample dictionaries.
-    """
-    tokenized_lens = []
-    conversations = sample['conversations']
-
-    # Truncate conversations to an even number of conversations
-    conversations = conversations[:len(conversations) // 2 * 2]
-
-    # Calculate the tokenized length for each conversation
-    for conv in conversations:
-        length = len(tokenizer(conv['value']).input_ids) + 6
-        tokenized_lens.append(length)
-
-    new_samples = []
-    start_idx = 0  # The starting index of conversations to include
-    cur_len = 0  # The current length of conversations included
-    # Iterate through conversations and create new samples based on length constraints
-    for end_idx in range(0, len(conversations), 2):
-        tmp_len = tokenized_lens[end_idx] + tokenized_lens[end_idx + 1]
-        if cur_len + tmp_len > max_length:
-            sub_samle = make_sample(sample, start_idx, end_idx)
-            if sub_samle:
-                new_samples.append(sub_samle)
-            start_idx = end_idx
-            cur_len = 0
-        elif end_idx == len(conversations) - 2:
-            sub_samle = make_sample(sample, start_idx, end_idx + 2)
-            if sub_samle:
-                new_samples.append(sub_samle)
-        cur_len += tmp_len
     return new_samples
 
 
