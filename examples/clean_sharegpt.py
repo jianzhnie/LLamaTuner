@@ -93,11 +93,11 @@ def format_roles(
     return collect_data
 
 
-def filter_wrong_data(
+def filter_invalid_roles(
         raw_data: List[Dict[str,
                             any]]) -> List[Dict[str, List[Dict[str, any]]]]:
     """
-    Filter out incorrect conversation data from raw_data.
+    Filter out invalid contents based on the roles assigned to each conversation.
 
     Args:
         raw_data: A list of dictionaries containing conversation data.
@@ -132,7 +132,7 @@ def filter_wrong_data(
                 valid = False
                 break
 
-        assert len(convs) % 2 == 0, "Number of conversations must be even."
+        assert len(convs) % 2 == 0, 'Number of conversations must be even.'
 
         if valid:
             # Append filtered data to the result
@@ -179,7 +179,7 @@ def get_clean_data(args: Any) -> Any:
     # Filter out incorrect data from clean_data1
     print('=' * 100)
     print('Filtering out incorrect data from clean_data1...')
-    clean_data2 = filter_wrong_data(clean_data1)
+    clean_data2 = filter_invalid_roles(clean_data1)
 
     # Get statistics for clean_data2
     print('=' * 100)
