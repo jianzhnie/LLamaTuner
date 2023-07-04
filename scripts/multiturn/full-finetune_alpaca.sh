@@ -1,5 +1,3 @@
-
-<<<<<<< HEAD
 CUDA_VISIBLE_DEVICES=0,1,2,3 python train_multiturn.py \
     --model_name_or_path  ~/checkpoints/baichuan7b \
     --data_path ~/prompt_data/sharegpt_clean/sharegpt_clean.json \
