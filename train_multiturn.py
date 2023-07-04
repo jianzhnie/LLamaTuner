@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 import transformers
-from transformers import Trainer
+from transformers.trainer import Trainer
 
 from chatllms.data.conv_dataset import make_supervised_data_module
 from chatllms.utils.model_utils import (add_special_tokens_if_missing,
@@ -41,7 +41,7 @@ class DataArguments:
 class TrainingArguments(transformers.TrainingArguments):
     cache_dir: Optional[str] = field(default=None)
     optim: str = field(default='adamw_torch')
-    max_length: int = field(
+    model_max_length: int = field(
         default=2048,
         metadata={
             'help':
@@ -71,8 +71,7 @@ def train():
     data_module = make_supervised_data_module(
         tokenizer=tokenizer,
         lazy_preprocess=args.lazy_preprocess,
-        data_path=args.data_path,
-    )
+        data_path=args.data_path)
 
     # Initialize the Trainer object and start training
     logging.warning('Initializing Trainer object.')

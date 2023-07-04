@@ -29,13 +29,10 @@ class AlpacaDataset(Dataset):
         __getitem__(self, idx) -> Dict[str, torch.Tensor]: Retrieves an example from the dataset at the specified index.
 
     """
-    def __init__(
-        self,
-        data_path: str,
-        tokenizer: PreTrainedTokenizer,
-        prompt_temptlate='alpaca',
-        max_length: int = 1024,
-    ):
+    def __init__(self,
+                 data_path: str,
+                 tokenizer: PreTrainedTokenizer,
+                 prompt_temptlate='alpaca'):
         """
         Initializes a SupervisedDataset object.
 
@@ -69,7 +66,6 @@ class AlpacaDataset(Dataset):
         ]
         self.targets = [example['output'] for example in list_data_dict]
         self.tokenizer = tokenizer
-        self.max_length = max_length
 
     def __len__(self) -> int:
         """
@@ -97,7 +93,7 @@ class AlpacaDataset(Dataset):
         src_txt = f'{self.tokenizer.bos_token}{src_txt}'
         tokenized_src = self.tokenizer(
             src_txt,
-            max_length=self.max_length,
+            max_length=self.tokenizer.model_max_length,
             truncation=True,
         )
         tgt_txt = self.sources[idx]
@@ -105,7 +101,7 @@ class AlpacaDataset(Dataset):
         # Tokenize the example and source text
         tokenized_tgt = self.tokenizer(
             tgt_txt,
-            max_length=self.max_length,
+            max_length=self.tokenizer.model_max_length,
             truncation=True,
         )
         src_ids = tokenized_src['input_ids']

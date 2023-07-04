@@ -43,7 +43,7 @@ class DataArguments:
 class TrainingArguments(transformers.TrainingArguments):
     cache_dir: Optional[str] = field(default=None)
     optim: str = field(default='adamw_torch')
-    max_length: int = field(
+    model_max_length: int = field(
         default=512,
         metadata={
             'help':
@@ -94,6 +94,7 @@ def load_model_tokenizer(args) -> Tuple[PreTrainedModel, PreTrainedTokenizer]:
     tokenizer = AutoTokenizer.from_pretrained(
         args.model_name_or_path,
         padding_side='right',
+        model_max_length=args.model_max_length,
         use_fast=False,
         tokenizer_type='llama' if 'llama' in args.model_name_or_path else None,
         **config_kwargs,
@@ -136,7 +137,6 @@ def train() -> None:
     train_dataset = AlpacaDataset(
         data_path=args.data_path,
         tokenizer=tokenizer,
-        max_length=args.max_length,
     )
     data_collator = DataCollatorForSupervisedDataset(tokenizer=tokenizer)
 

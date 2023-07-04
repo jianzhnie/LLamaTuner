@@ -1,18 +1,22 @@
-CUDA_VISIBLE_DEVICES=0 torchrun --nproc_per_node=1 train.py \
-    --model_name_or_path facebook/opt-125m \
-    --data_path ~/prompt_data/InstructionWild/instinwild_en.json  \
-    --output_dir work_dir/alpaca_full-finetune \
+CUDA_VISIBLE_DEVICES=0,1,2,3 torchrun --nproc_per_node=4 train_multiturn.py \
+    --model_name_or_path  ~/checkpoints/baichuan7b \
+    --data_path ~/prompt_data/sharegpt_clean/sharegpt_clean.json \
+    --output_dir work_dir/baichuan_multiturn_full-finetune \
     --num_train_epochs 3 \
-    --per_device_train_batch_size 4 \
-    --per_device_eval_batch_size 4 \
-    --gradient_accumulation_steps 8 \
-    --evaluation_strategy "no" \
+    --per_device_train_batch_size 2 \
+    --per_device_eval_batch_size 2 \
+    --gradient_accumulation_steps 16 \
+    --evaluation_strategy "steps" \
     --save_strategy "steps" \
+    --eval_steps 100 \
     --save_steps 500 \
     --save_total_limit 5 \
     --learning_rate 2e-5 \
     --weight_decay 0. \
-    --warmup_ratio 0.03 \
+    --warmup_ratio 0.04 \
     --lr_scheduler_type "cosine" \
+    --gradient_checkpointing True \
     --logging_steps 1 \
-    --deepspeed "scripts/ds_config/ds_config_zero3_auto.json"
+    --trust_remote_code \
+    --lazy_preprocess True \
+    --deepspeed "./scripts/ds_config/ds_config_zero3_auto.json"
