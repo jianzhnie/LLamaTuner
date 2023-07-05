@@ -151,6 +151,7 @@ class SupervisedDataset(Dataset):
         raw_data (List[Dict]): Raw input data.
         tokenizer (PreTrainedTokenizer): Tokenizer for preprocessing the data.
     """
+
     def __init__(self, raw_data: List[Dict[str, List[str]]],
                  tokenizer: PreTrainedTokenizer) -> None:
         super().__init__()
@@ -193,6 +194,7 @@ class LazySupervisedDataset(Dataset):
     """
     Dataset for supervised fine-tuning.
     """
+
     def __init__(
         self,
         raw_data: List[Dict[str, str]],
@@ -256,6 +258,7 @@ class VicunaDataset(Dataset):
         raw_data (List[Dict]): Raw input data.
         tokenizer (PreTrainedTokenizer): Tokenizer for preprocessing the data.
     """
+
     def __init__(self, data_path) -> None:
         super(VicunaDataset, self).__init__()
 
@@ -319,4 +322,8 @@ def make_conversation_data_module(
     train_dataset = dataset_cls(train_raw_data, tokenizer=tokenizer)
     eval_dataset = dataset_cls(eval_raw_data, tokenizer=tokenizer)
 
+    print('train_dataset: ', train_dataset, type(train_dataset), 'length: ',
+          len(train_dataset))
+    print('eval_dataset: ', eval_dataset, type(eval_dataset), 'length: ',
+          len(eval_dataset))
     return {'train_dataset': train_dataset, 'eval_dataset': eval_dataset}

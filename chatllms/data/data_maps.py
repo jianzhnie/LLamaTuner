@@ -67,5 +67,7 @@ def get_dataset_path(dataset_name: str,
             'databricks/databricks-dolly-15k',
             'olcc':
             os.path.join(data_dir, 'olcc/olcc_alpaca.json'),
+            'sharegpt':
+            os.path.join(data_dir, 'sharegpt/sharegpt_split.json'),
         }
     return dataset_map[dataset_name]
