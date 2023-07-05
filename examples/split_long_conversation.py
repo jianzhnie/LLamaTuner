@@ -36,17 +36,13 @@ def make_sample(sample: Dict[str, any], start_idx: int,
     """
     assert (end_idx - start_idx) % 2 == 0
     conversations = sample['conversations'][start_idx:end_idx]
-    if conversations:
-        return {
-            'id': sample['id'] + '_' + str(start_idx),
-            'conversations': conversations,
-        }
-    else:
-        return {}
+    return {
+        'id': sample['id'] + '_' + str(start_idx),
+        'conversations': conversations,
+    }
 
 
-def split_one_sample(sample: Dict[str, any],
-                     max_length: int) -> List[Dict[str, any]]:
+def split_one_sample(sample: Dict[str, any]) -> List[Dict[str, any]]:
     """
     Split a single sample into multiple samples based on conversation lengths.
 
@@ -77,14 +73,12 @@ def split_one_sample(sample: Dict[str, any],
         round_len = tokenized_lens[end_idx] + tokenized_lens[end_idx + 1]
         if cur_len + round_len > max_length:
             sub_sample = make_sample(sample, start_idx, end_idx + 2)
-            if sub_sample:
-                new_samples.append(sub_sample)
-            start_idx = end_idx
+            new_samples.append(sub_sample)
+            start_idx = end_idx + 2
             cur_len = 0
         elif end_idx == len(conversations) - 2:
             sub_sample = make_sample(sample, start_idx, end_idx + 2)
-            if sub_sample:
-                new_samples.append(sub_sample)
+            new_samples.append(sub_sample)
         cur_len += round_len
 
     return new_samples
@@ -133,16 +127,14 @@ def main(args):
     split_data = split_all(contents, tokenizer, args.max_length)
     res1, res2 = get_statistics(split_data)
     # Save role_list_2 and role_res_2 to JSON files
-    json_dump(res1, 'role_list_3.json')
     json_dump(res2, 'role_res_3.json')
     print(f'#in: {len(contents)}, #out: {len(split_data)}')
     print('Filtering invalid roles...')
     new_content = filter_invalid_roles(split_data)
     res1, res2 = get_statistics(new_content)
     # Save role_list_3 and role_res_3 to JSON files
-    json_dump(res1, 'role_list_4.json')
     json_dump(res2, 'role_res_4.json')
-    print(f'#in: {len(contents)}, #out: {len(new_content)}')
+    print(f'#in: {len(split_data)}, #out: {len(new_content)}')
     json_dump(new_content, args.out_file)
 
 
