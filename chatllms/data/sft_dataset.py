@@ -8,8 +8,7 @@ import torch
 from datasets import load_dataset
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import Dataset
-from transformers import PreTrainedTokenizer
-
+from transformers.tokenization_utils import PreTrainedTokenizer
 from chatllms.data.data_utils import (ALPACA_PROMPT_DICT, IGNORE_INDEX,
                                       PROMPT_DICT, make_data_module)
 
@@ -36,7 +35,11 @@ def make_supervised_data_module(tokenizer: PreTrainedTokenizer, args):
         predict_with_generate=args.predict_with_generate,
     ) if args.do_eval else None
 
-    print(train_dataset, eval_dataset)
+    print('train_dataset: ', train_dataset, type(train_dataset), 'length: ',
+          len(train_dataset))
+    print('eval_dataset: ', eval_dataset, type(eval_dataset), 'length: ',
+          len(eval_dataset))
+    print('Adding data collator: ', DataCollatorForSupervisedDataset)
     data_collator = DataCollatorForSupervisedDataset(
         tokenizer=tokenizer, predict_with_generate=args.predict_with_generate)
 
@@ -60,6 +63,7 @@ class AlpacaDataset(Dataset):
         __getitem__(self, idx) -> Dict[str, torch.Tensor]: Retrieves an example from the dataset at the specified index.
 
     """
+
     def __init__(self,
                  data_path: str,
                  tokenizer: PreTrainedTokenizer,
@@ -161,6 +165,7 @@ class SupervisedDataset(Dataset):
             train_on_source (bool): If True, the model will be trained on the source text as well as the target text.
             predict_with_generate (bool): If True, the model will generate predictions instead of training.
     """
+
     def __init__(
         self,
         hf_dataset: datasets.DatasetDict,

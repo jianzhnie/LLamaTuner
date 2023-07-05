@@ -75,11 +75,11 @@ def main():
     verify_dtypes(model)
 
     if not args.multiturn_dialogue:
-        logger.info('Training data is not a multiturn_dialogue formate')
+        logger.info('Training data is not a multiturn dialogue formate')
         data_module = make_supervised_data_module(tokenizer=tokenizer,
                                                   args=args)
     else:
-        logger.info('Training data is a multiturn_dialogue formate')
+        logger.info('Training data is a multiturn dialogue formate')
         data_module = make_conversation_data_module(tokenizer=tokenizer,
                                                     lazy_preprocess=True,
                                                     data_path=args.data_path)

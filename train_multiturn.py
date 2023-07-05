@@ -7,7 +7,7 @@ from typing import Optional
 import transformers
 from transformers.trainer import Trainer
 
-from chatllms.data.conv_dataset import make_supervised_data_module
+from chatllms.data.conv_dataset import make_conversation_data_module
 from chatllms.utils.model_utils import (add_special_tokens_if_missing,
                                         safe_save_model_for_hf_trainer)
 from train import load_model_tokenizer
@@ -68,7 +68,7 @@ def train():
 
     # Add special tokens if they are missing
     logging.warning('Creating training dataset and data collator.')
-    data_module = make_supervised_data_module(
+    data_module = make_conversation_data_module(
         tokenizer=tokenizer,
         lazy_preprocess=args.lazy_preprocess,
         data_path=args.data_path)
