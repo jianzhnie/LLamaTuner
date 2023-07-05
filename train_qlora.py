@@ -58,9 +58,7 @@ def main():
         logger=logger,
     )
     logger.info('Loaded model...')
-    logger.info('Print the  trainable parameters of the model')
-    print_trainable_parameters(args, model)
-
+    
     set_seed(args.seed)
     # LLaMA tokenizer may not have correct special tokens set.
     # Check and add them if missing to prevent them from being parsed into different tokens.

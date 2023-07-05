@@ -85,6 +85,7 @@ class DataArguments:
         metadata={
             'help': 'The dataset is a multiturn_dialogue dataset or not'
         })
+    lazy_preprocess: bool = True
     # 微调数据集是alpaca，那么可以试试中文的效果。Llama、Bloom和OPT，或者MPT等等
     dataset_name: Optional[str] = field(
         default='alpaca',
@@ -222,6 +223,13 @@ class TrainingArguments(transformers.TrainingArguments):
             'help':
             'Group sequences into batches with same length. Saves memory and speeds up training considerably.'
         })
+    model_max_length: int = field(
+        default=2048,
+        metadata={
+            'help':
+            'Maximum sequence length. Sequences will be right padded (and possibly truncated).'
+        },
+    )
 
 
 @dataclass

@@ -23,7 +23,6 @@ check_min_version('4.29.1')
 def load_model_tokenizer(
     args: argparse.Namespace = None,
     checkpoint_dir: Optional[str] = None,
-    output_embedding_layer_name: Optional[str] = 'lm_head',
     is_trainable: Optional[bool] = True,
     logger=None,
 ) -> Tuple[PreTrainedModel, PreTrainedTokenizer]:
@@ -34,7 +33,6 @@ def load_model_tokenizer(
     Args:
         args: A dictionary containing various hyperparameters.
         checkpoint_dir: A directory containing pre-trained adapters for the model.
-        output_embedding_layer_name: The name of the output embedding layer in the model.
         is_trainable: A bool indicating whether the model can be trained or not.
         logger: A logger object to log messages during execution.
     Returns:
@@ -196,8 +194,10 @@ def load_model_tokenizer(
         args.model_name_or_path,
         padding_side='right',
         use_fast=False,
+        model_max_length=args.model_max_length,
         tokenizer_type='llama' if 'llama' in args.model_name_or_path else None,
         **config_kwargs,
+        
     )
 
     return model, tokenizer
