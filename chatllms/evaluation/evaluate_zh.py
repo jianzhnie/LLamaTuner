@@ -11,36 +11,28 @@ from transformers import (AutoModelForCausalLM, AutoTokenizer, PreTrainedModel,
                           PreTrainedTokenizerBase)
 
 
+# 将数据保存为 JSON 文件
 def json_dump(obj, path):
-    with open(path, 'w') as f:
-        json.dump(obj, f, indent=2)
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(obj, f, indent=2, ensure_ascii=False)
 
 
-def parse_argument():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--model_name_or_path',
-                        type=str,
-                        required=True,
-                        help='model name or path')
-    parser.add_argument('--shot',
-                        type=int,
-                        default=5,
-                        help='number of shot for few-shot learning')
-    parser.add_argument('--split',
-                        type=str,
-                        default='val',
-                        help='split of dataset to evaluate')
-    parser.add_argument('--output_dir',
-                        type=str,
-                        default='ceval_output',
-                        help='output directory')
-    return parser.parse_args()
+class CEval(object):
+    """Class for evaluating multiple-choice questions.
+    
+    TASK2DESC: A dictionary mapping task names to their descriptions.
 
+    args:
+        model: Pre-trained model for question answering.
+        tokenizer: Tokenizer for encoding text.
+        data_path: Path to the dataset.
+        output_dir: Directory path to save the evaluation results.
+    
 
-class CEval:
-    """Class for evaluating multiple-choice questions."""
-
-    DATA_PATH = 'ceval/ceval-exam'
+    run: Run the evaluation for all tasks.
+    run_single_task: Run the evaluation for a single task.
+    build_example: Builds an example string based on the given data.
+    """
     TASK2DESC = {
         'high_school_physics': '高中物理',
         'fire_engineer': '注册消防工程师',
@@ -100,7 +92,8 @@ class CEval:
         self,
         model: PreTrainedModel,
         tokenizer: PreTrainedTokenizerBase,
-        output_dir: str,
+        data_path: str = 'ceval/ceval-exam',
+        output_dir: str = 'ceval_output',
     ) -> None:
         """
         Initialize the CEval object.
@@ -108,12 +101,14 @@ class CEval:
         Args:
             model (PreTrainedModel): Pre-trained model for question answering.
             tokenizer (PreTrainedTokenizerBase): Tokenizer for encoding text.
+            data_path (str): Path to the dataset.
             output_dir (str): Directory path to save the evaluation results.
         """
         self.model = model
         self.tokenizer = tokenizer
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
+        self.data_path = data_path
         self.output_dir = output_dir
 
     def run(self, shot: int, split: str) -> None:
@@ -160,7 +155,7 @@ class CEval:
         Returns:
             Tuple containing the evaluation results and accuracy.
         """
-        dataset = load_dataset(self.DATA_PATH, task_name)
+        dataset = load_dataset(self.data_path, task_name)
         results: List[Dict[str, str]] = []
         acc = 0.0
 
@@ -234,6 +229,31 @@ class CEval:
         return f'{question}\n{choice}\n答案：{answer}'
 
 
+def parse_argument():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--model_name_or_path',
+                        type=str,
+                        required=True,
+                        help='model name or path')
+    parser.add_argument('--shot',
+                        type=int,
+                        default=5,
+                        help='number of shot for few-shot learning')
+    parser.add_argument('--split',
+                        type=str,
+                        default='val',
+                        help='split of dataset to evaluate')
+    parser.add_argument('--data_path',
+                        type=str,
+                        default='ceval/ceval-exam',
+                        help='path to dataset')
+    parser.add_argument('--output_dir',
+                        type=str,
+                        default='ceval_output',
+                        help='output directory')
+    return parser.parse_args()
+
+
 def main():
     args = parse_argument()
 
@@ -241,8 +261,7 @@ def main():
         args.model_name_or_path,
         trust_remote_code=True,
         device_map='auto',
-        torch_dtype=(torch.bfloat16
-                     if torch.cuda.is_bf16_supported() else torch.float32),
+        torch_dtype=torch.float16,
     )
     tokenizer = AutoTokenizer.from_pretrained(
         args.model_name_or_path,
@@ -252,7 +271,7 @@ def main():
         add_eos_token=False,
         padding_side='left',
     )
-    ceval = CEval(model, tokenizer, args.output_dir)
+    ceval = CEval(model, tokenizer, args.data_path, args.output_dir)
     ceval.run(args.shot, args.split)
 
 
