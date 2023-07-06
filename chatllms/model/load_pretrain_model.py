@@ -197,7 +197,6 @@ def load_model_tokenizer(
         model_max_length=args.model_max_length,
         tokenizer_type='llama' if 'llama' in args.model_name_or_path else None,
         **config_kwargs,
-        
     )
 
     return model, tokenizer

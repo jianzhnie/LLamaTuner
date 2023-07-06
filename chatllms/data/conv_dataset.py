@@ -151,7 +151,6 @@ class SupervisedDataset(Dataset):
         raw_data (List[Dict]): Raw input data.
         tokenizer (PreTrainedTokenizer): Tokenizer for preprocessing the data.
     """
-
     def __init__(self, raw_data: List[Dict[str, List[str]]],
                  tokenizer: PreTrainedTokenizer) -> None:
         super().__init__()
@@ -194,7 +193,6 @@ class LazySupervisedDataset(Dataset):
     """
     Dataset for supervised fine-tuning.
     """
-
     def __init__(
         self,
         raw_data: List[Dict[str, str]],
@@ -258,7 +256,6 @@ class VicunaDataset(Dataset):
         raw_data (List[Dict]): Raw input data.
         tokenizer (PreTrainedTokenizer): Tokenizer for preprocessing the data.
     """
-
     def __init__(self, data_path) -> None:
         super(VicunaDataset, self).__init__()
 

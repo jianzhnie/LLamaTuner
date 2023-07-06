@@ -397,7 +397,6 @@ class DataCollatorForCausalLM(object):
                                                       are returned. This is useful during inference when generating
                                                       text sequences from the model.
     """
-
     def __init__(
         self,
         tokenizer: PreTrainedTokenizer,

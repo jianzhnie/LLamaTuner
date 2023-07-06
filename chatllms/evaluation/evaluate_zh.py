@@ -96,8 +96,12 @@ class CEval:
         'accountant': '注册会计师',
     }
 
-    def __init__(self, model: PreTrainedModel,
-                 tokenizer: PreTrainedTokenizerBase, output_dir: str) -> None:
+    def __init__(
+        self,
+        model: PreTrainedModel,
+        tokenizer: PreTrainedTokenizerBase,
+        output_dir: str,
+    ) -> None:
         """
         Initialize the CEval object.
 
