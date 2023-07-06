@@ -197,7 +197,5 @@ if __name__ == '__main__':
     parser.add_argument('--in-file', type=str)
     parser.add_argument('--out-file', type=str)
     args = parser.parse_args()
-    args.in_file = '/home/robin/prompt_data/anon8231489123/ShareGPT_Vicuna_unfiltered/ShareGPT_V3_unfiltered_cleaned_split.json'
-    args.out_file = '/home/robin/work_dir/llm/Chinese-Guanaco/examples/sharegpt_clean.json'
     clean_data2 = get_clean_data(args)
     json_dump(clean_data2, args.out_file)

@@ -1,4 +1,4 @@
-python train_qlora.py \
+CUDA_VISIBLE_DEVICES=0 python train_qlora.py \
     --model_name_or_path facebook/opt-125m \
     --dataset_name olcc \
     --data_dir /home/robin/prompt_data/ \
