@@ -3,8 +3,8 @@ CUDA_VISIBLE_DEVICES=0,1,2,3 python train_multiturn.py \
     --data_path ~/prompt_data/sharegpt_clean/sharegpt_clean.json \
     --output_dir work_dir/multiturn_full-finetune \
     --num_train_epochs 3 \
-    --per_device_train_batch_size 2 \
-    --per_device_eval_batch_size 16 \
+    --per_device_train_batch_size 8 \
+    --per_device_eval_batch_size 8 \
     --gradient_accumulation_steps 16 \
     --evaluation_strategy "steps" \
     --save_strategy "steps" \
@@ -19,4 +19,5 @@ CUDA_VISIBLE_DEVICES=0,1,2,3 python train_multiturn.py \
     --model_max_length 2048 \
     --gradient_checkpointing True \
     --trust_remote_code \
-    --lazy_preprocess True
+    --lazy_preprocess True    --lazy_preprocess True
+    --lazy_preprocess True 

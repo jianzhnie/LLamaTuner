@@ -232,9 +232,11 @@ def format_dataset(dataset: Dataset,
         dataset = dataset.map(lambda x: {'input': '', 'output': x['text']})
     elif dataset_name == 'vicuna':
         dataset = dataset.map(extract_vicuna_dataset)
-    else:
+    elif dataset_name == 'evol_instruct':
         dataset = dataset.map(extract_instruct_dataset,
                               remove_columns=['instruction'])
+    elif dataset_name == 'sharegpt':
+        pass
 
     # Remove unused columns.
     dataset = dataset.remove_columns([
@@ -395,6 +397,7 @@ class DataCollatorForCausalLM(object):
                                                       are returned. This is useful during inference when generating
                                                       text sequences from the model.
     """
+
     def __init__(
         self,
         tokenizer: PreTrainedTokenizer,

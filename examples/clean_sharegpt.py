@@ -173,32 +173,17 @@ def get_clean_data(args: Any) -> Any:
     res1, res2 = get_statistics(clean_data1)
 
     # Save role_list_1 and role_res_1 to JSON files
-    json_dump(res1, 'role_list_1.json')
-    json_dump(res2, 'role_res_1.json')
+    json_dump(res1, 'role_list_clean.json')
+    json_dump(res2, 'role_res_clean.json')
 
     # Filter out incorrect data from clean_data1
     print('=' * 100)
     print('Filtering out incorrect data from clean_data1...')
     clean_data2 = filter_invalid_roles(clean_data1)
-
-    # Get statistics for clean_data2
-    print('=' * 100)
-    print('Getting statistics for clean_data2...')
-    res1, res2 = get_statistics(clean_data2)
-
-    # Save role_list_2 and role_res_2 to JSON files
-    json_dump(res1, 'role_list_2.json')
-    json_dump(res2, 'role_res_2.json')
-
     # Print lengths of raw data, clean data1, and clean data2
     print(f'raw data len: {len(raw_data)}')
     print(f'clean data1 len: {len(clean_data1)}')
     print(f'clean data2 len: {len(clean_data2)}')
-
-    # extract conversations from raw_data
-    sources = [example['conversations'] for example in clean_data2]
-    convs_data = extract_conversations_from_raw_data(sources)
-    json_dump(convs_data, 'convs_data.json')
     return clean_data2
 
 
