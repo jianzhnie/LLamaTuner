@@ -1,8 +1,8 @@
 CUDA_VISIBLE_DEVICES=3 python train_qlora.py \
-    --model_name_or_path  ~/checkpoints/llama7b  \
+    --model_name_or_path  ~/checkpoints/baichuan7b  \
     --multiturn_dialogue True \
     --data_path ~/prompt_data/sharegpt/sharegpt_split.json \
-    --output_dir ./work_dir/sharegpt-llama-7b-1gpu \
+    --output_dir ./work_dir/sharegpt-baichuan-7b-1gpu \
     --num_train_epochs 3 \
     --per_device_train_batch_size 2 \
     --per_device_eval_batch_size 2 \
@@ -30,7 +30,8 @@ CUDA_VISIBLE_DEVICES=3 python train_qlora.py \
     --model_max_length 2048 \
     --gradient_checkpointing \
     --lazy_preprocess True \
-    --trust_remote_code \
+    --trust_remote_code True \
+    --use_auth_token True \
     --do_train \
     --do_eval \
     --data_seed 42 \
