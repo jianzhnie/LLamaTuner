@@ -5,9 +5,9 @@ import json
 from typing import Any, Dict, List, Tuple
 
 
-def json_dump(json_data, out_file):
-    with open(out_file, 'w') as f:
-        json.dump(json_data, f, indent=2, ensure_ascii=False)
+def json_dump(obj, path):
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(obj, f, indent=2, ensure_ascii=False)
 
 
 def json_load(in_file):
@@ -197,7 +197,7 @@ if __name__ == '__main__':
     parser.add_argument('--in-file', type=str)
     parser.add_argument('--out-file', type=str)
     args = parser.parse_args()
-    args.in_file = '~/prompt_data/anon8231489123/ShareGPT_Vicuna_unfiltered/ShareGPT_V3_unfiltered_cleaned_split.json'
-    args.out_file = '~/work_dir/llm/Chinese-Guanaco/examples/sharegpt_clean.json'
+    args.in_file = '/home/robin/prompt_data/anon8231489123/ShareGPT_Vicuna_unfiltered/ShareGPT_V3_unfiltered_cleaned_split.json'
+    args.out_file = '/home/robin/work_dir/llm/Chinese-Guanaco/examples/sharegpt_clean.json'
     clean_data2 = get_clean_data(args)
     json_dump(clean_data2, args.out_file)
