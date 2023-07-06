@@ -58,8 +58,6 @@ def main():
         logger=logger,
     )
     logger.info('Loaded model...')
-    logger.info('Print the  trainable parameters of the model')
-    print_trainable_parameters(args, model)
 
     set_seed(args.seed)
     # LLaMA tokenizer may not have correct special tokens set.
@@ -80,9 +78,10 @@ def main():
                                                   args=args)
     else:
         logger.info('Training data is a multiturn dialogue formate')
-        data_module = make_conversation_data_module(tokenizer=tokenizer,
-                                                    lazy_preprocess=True,
-                                                    data_path=args.data_path)
+        data_module = make_conversation_data_module(
+            tokenizer=tokenizer,
+            lazy_preprocess=args.lazy_preprocess,
+            data_path=args.data_path)
 
     trainer = Trainer(model=model,
                       tokenizer=tokenizer,

@@ -36,8 +36,9 @@ QLora 引入了多种创新，旨在在不牺牲性能的情况下减少内存�
 - [23/06/25] We release the supervised finetune baichuan-7B model ( [GaussianTech/baichuan-7b-sft](https://huggingface.co/GaussianTech/baichuan-7b-sft) ) and the corresponding training script.
 - [23/06/24] We release the supervised finetune llama-7B model ([GaussianTech/llama-7b-sft](https://huggingface.co/GaussianTech/llama-7b-sft) ) and the corresponding training script.
 - [23/06/15] Now we support training the baichuan-7B model in this repo. Try `--model_name_or_path baichuan-inc/baichuan-7B` to use the baichuan-7B model.
-- [23/06/03] Now we support quantized training and inference (aka QLoRA). Try `--bits 4/8` argument to work with quantized model.
-- [23/05/31] Now we support training the LLAMA & BLOOM models in this repo. Try `--model_name_or_path bigscience/bloom` to use the BLOOMZ model and `--model_name_or_path decapoda-research/llama-7b-hf` to use the LLAMA model .
+- [23/06/03] Now we support quantized training and inference (aka QLoRA). Try `scripts/qlora_finetune/finetune_llama_guanaco7b.sh` and  set `--bits 4/8` argument to work with quantized model.
+- [23/05/25] Now we support Lora training and inference. Try  `scripts/lora_finetune/lora-finetune_alpaca.sh` to finetune the LLAMA model with Lora on the Alpaca dataset.
+- [23/05/20] Now we support full-parameter tuning and partial-parameter tuning.  Try `scripts/full_finetune/full-finetune_alpaca.sh` to full finetune the LLAMA model on the Alpaca dataset.
 
 ## Supported Models
 
@@ -102,30 +103,6 @@ cd Efficient-Tuning-LLMs
 ```
 
 ## Getting Started
-
-### QLora int8 Finetune
-
-```bash
-python train_lora.py \
-    --model_name_or_path  decapoda-research/llama-7b-hf  \
-    --data_path tatsu-lab/alpaca  \ßßßß
-    --output_dir work_dir_lora/ \
-    --num_train_epochs 3 \
-    --per_device_train_batch_size 4 \
-    --per_device_eval_batch_size 4 \
-    --gradient_accumulation_steps 8 \
-    --evaluation_strategy "no" \
-    --save_strategy "steps" \
-    --save_steps 500 \
-    --save_total_limit 5 \
-    --learning_rate 1e-4 \
-    --weight_decay 0. \
-    --warmup_ratio 0.03 \
-    --lr_scheduler_type "cosine" \
-    --model_max_length 2048 \
-    --logging_steps 1 \
-    --fp16 True
-```
 
 ### QLora int4 Finetune
 
@@ -278,6 +255,7 @@ We provide generations for the models described in the paper for both OA and Vic
 
 Can you distinguish ChatGPT from Guanaco? Give it a try!
 You can access [the model response Colab here](https://colab.research.google.com/drive/1kK6xasHiav9nhiRUJjPMZb4fAED4qRHb?usp=sharing) comparing ChatGPT and Guanaco 65B on Vicuna prompts.
+
 
 ## Known Issues and Limitations
 Here a list of known issues and bugs. If your issue is not reported here, please open a new issue and describe the problem.
