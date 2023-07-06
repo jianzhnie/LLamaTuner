@@ -10,8 +10,16 @@
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/release/python-390/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
+<div align="center">
+
 👋🤗🤗👋 加入我们 [WeChat](assets/wechat.jpg).
+</div>
+
+
 # Efficient Finetuning of Quantized LLMs --- 低资源的大语言模型量化训练/部署方案
+
+
+<div align="center">
 
 [English](README.md) | 中文
 </div>
