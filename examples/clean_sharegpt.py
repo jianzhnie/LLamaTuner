@@ -3,7 +3,8 @@
 import argparse
 import json
 from typing import Any, Dict, List, Tuple
-
+import re
+import tqdm
 
 def json_dump(obj, path):
     with open(path, 'w', encoding='utf-8') as f:
@@ -14,6 +15,21 @@ def json_load(in_file):
     with open(in_file, 'r') as f:
         json_data = json.load(f)
     return json_data
+
+
+wrong_indices_pattern = re.compile("\n1\. [^2]*\n1\. ")
+
+
+def should_skip(conv):
+    # Filter wrong list indices like https://sharegpt.com/c/1pREAGO
+    for sentence in conv["conversations"]:
+        val = sentence["value"]
+        sub = re.search(wrong_indices_pattern, val)
+        if sub is not None:
+            return True
+
+    return False
+
 
 
 def get_statistics(
@@ -142,6 +158,18 @@ def filter_invalid_roles(
             filtered_data.append({'id': id, 'conversations': convs})
 
     return filtered_data
+
+def filter_wrong_format(raw_data):
+    collect_data = []
+    for raw_txt in raw_data:
+        if should_skip(raw_txt):
+            print(f"{raw_txt['id']} contains a wrong format.")
+            print(raw_txt)
+        else:
+            collect_data.append(raw_txt)
+
+    print(f"#in: {len(raw_data)}, #out: {len(collect_data)}")
+    return collect_data
 
 
 def get_clean_data(args: Any, save_stata_res: bool = False) -> Any:
