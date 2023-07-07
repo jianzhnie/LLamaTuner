@@ -11,3 +11,8 @@ python split_long_conversation.py \
 python clean_evol_instruct.py \
     --in-file /userhome/jianzhnie/prompt_data/WizardLM/WizardLM_evol_instruct_V2_196k/WizardLM_evol_instruct_V2_143k.json \
     --out-file /userhome/jianzhnie/prompt_data/sharegpt/evol_instruct_clean.json
+
+
+python merge.py \
+    --in-file  /userhome/jianzhnie/prompt_data/sharegpt/sharegpt_split.json  /userhome/jianzhnie/prompt_data/sharegpt/evol_instruct_clean.json \
+    --out-file /userhome/jianzhnie/prompt_data/sharegpt/evol_sharegpt_merge.json
