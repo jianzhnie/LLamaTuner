@@ -7,6 +7,7 @@ Usage: python3 -m fastchat.data.merge --in file1.json file2.json --out merged.js
 import argparse
 import json
 from typing import Dict, Sequence, Optional
+from clean_sharegpt import json_dump, json_load
 
 
 if __name__ == "__main__":
@@ -17,8 +18,10 @@ if __name__ == "__main__":
 
     new_content = []
     for in_file in args.in_file:
-        content = json.load(open(in_file, "r"))
+        content = json_load(in_file)
+        print(f'in-file: {in_file}, len: {len(content)}')
         new_content.extend(content)
 
     print(f"#out: {len(new_content)}")
-    json.dump(new_content, open(args.out_file, "w"), indent=2, ensure_ascii=False)
+    print(f'Save new_content to {args.out_file}')
+    json_dump(new_content, args.out_file)
