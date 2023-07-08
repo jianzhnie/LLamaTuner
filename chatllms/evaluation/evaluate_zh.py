@@ -19,7 +19,7 @@ def json_dump(obj, path):
 
 class CEval(object):
     """Class for evaluating multiple-choice questions.
-    
+
     TASK2DESC: A dictionary mapping task names to their descriptions.
 
     args:
@@ -27,7 +27,7 @@ class CEval(object):
         tokenizer: Tokenizer for encoding text.
         data_path: Path to the dataset.
         output_dir: Directory path to save the evaluation results.
-    
+
 
     run: Run the evaluation for all tasks.
     run_single_task: Run the evaluation for a single task.

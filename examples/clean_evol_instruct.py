@@ -1,6 +1,6 @@
-from datasets import load_dataset
 import argparse
-from clean_sharegpt import json_dump, get_clean_data
+
+from clean_sharegpt import get_clean_data, json_dump
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
