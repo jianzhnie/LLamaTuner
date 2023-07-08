@@ -19,5 +19,4 @@ CUDA_VISIBLE_DEVICES=0,1,2,3 python train_multiturn.py \
     --model_max_length 2048 \
     --gradient_checkpointing True \
     --trust_remote_code \
-    --lazy_preprocess True    --lazy_preprocess True
-    --lazy_preprocess True 
+    --lazy_preprocess True

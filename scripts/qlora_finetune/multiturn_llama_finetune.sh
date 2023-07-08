@@ -1,16 +1,16 @@
-CUDA_VISIBLE_DEVICES=3 python train_qlora.py \
+CUDA_VISIBLE_DEVICES=8 python train_qlora.py \
     --model_name_or_path  ~/checkpoints/llama7b  \
     --multiturn_dialogue True \
-    --data_path ~/prompt_data/sharegpt/sharegpt_split.json \
-    --output_dir ./work_dir/sharegpt-llama-7b-1gpu \
+    --data_path ~/prompt_data/belle_group/school_math_vicuna.json \
+    --output_dir ./work_dir/school_math_vicuna-llama-7b-1gpu \
     --num_train_epochs 3 \
-    --per_device_train_batch_size 2 \
-    --per_device_eval_batch_size 2 \
-    --gradient_accumulation_steps 16 \
+    --per_device_train_batch_size 8 \
+    --per_device_eval_batch_size 8 \
+    --gradient_accumulation_steps 4 \
     --evaluation_strategy steps \
-    --eval_steps 200 \
+    --eval_steps 1000 \
     --save_strategy steps \
-    --save_total_limit 5 \
+    --save_total_limit 10 \
     --save_steps 500 \
     --logging_strategy steps \
     --logging_steps 5 \
@@ -27,7 +27,7 @@ CUDA_VISIBLE_DEVICES=3 python train_qlora.py \
     --quant_type nf4 \
     --fp16 \
     --bits 4 \
-    --model_max_length 2048 \
+    --model_max_length 1024 \
     --gradient_checkpointing \
     --lazy_preprocess True \
     --trust_remote_code \

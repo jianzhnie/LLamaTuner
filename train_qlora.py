@@ -5,6 +5,7 @@ import time
 import torch
 import transformers
 from transformers import GenerationConfig, Trainer, set_seed
+
 from chatllms.data.conv_dataset import make_conversation_data_module
 from chatllms.data.sft_dataset import make_supervised_data_module
 from chatllms.model.load_pretrain_model import load_model_tokenizer
@@ -58,6 +59,9 @@ def main():
         logger=logger,
     )
     logger.info('Loaded model...')
+
+    logger.info('Printing trainable parameters...')
+    print_trainable_parameters(args, model)
 
     set_seed(args.seed)
     # LLaMA tokenizer may not have correct special tokens set.

@@ -9,6 +9,7 @@ from datasets import load_dataset
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import Dataset
 from transformers.tokenization_utils import PreTrainedTokenizer
+
 from chatllms.data.data_utils import (ALPACA_PROMPT_DICT, IGNORE_INDEX,
                                       PROMPT_DICT, make_data_module)
 
@@ -63,7 +64,6 @@ class AlpacaDataset(Dataset):
         __getitem__(self, idx) -> Dict[str, torch.Tensor]: Retrieves an example from the dataset at the specified index.
 
     """
-
     def __init__(self,
                  data_path: str,
                  tokenizer: PreTrainedTokenizer,
@@ -165,7 +165,6 @@ class SupervisedDataset(Dataset):
             train_on_source (bool): If True, the model will be trained on the source text as well as the target text.
             predict_with_generate (bool): If True, the model will generate predictions instead of training.
     """
-
     def __init__(
         self,
         hf_dataset: datasets.DatasetDict,

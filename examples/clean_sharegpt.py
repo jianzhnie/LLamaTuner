@@ -2,16 +2,33 @@
 
 import argparse
 import json
-import sys
+import re
 from typing import Any, Dict, List, Tuple
 
-sys.path.append('../')
-from chatllms.data.conv_dataset import extract_conversations_from_raw_data
+
+def json_dump(obj, path):
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(obj, f, indent=2, ensure_ascii=False)
 
 
-def json_dump(json_data, out_file):
-    with open(out_file, 'w') as f:
-        json.dump(json_data, f, indent=2, ensure_ascii=False)
+def json_load(in_file):
+    with open(in_file, 'r') as f:
+        json_data = json.load(f)
+    return json_data
+
+
+wrong_indices_pattern = re.compile('\n1\. [^2]*\n1\. ')
+
+
+def should_skip(conv):
+    # Filter wrong list indices like https://sharegpt.com/c/1pREAGO
+    for sentence in conv['conversations']:
+        val = sentence['value']
+        sub = re.search(wrong_indices_pattern, val)
+        if sub is not None:
+            return True
+
+    return False
 
 
 def get_statistics(
@@ -29,7 +46,7 @@ def get_statistics(
     role_res = {}
 
     for idx, raw_txt in enumerate(raw_data):
-        id = raw_txt.get('id')
+        id = raw_txt.get('id', str(idx))
         if idx % 10000 == 0:
             print(f'Processing {idx} / {len(raw_data)}')
 
@@ -64,7 +81,7 @@ def format_roles(
 
     for idx, raw_txt in enumerate(raw_data):
         convs = raw_txt.get('conversations', [])
-        id = raw_txt.get('id')
+        id = raw_txt.get('id', str(idx))
         new_convs = []
 
         for j, conv in enumerate(convs):
@@ -89,7 +106,8 @@ def format_roles(
 
         if len(new_convs) >= 2:
             collect_data.append({'id': id, 'conversations': new_convs})
-
+        else:
+            print(f'Warning: Skipping conversation {idx}.', new_convs)
     return collect_data
 
 
@@ -112,7 +130,7 @@ def filter_invalid_roles(
     for idx, contents in enumerate(raw_data):
         # Get conversations and id from the current dictionary
         convs = contents.get('conversations', [])
-        id = contents.get('id')
+        id = contents.get('id', str(idx))
 
         # Remove first conversation if it is not from 'human' role
         if convs and convs[0].get('from') != 'human':
@@ -141,7 +159,20 @@ def filter_invalid_roles(
     return filtered_data
 
 
-def get_clean_data(args: Any) -> Any:
+def filter_wrong_format(raw_data):
+    collect_data = []
+    for raw_txt in raw_data:
+        if should_skip(raw_txt):
+            print(f"{raw_txt['id']} contains a wrong format.")
+            print(raw_txt)
+        else:
+            collect_data.append(raw_txt)
+
+    print(f'#in: {len(raw_data)}, #out: {len(collect_data)}')
+    return collect_data
+
+
+def get_clean_data(args: Any, save_stata_res: bool = False) -> Any:
     """Get clean data by processing raw data using helper functions.
 
     Args:
@@ -158,9 +189,10 @@ def get_clean_data(args: Any) -> Any:
     print('Getting statistics for raw_data...')
     res1, res2 = get_statistics(raw_data)
 
-    # Save role_list and role_res to JSON files
-    json_dump(res1, 'role_list.json')
-    json_dump(res2, 'role_res.json')
+    if save_stata_res:
+        # Save role_list and role_res to JSON files
+        json_dump(res1, 'role_list.json')
+        json_dump(res2, 'role_res.json')
 
     # Format roles in raw_data
     print('=' * 100)
@@ -172,9 +204,10 @@ def get_clean_data(args: Any) -> Any:
     print('Getting statistics for clean_data1...')
     res1, res2 = get_statistics(clean_data1)
 
-    # Save role_list_1 and role_res_1 to JSON files
-    json_dump(res1, 'role_list_clean.json')
-    json_dump(res2, 'role_res_clean.json')
+    if save_stata_res:
+        # Save role_list_1 and role_res_1 to JSON files
+        json_dump(res1, 'role_list_clean.json')
+        json_dump(res2, 'role_res_clean.json')
 
     # Filter out incorrect data from clean_data1
     print('=' * 100)
@@ -192,7 +225,5 @@ if __name__ == '__main__':
     parser.add_argument('--in-file', type=str)
     parser.add_argument('--out-file', type=str)
     args = parser.parse_args()
-    args.in_file = '/home/robin/prompt_data/anon8231489123/ShareGPT_Vicuna_unfiltered/ShareGPT_V3_unfiltered_cleaned_split.json'
-    args.out_file = '/home/robin/work_dir/llm/Chinese-Guanaco/examples/sharegpt_clean.json'
     clean_data2 = get_clean_data(args)
     json_dump(clean_data2, args.out_file)
