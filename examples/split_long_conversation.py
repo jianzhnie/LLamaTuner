@@ -84,7 +84,7 @@ def split_one_sample(sample: Dict[str, any]) -> List[Dict[str, any]]:
     return new_samples
 
 
-def worker(input_data:List[Dict[str, Any]]):
+def worker(input_data: List[Dict[str, Any]]):
     result = []
     for sample in input_data:
         result.extend(split_one_sample(sample))
@@ -112,10 +112,10 @@ def split_all(raw_data: List[Dict[str, Any]],
     new_content = []
 
     # Split content into chunks
-    chunks = [content[i : i + 1000] for i in range(0, len(content), 1000)]
+    chunks = [raw_data[i:i + 1000] for i in range(0, len(raw_data), 1000)]
     # Use tqdm to show progress bar during the execution
     with ProcessPoolExecutor() as executor:
-        for result in tqdm(executor.map(worker, raw_data),
+        for result in tqdm(executor.map(worker, chunks),
                            desc='Splitting long conversations',
                            total=len(chunks)):
             new_content.extend(result)
