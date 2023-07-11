@@ -122,8 +122,9 @@ def preprocess(sources: Sequence[Dict[str, str]],
                 break
             parts[0] += sep
             round_len = len(tokenizer(rou).input_ids)
+            # "-2" is hardcoded for the LLaMA tokenizer to make the offset correct.
             instruction_len = len(tokenizer(parts[0]).input_ids) - 2
-
+            # Ignore the user instructions
             target[cur_len:cur_len + instruction_len] = IGNORE_TOKEN_ID
 
             cur_len += round_len
