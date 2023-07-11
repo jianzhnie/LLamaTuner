@@ -7,7 +7,9 @@ Usage: python3 -m chatllms.data.convert_alpaca --in alpaca_data.json
 import argparse
 import json
 from typing import Any, Dict, List
+
 from datasets import load_dataset
+
 
 def json_dump(obj, path):
     with open(path, 'w', encoding='utf-8') as f:
@@ -57,7 +59,6 @@ def convert_alpaca_vicuna(raw_data: List[Dict[str, Any]]):
     return collect_data
 
 
-
 def convert_dolly_vicuna(raw_data: List[Dict[str, Any]]):
     collect_data = []
     for i, content in enumerate(raw_data):
@@ -83,7 +84,6 @@ def convert_dolly_vicuna(raw_data: List[Dict[str, Any]]):
         })
     print(f'Original: {len(raw_data)}, Converted: {len(collect_data)}')
     return collect_data
-
 
 
 def main():
