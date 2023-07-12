@@ -14,10 +14,11 @@ from transformers import (AutoModelForCausalLM, AutoTokenizer,
                           PreTrainedModel, PreTrainedTokenizer, Trainer,
                           deepspeed)
 
-from chatllms.data.sft_dataset import (AlpacaDataset,
-                                       DataCollatorForSupervisedDataset)
+from chatllms.data.conv_dataset import make_conversation_data_module
+from chatllms.data.sft_dataset import make_supervised_data_module
+from chatllms.utils.config import (DataArguments, ModelArguments,
+                                   TrainingArguments)
 from chatllms.utils.model_utils import add_special_tokens_if_missing
-from train import DataArguments, ModelArguments, TrainingArguments
 
 
 @dataclass
@@ -50,7 +51,7 @@ def maybe_zero_3(param: Union[torch.Tensor, object]) -> torch.Tensor:
         assert param.ds_status == ZeroParamStatus.NOT_AVAILABLE, 'Invalid ds_status'
 
         with zero.GatheredParameters([param]):
-            param = param.data.cpu().clone().detach()
+            param = param.data.detach().cpu().clone()
     else:
         param = param.detach().cpu().clone()
     return param
@@ -162,6 +163,7 @@ def load_model_tokenizer(args) -> Tuple[PreTrainedModel, PreTrainedTokenizer]:
         task_type='CAUSAL_LM',
     )
     if args.q_lora:
+        logging.warning('Preparemodel for kbit training!!!')
         model = prepare_model_for_kbit_training(
             model, use_gradient_checkpointing=args.gradient_checkpointing)
         if torch.cuda.device_count() > 1:
@@ -169,6 +171,7 @@ def load_model_tokenizer(args) -> Tuple[PreTrainedModel, PreTrainedTokenizer]:
             setattr(model, 'model_parallel', True)
             setattr(model, 'is_parallelizable', True)
 
+    logging.warning('Get the get peft model...')
     model = get_peft_model(model, lora_config)
 
     if args.gradient_checkpointing:
@@ -182,6 +185,7 @@ def load_model_tokenizer(args) -> Tuple[PreTrainedModel, PreTrainedTokenizer]:
         args.model_name_or_path,
         padding_side='right',
         use_fast=False,
+        model_max_length=args.model_max_length,
         tokenizer_type='llama' if 'llama' in args.model_name_or_path else None,
         **config_kwargs,
     )
@@ -212,23 +216,23 @@ def train() -> None:
 
     # Create a supervised dataset and Trainer, then train the model
     logging.warning('Creating a supervised dataset and DataCollator...')
-    train_dataset = AlpacaDataset(
-        data_path=args.data_path,
-        tokenizer=tokenizer,
-        max_length=args.max_length,
-    )
-    data_collator = DataCollatorForSupervisedDataset(tokenizer=tokenizer)
+    if not args.multiturn_dialogue:
+        logging.warning('Training data is not a multiturn dialogue formate')
+        data_module = make_supervised_data_module(tokenizer=tokenizer,
+                                                  args=args)
+    else:
+        logging.warning('Training data is a multiturn dialogue formate')
+        data_module = make_conversation_data_module(
+            tokenizer=tokenizer,
+            lazy_preprocess=args.lazy_preprocess,
+            data_path=args.data_path)
 
     # Create a Trainer object and start training
     logging.warning('Creating a Trainer...')
-    trainer = Trainer(
-        model=model,
-        tokenizer=tokenizer,
-        args=training_args,
-        train_dataset=train_dataset,
-        eval_dataset=None,
-        data_collator=data_collator,
-    )
+    trainer = Trainer(model=model,
+                      tokenizer=tokenizer,
+                      args=training_args,
+                      **data_module)
 
     logging.warning('Starting training...')
     if training_args.resume_from_checkpoint and list(
@@ -241,7 +245,7 @@ def train() -> None:
     trainer.save_state()
     # Save the trained model
     # check if zero3 mode enabled
-    if trainer.hf_deepspeed_config_orig.is_zero3():
+    if deepspeed.is_deepspeed_zero3_enabled():
         # use deepspeed engine internal function to gather state dict
         # state_dict_zero3 contains whole parameters of base and lora adapters
         # we will not extract lora parameters since peft save_pretrained will do that

@@ -1,55 +1,19 @@
 import argparse
 import logging
 import pathlib
-from dataclasses import dataclass, field
-from typing import Optional, Tuple
+from typing import Tuple
 
 import torch
-import transformers
 from transformers import (AutoModelForCausalLM, AutoTokenizer,
                           HfArgumentParser, PreTrainedModel,
                           PreTrainedTokenizer, Trainer)
 
-from chatllms.data.sft_dataset import (AlpacaDataset,
-                                       DataCollatorForSupervisedDataset)
+from chatllms.data.conv_dataset import make_conversation_data_module
+from chatllms.data.sft_dataset import make_supervised_data_module
+from chatllms.utils.config import (DataArguments, ModelArguments,
+                                   TrainingArguments)
 from chatllms.utils.model_utils import (add_special_tokens_if_missing,
                                         safe_save_model_for_hf_trainer)
-
-
-@dataclass
-class ModelArguments:
-    model_name_or_path: Optional[str] = field(default='facebook/opt-125m')
-    trust_remote_code: Optional[bool] = field(
-        default=False,
-        metadata={
-            'help':
-            'Enable unpickling of arbitrary code in AutoModelForCausalLM#from_pretrained.'
-        })
-    use_auth_token: Optional[bool] = field(
-        default=False,
-        metadata={
-            'help':
-            'Enables using Huggingface auth token from Git Credentials.'
-        })
-
-
-@dataclass
-class DataArguments:
-    data_path: str = field(default=None,
-                           metadata={'help': 'Path to the training data.'})
-
-
-@dataclass
-class TrainingArguments(transformers.TrainingArguments):
-    cache_dir: Optional[str] = field(default=None)
-    optim: str = field(default='adamw_torch')
-    model_max_length: int = field(
-        default=512,
-        metadata={
-            'help':
-            'Maximum sequence length. Sequences will be right padded (and possibly truncated).'
-        },
-    )
 
 
 def load_model_tokenizer(args) -> Tuple[PreTrainedModel, PreTrainedTokenizer]:
@@ -132,23 +96,25 @@ def train() -> None:
             f'Adding special tokens for {args.model_name_or_path}.')
         add_special_tokens_if_missing(tokenizer, model)
 
-    # Create the training dataset and data collator
-    logging.warning('Creating training dataset and data collator.')
-    train_dataset = AlpacaDataset(
-        data_path=args.data_path,
-        tokenizer=tokenizer,
-    )
-    data_collator = DataCollatorForSupervisedDataset(tokenizer=tokenizer)
-
+    # Create a supervised dataset and Trainer, then train the model
+    logging.warning('Creating a supervised dataset and DataCollator...')
+    if not args.multiturn_dialogue:
+        logging.warning('Training data is not a multiturn dialogue formate')
+        data_module = make_supervised_data_module(tokenizer=tokenizer,
+                                                  args=args)
+    else:
+        logging.warning('Training data is a multiturn dialogue formate')
+        data_module = make_conversation_data_module(
+            tokenizer=tokenizer,
+            lazy_preprocess=args.lazy_preprocess,
+            data_path=args.data_path)
     # Initialize the Trainer object and start training
     logging.warning('Initializing Trainer object.')
     trainer = Trainer(
         model=model,
         tokenizer=tokenizer,
         args=training_args,
-        train_dataset=train_dataset,
-        eval_dataset=None,
-        data_collator=data_collator,
+        **data_module,
     )
     logging.warning('Start Training...')
     if list(pathlib.Path(training_args.output_dir).glob('checkpoint-*')):

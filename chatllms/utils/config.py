@@ -160,7 +160,7 @@ class TrainingArguments(transformers.TrainingArguments):
         metadata={'help': 'Finetune the entire model without adapters.'})
     # 是否进行训练，那肯定是要的
     do_train: bool = field(
-        default=False,
+        default=True,
         metadata={'help': 'To train or not to train, that is the question?'})
     # 是否进行验证
     do_eval: bool = field(

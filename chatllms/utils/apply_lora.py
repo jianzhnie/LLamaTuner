@@ -13,14 +13,16 @@ from typing import Tuple
 
 import torch
 from peft import PeftModel
-from transformers import AutoModelForCausalLM, AutoTokenizer, LlamaTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
 def apply_lora(
     base_model_path: str,
     lora_path: str,
     target_model_path: str = None,
-    load_8bit: bool = False,
+    cache_dir: str = None,
+    use_auth_token: str = True,
+    trust_remote_code: bool = True,
 ) -> Tuple[AutoModelForCausalLM, AutoTokenizer]:
     """Applies the LoRA adapter to a base model and saves the resulting target model (optional).
 
@@ -28,7 +30,9 @@ def apply_lora(
         base_model_path (str): The path to the base model to which the LoRA adapter will be applied.
         lora_path (str): The path to the LoRA adapter.
         target_model_path (str): The path where the target model will be saved (if `save_target_model=True`).
-        load_8bit (bool): Whether to load the base model in 8-bit precision.
+        cache_dir (str): The path to the cache directory.
+        use_auth_token (bool): Whether to use an authentication token when downloading the model.
+        trust_remote_code (bool): Whether to trust remote code when downloading the model.
 
     Returns:
         Tuple[AutoModelForCausalLM, AutoTokenizer]: A tuple containing the target model and its tokenizer.
@@ -36,29 +40,30 @@ def apply_lora(
     """
     # Load the base model and tokenizer
     print(f'Loading the base model from {base_model_path}')
+    # Set configuration kwargs for tokenizer.
+    config_kwargs = {
+        'cache_dir': cache_dir,
+        'use_auth_token': use_auth_token,
+        'trust_remote_code': trust_remote_code,
+    }
+
     base_model = AutoModelForCausalLM.from_pretrained(
         base_model_path,
-        load_in_8bit=load_8bit,
         device_map='auto',
         torch_dtype=torch.float16,
-        use_auth_token=True,
-        trust_remote_code=True,
+        low_cpu_mem_usage=True,
+        **config_kwargs,
     )
 
     # Load the tokenizer
-    if base_model.config.model_type == 'llama':
-        # Due to the name of Transformers' LlamaTokenizer, we have to do this
-        base_tokenizer = LlamaTokenizer.from_pretrained(
-            base_model_path,
-            padding_side='right',
-            use_fast=True,
-        )
-    else:
-        base_tokenizer = AutoTokenizer.from_pretrained(
-            base_model_path,
-            padding_side='right',
-            use_fast=True,
-        )
+    print(f'Loading the tokenizer from {base_model_path}')
+    # Due to the name of Transformers' LlamaTokenizer, we have to do this
+    tokenizer = AutoTokenizer.from_pretrained(
+        base_model_path,
+        use_fast=False,
+        tokenizer_type='llama' if 'llama' in base_model_path else None,
+        **config_kwargs,
+    )
 
     # Load the LoRA adapter
     print(f'Loading the LoRA adapter from {lora_path}')
@@ -72,9 +77,9 @@ def apply_lora(
     if target_model_path is not None:
         print(f'Saving the target model to {target_model_path}')
         model.save_pretrained(target_model_path)
-        base_tokenizer.save_pretrained(target_model_path)
+        tokenizer.save_pretrained(target_model_path)
 
-    return model, base_tokenizer
+    return model, tokenizer
 
 
 if __name__ == '__main__':
@@ -82,8 +87,6 @@ if __name__ == '__main__':
     parser.add_argument('--base-model-path', type=str, required=True)
     parser.add_argument('--target-model-path', type=str, default=None)
     parser.add_argument('--lora-path', type=str, required=True)
-    parser.add_argument('--load_8bit', type=bool, default=False)
-
     args = parser.parse_args()
 
     apply_lora(
