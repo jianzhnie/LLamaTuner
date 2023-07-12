@@ -1,6 +1,8 @@
 python train.py \
     --model_name_or_path  facebook/opt-125m \
-    --data_path ~/prompt_data/InstructionWild/instinwild_en.json  \
+    --dataset_name olcc \
+    --data_dir ~/prompt_data/ \
+    --load_from_local \
     --output_dir work_dir/alpaca_full-finetune \
     --num_train_epochs 3 \
     --per_device_train_batch_size 4 \
@@ -13,6 +15,9 @@ python train.py \
     --learning_rate 2e-5 \
     --weight_decay 0. \
     --warmup_ratio 0.03 \
+    --optim "adamw_torch" \
     --lr_scheduler_type "cosine" \
+    --model_max_length 128 \
     --logging_steps 1 \
+    --do_train \
     --gradient_checkpointing True

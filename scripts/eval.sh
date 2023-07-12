@@ -3,5 +3,3 @@ python chatllms/evaluation/evaluate_zh.py \
     --split test  \
     --data_path ~/prompt_data/ceval-exam \
     --output_dir ./work_dir/ceval_output
-
-
