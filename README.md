@@ -102,12 +102,12 @@ cd Efficient-Tuning-LLMs
 
 ## Getting Started
 
-| mian function      | Useage                                                                               | Scripts                                    |
-| ------------------ | ------------------------------------------------------------------------------------ | ------------------------------------------ |
-| train.py           | Full finetune LLMs on  SFT datasets                                                  | [full_finetune](./scripts/full_finetune)   |
-| train_lora.py      | Finetune LLMs by using Lora  (Low-Rank Adaptation of Large Language Models finetune) | [lora_finetune](./scripts/lora_finetune)   |
-| train_qlora.py     | Finetune LLMs by using QLora (QLoRA: Efficient Finetuning of Quantized LLMs)         | [qlora_finetune](./scripts/qlora_finetune) |
-| train_multiturn.py | Finetune LLMs on multi turn dialogue datasets                                        | [multiturn](./scripts/multiturn)           |
+| main function                            | Useage                                                                               | Scripts                                    |
+| ---------------------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------ |
+| [train.py](./train.py)                   | Full finetune LLMs on  SFT datasets                                                  | [full_finetune](./scripts/full_finetune)   |
+| [train_lora.py](./train_lora.py)         | Finetune LLMs by using Lora  (Low-Rank Adaptation of Large Language Models finetune) | [lora_finetune](./scripts/lora_finetune)   |
+| [train_qlora.py](train_qlora.py)         | Finetune LLMs by using QLora (QLoRA: Efficient Finetuning of Quantized LLMs)         | [qlora_finetune](./scripts/qlora_finetune) |
+| [train_multiturn.py](train_multiturn.py) | Finetune LLMs on multi turn dialogue datasets                                        | [multiturn](./scripts/multiturn)           |
 
 
 ### QLora int4 Finetune
