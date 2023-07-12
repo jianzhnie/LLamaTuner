@@ -235,6 +235,9 @@ def format_dataset(dataset: Dataset,
     elif dataset_name == 'evol_instruct':
         dataset = dataset.map(extract_instruct_dataset,
                               remove_columns=['instruction'])
+    elif dataset_name == 'olcc':
+        dataset = dataset.map(extract_instruct_dataset,
+                              remove_columns=['instruction'])
     elif dataset_name == 'sharegpt':
         pass
 
@@ -275,6 +278,7 @@ def split_train_eval(
     if not isinstance(dataset, DatasetDict):
         raise TypeError("The 'dataset' argument must be a DatasetDict object.")
 
+    train_dataset, eval_dataset = None, None
     # Prepare evaluation dataset
     if do_eval:
         if 'eval' in dataset:
@@ -302,10 +306,7 @@ def split_train_eval(
                 train_dataset) > max_train_samples:
             train_dataset = train_dataset.select(np.arange(max_train_samples))
 
-    return dict(
-        train=train_dataset if do_train else None,
-        eval=eval_dataset if do_eval else None,
-    )
+    return train_dataset, eval_dataset
 
 
 def make_data_module(args):
@@ -337,19 +338,14 @@ def make_data_module(args):
     dataset_name_list = args.dataset_name.split(',')
     print(f'Loading datasets: {dataset_name_list}')
     for dataset_name in dataset_name_list:
-        if args.load_from_local:
-            dataset_path = get_dataset_path(dataset_name,
-                                            data_dir=args.data_dir,
-                                            load_from_local=True)
-        else:
-            dataset_path = get_dataset_path(dataset_name,
-                                            data_dir=args.data_dir,
-                                            load_from_local=False)
+        dataset_path = get_dataset_path(dataset_name,
+                                        data_dir=args.data_dir,
+                                        load_from_local=args.load_from_local)
 
         dataset = load_data(dataset_name, dataset_path)
         dataset = format_dataset(dataset, dataset_name=dataset_name)
 
-        dataset_dict = split_train_eval(
+        train_dataset, eval_dataset = split_train_eval(
             dataset,
             do_eval=args.do_eval,
             eval_dataset_size=args.eval_dataset_size,
@@ -357,27 +353,27 @@ def make_data_module(args):
             do_train=args.do_train,
             max_train_samples=args.max_train_samples,
         )
-        print('=' * 80)
-        print('loaded dataset', dataset_name, len(dataset_dict['train']))
+        if train_dataset:
+            print('=' * 80)
+            print('loaded dataset:', dataset_name, 'train data size:',
+                  len(train_dataset))
+            train_datasets.append(train_dataset)
+        if eval_datasets:
+            print('=' * 80)
+            print('loaded dataset:', dataset_name, 'eval data size:',
+                  len(eval_dataset))
+            eval_datasets.append(eval_dataset)
 
-        train_datasets.append(dataset_dict['train'])
-        eval_datasets.append(dataset_dict['eval'])
-
-    concate_train = concatenate_datasets(
-        train_datasets) if args.do_train else None
-    concate_eval = concatenate_datasets(
-        eval_datasets) if args.do_eval else None
     print('=' * 80)
-    if args.do_train:
-        print(f'Concatenate train dataset size: {len(concate_train)}')
-    if args.do_eval:
-        print(f'Concatenate eval dataset size: {len(concate_eval)}')
-
-    dataset_dict = {
-        'train': concate_train,
-        'eval': concate_eval,
-    }
-    return dataset_dict
+    concate_train = concatenate_datasets(
+        train_datasets) if train_datasets else None
+    print(f'Concatenate train dataset size: {len(concate_train)}'
+          ) if concate_train else None
+    concate_eval = concatenate_datasets(
+        eval_datasets) if eval_datasets else None
+    print(f'Concatenate eval dataset size: {len(concate_eval)}'
+          ) if concate_eval else None
+    return concate_train, concate_eval
 
 
 @dataclass

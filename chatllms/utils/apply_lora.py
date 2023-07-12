@@ -13,7 +13,7 @@ from typing import Tuple
 
 import torch
 from peft import PeftModel
-from transformers import AutoModelForCausalLM, AutoTokenizer, LlamaTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
 def apply_lora(
@@ -33,7 +33,7 @@ def apply_lora(
         cache_dir (str): The path to the cache directory.
         use_auth_token (bool): Whether to use an authentication token when downloading the model.
         trust_remote_code (bool): Whether to trust remote code when downloading the model.
-        
+
     Returns:
         Tuple[AutoModelForCausalLM, AutoTokenizer]: A tuple containing the target model and its tokenizer.
 

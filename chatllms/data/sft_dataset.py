@@ -17,9 +17,9 @@ logger = logging.getLogger(__name__)
 
 
 def make_supervised_data_module(tokenizer: PreTrainedTokenizer, args):
-    dataset_dict = make_data_module(args)
+    train_dataset, eval_dataset = make_data_module(args)
     train_dataset = SupervisedDataset(
-        dataset_dict['train'],
+        train_dataset,
         tokenizer=tokenizer,
         source_max_len=args.source_max_len,
         target_max_len=args.target_max_len,
@@ -28,7 +28,7 @@ def make_supervised_data_module(tokenizer: PreTrainedTokenizer, args):
     ) if args.do_train else None
 
     eval_dataset = SupervisedDataset(
-        dataset_dict['eval'],
+        eval_dataset,
         tokenizer=tokenizer,
         source_max_len=args.source_max_len,
         target_max_len=args.target_max_len,
@@ -37,9 +37,9 @@ def make_supervised_data_module(tokenizer: PreTrainedTokenizer, args):
     ) if args.do_eval else None
 
     print('train_dataset: ', train_dataset, type(train_dataset), 'length: ',
-          len(train_dataset))
+          len(train_dataset)) if args.do_train else None
     print('eval_dataset: ', eval_dataset, type(eval_dataset), 'length: ',
-          len(eval_dataset))
+          len(eval_dataset)) if args.do_eval else None
     print('Adding data collator: ', DataCollatorForSupervisedDataset)
     data_collator = DataCollatorForSupervisedDataset(
         tokenizer=tokenizer, predict_with_generate=args.predict_with_generate)
