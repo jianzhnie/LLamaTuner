@@ -18,6 +18,13 @@ class ModelInferenceArguments:
         metadata={'help': 'Path to pre-trained model'})
     checkpoint_dir: Optional[str] = field(
         default=None, metadata={'help': 'Path to pre-trained lora model'})
+    model_max_length: int = field(
+        default=2048,
+        metadata={
+            'help':
+            'Maximum sequence length. Sequences will be right padded (and possibly truncated).'
+        },
+    )
     prompt_template: Optional[str] = field(
         default='default',
         metadata={
