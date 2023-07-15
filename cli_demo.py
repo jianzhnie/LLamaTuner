@@ -84,8 +84,7 @@ def main():
     # Parse command-line arguments
     parser = transformers.HfArgumentParser(
         (ModelInferenceArguments, GenerationArguments))
-    model_server_args, generation_args, _ = parser.parse_args_into_dataclasses(
-        return_remaining_strings=True)
+    model_server_args, generation_args = parser.parse_args_into_dataclasses()
     # Load the model and tokenizer
     model, tokenizer = load_model_tokenizer(
         args=model_server_args,
