@@ -358,7 +358,7 @@ def make_data_module(args):
             print('loaded dataset:', dataset_name, 'train data size:',
                   len(train_dataset))
             train_datasets.append(train_dataset)
-        if eval_datasets:
+        if eval_dataset:
             print('=' * 80)
             print('loaded dataset:', dataset_name, 'eval data size:',
                   len(eval_dataset))
