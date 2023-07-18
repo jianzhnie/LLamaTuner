@@ -87,18 +87,20 @@ QLora 引入了多种创新，旨在在不牺牲性能的情况下减少内存�
 - For supervised fine-tuning:
   - [Stanford Alpaca](https://github.com/tatsu-lab/stanford_alpaca)
   - [Stanford Alpaca (Chinese)](https://github.com/ymcui/Chinese-LLaMA-Alpaca)
+  - [Hello-SimpleAI/HC3](https://huggingface.co/datasets/Hello-SimpleAI/HC3)
+  - [databricks-dolly-15k](https://huggingface.co/datasets/databricks/databricks-dolly-15k)
+  - [mosaicml/dolly_hhrlhf](https://huggingface.co/datasets/mosaicml/dolly_hhrlhf)
   - [GPT-4 Generated Data](https://github.com/Instruction-Tuning-with-GPT-4/GPT-4-LLM)
   - [Alpaca CoT](https://huggingface.co/datasets/QingyiSi/Alpaca-CoT)
   - [UltraChat](https://github.com/thunlp/UltraChat)
-  - [Open Assistant](https://huggingface.co/datasets/OpenAssistant/oasst1)
-  - [Open Assistant (Chinese)](https://huggingface.co/datasets/OpenAssistant/oasst1)
+  - [OpenAssistant/oasst1](https://huggingface.co/datasets/OpenAssistant/oasst1)
   - [ShareGPT_Vicuna_unfiltered](https://huggingface.co/datasets/anon8231489123/ShareGPT_Vicuna_unfiltered)
-  - [OL-CC](https://data.baai.ac.cn/details/OL-CC)
-  - [openassistant-guanaco](https://huggingface.co/datasets/timdettmers/openassistant-guanaco)
+  - [BIAI/OL-CC](https://data.baai.ac.cn/details/OL-CC)
+  - [timdettmers/openassistant-guanaco](https://huggingface.co/datasets/timdettmers/openassistant-guanaco)
+  - [Evol-Instruct](https://huggingface.co/datasets/victor123/evol_instruct_70k)
 - For reward model training:
   - [HH-RLHF](https://huggingface.co/datasets/Anthropic/hh-rlhf)
   - [Open Assistant](https://huggingface.co/datasets/OpenAssistant/oasst1)
-  - [Open Assistant (Chinese)](https://huggingface.co/datasets/OpenAssistant/oasst1)
   - [GPT-4 Generated Data](https://github.com/Instruction-Tuning-with-GPT-4/GPT-4-LLM)
   - [GPT-4 Generated Data (Chinese)](https://github.com/Instruction-Tuning-with-GPT-4/GPT-4-LLM)
 
@@ -276,7 +278,7 @@ python cli_demo.py \
 
 ### 使用Gradio进行网页端交互
 
-该文件从 Hugging Face 模型中心读取基础模型，并从 `path/to/your/model_dir` 读取 LoRA 权重，运行 Gradio 接口以对指定输入进行推理。用户应将此视为模型使用的示例代码，并根据需要进行修改。
+该文件从 Hugging Face 模型中心读取基础模型，并从 `path/to/your/model_dir` 读取 LoRA 权重，运行 Gradio 接口以对指定输入进行推理。用户应将此视为模型使用的示例代码，并根据需要进行修改。
 
 用法示例：
 
