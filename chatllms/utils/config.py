@@ -70,7 +70,27 @@ class ModelInferenceArguments:
 
 @dataclass
 class ModelArguments:
-    model_name_or_path: Optional[str] = field(default='facebook/opt-125m')
+    model_name_or_path: Optional[str] = field(
+        default='facebook/opt-125m',
+        metadata={
+            "help":
+            ("The model checkpoint for weights initialization. Don't set if you want to\
+              train a model from scratch.")
+        },
+    )
+    tokenizer_name: Optional[str] = field(
+        default=None,
+        metadata={
+            "help":
+            "Pretrained tokenizer name or path if not the same as model_name"
+        })
+    model_revision: str = field(
+        default="main",
+        metadata={
+            "help":
+            "The specific model version to use (can be a branch name, tag name or commit id)."
+        },
+    )
     trust_remote_code: Optional[bool] = field(
         default=False,
         metadata={
@@ -95,19 +115,19 @@ class DataArguments:
     lazy_preprocess: bool = True
     # 微调数据集是alpaca，那么可以试试中文的效果。Llama、Bloom和OPT，或者MPT等等
     dataset_name: Optional[str] = field(
-        default='alpaca',
+        default=None,
         metadata={
             'help': 'Which dataset to finetune on. See datamodule for options.'
         })
     data_path: str = field(
-        default='./data',
+        default=None,
         metadata={
             'help':
             'where is dataset in local dir. See datamodule for options.'
         })
     # 数据集的本地路径，如果load_from_local为True，那么就从本地加载数据集
     data_dir: str = field(
-        default='./data',
+        default=None,
         metadata={
             'help':
             'where is dataset in local dir. See datamodule for options.'
@@ -155,6 +175,16 @@ class DataArguments:
             'Maximum target sequence length. Sequences will be right padded (and possibly truncated).'
         },
     )
+
+    def __post_init__(self):
+        if self.dataset_name is None and self.data_path and self.data_dir is None:
+            raise ValueError("Need either a dataset name or a data_path .")
+        else:
+            if self.data_path is not None:
+                extension = self.data_path.split(".")[-1]
+                assert extension in [
+                    "json", "jsonl"
+                ], "`train_file` should be a json or a jsonl file."
 
 
 @dataclass
