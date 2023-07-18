@@ -73,7 +73,7 @@ class ModelArguments:
     model_name_or_path: Optional[str] = field(
         default='facebook/opt-125m',
         metadata={
-            "help":
+            'help':
             ("The model checkpoint for weights initialization. Don't set if you want to\
               train a model from scratch.")
         },
@@ -81,14 +81,14 @@ class ModelArguments:
     tokenizer_name: Optional[str] = field(
         default=None,
         metadata={
-            "help":
-            "Pretrained tokenizer name or path if not the same as model_name"
+            'help':
+            'Pretrained tokenizer name or path if not the same as model_name'
         })
     model_revision: str = field(
-        default="main",
+        default='main',
         metadata={
-            "help":
-            "The specific model version to use (can be a branch name, tag name or commit id)."
+            'help':
+            'The specific model version to use (can be a branch name, tag name or commit id).'
         },
     )
     trust_remote_code: Optional[bool] = field(
@@ -178,13 +178,13 @@ class DataArguments:
 
     def __post_init__(self):
         if self.dataset_name is None and self.data_path and self.data_dir is None:
-            raise ValueError("Need either a dataset name or a data_path .")
+            raise ValueError('Need either a dataset name or a data_path .')
         else:
             if self.data_path is not None:
-                extension = self.data_path.split(".")[-1]
+                extension = self.data_path.split('.')[-1]
                 assert extension in [
-                    "json", "jsonl"
-                ], "`train_file` should be a json or a jsonl file."
+                    'json', 'jsonl'
+                ], '`train_file` should be a json or a jsonl file.'
 
 
 @dataclass
