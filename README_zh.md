@@ -65,6 +65,7 @@ QLora 引入了多种创新，旨在在不牺牲性能的情况下减少内存�
 ## 支持的模型
 
 - [LLaMA](https://github.com/facebookresearch/llama) (7B/13B/33B/65B)
+- [LLama2](https://huggingface.co/meta-llama) (7B/13B/33B/70B)
 - [BLOOM](https://huggingface.co/bigscience/bloom) & [BLOOMZ](https://huggingface.co/bigscience/bloomz) (560M/1.1B/1.7B/3B/7.1B/176B)
 - [baichuan](https://huggingface.co/baichuan-inc/baichuan-7B) (7B)
 - [OPT](https://huggingface.co/docs/transformers/model_doc/opt) (125M/350M/1.3B/2.7B/6.7B/66B )
@@ -98,8 +99,7 @@ QLora 引入了多种创新，旨在在不牺牲性能的情况下减少内存�
   - [BIAI/OL-CC](https://data.baai.ac.cn/details/OL-CC)
   - [timdettmers/openassistant-guanaco](https://huggingface.co/datasets/timdettmers/openassistant-guanaco)
   - [Evol-Instruct](https://huggingface.co/datasets/victor123/evol_instruct_70k)
-  - [人人多轮对话数据集](https://modelscope.cn/datasets/DatatangBeijing/830276groups-Multi_RoundInterpersonalDialoguesTextData)
-  - [医疗对话数据集](https://modelscope.cn/datasets/DatatangBeijing/203029Groups-ChineseMedicalQuestionAnsweringData)
+
 - For reward model training:
   - [HH-RLHF](https://huggingface.co/datasets/Anthropic/hh-rlhf)
   - [Open Assistant](https://huggingface.co/datasets/OpenAssistant/oasst1)

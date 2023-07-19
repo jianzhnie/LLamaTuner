@@ -41,6 +41,7 @@ We uses [bitsandbytes](https://github.com/TimDettmers/bitsandbytes) for quantiza
 ## Supported Models
 
 - [LLaMA](https://github.com/facebookresearch/llama) (7B/13B/33B/65B)
+- [LLama2](https://huggingface.co/meta-llama) (7B/13B/33B/70B)
 - [BLOOM](https://huggingface.co/bigscience/bloom) & [BLOOMZ](https://huggingface.co/bigscience/bloomz) (560M/1.1B/1.7B/3B/7.1B/176B)
 - [baichuan-7B](https://huggingface.co/baichuan-inc/baichuan-7B) (7B) [baichuan-13B](https://huggingface.co/baichuan-inc/baichuan-13B) (13B)
 - [OPT](https://huggingface.co/docs/transformers/model_doc/opt) (125M/350M/1.3B/2.7B/6.7B/66B )
