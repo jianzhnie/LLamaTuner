@@ -2,7 +2,7 @@ import copy
 import os
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
-
+import random
 import numpy as np
 import pandas as pd
 import torch
@@ -31,9 +31,50 @@ ALPACA_PROMPT_DICT = {
 }
 
 PROMPT_DICT = {
-    'prompt_input': ('{instruction}\n\n### Input:\n{input}### Response:'),
-    'prompt_no_input': ('{instruction}\n\n### Response:'),
+    'prompt_input': ('{instruction}\n\n{input}\n\n'),
+    'prompt_no_input': ('{instruction}\n\n'),
 }
+
+PROMPTS_WITH_INPUT = [
+    # input encoding template, output encoding template, weight
+    ('{instruction}\n\n{input}\n\n', 0.2),
+    ('{instruction}\n{input}\n\n', 0.1),
+    ('{instruction}\n{input}\n', 0.1),
+    ('{instruction}\n\nInput: {input}\n\nOutput:', 0.05),
+    ('{instruction}\nInput: {input}\nOutput:', 0.05),
+    ('{instruction}\n{input}\n\nResponse:', 0.05),
+    ('{instruction}\n\nAdditional Context:\n{input}\n\nAnswer:', 0.05),
+    ('Task: {instruction}\nInput: {input}\nOutput:', 0.05),
+    ('Task: {instruction}\n\n{input}\n\n', 0.05),
+    ('Task: {instruction}\n\n{input}\n\nAnswer:', 0.05),
+    ('You need to complete the following task:\n\n{instruction}\n\n{input}\n\nAnswer:',
+     0.05),
+    ('{instruction}\n\nNow complete the following instance -\nInput: {input}\nOutput:',
+     0.05),
+    ('Instruction:{instruction}\n\nInput: {input}\n\n', 0.05),
+    ('Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.\n\n'
+     '### Instruction:\n{instruction}\n\n### Input:\n{input}\n\n### Response: ',
+     0.1),  # alpaca template
+]
+
+PROMPTS_WITHOUT_INPUT = [
+    ('{instruction}\n\n', 0.2),
+    ('{instruction}\n', 0.1),
+    ('{instruction}\n\nOutput:', 0.1),
+    ('{instruction}\nOutput:', 0.05),
+    ('{instruction}\nResponse:', 0.05),
+    ('{instruction}\n\nAnswer:', 0.05),
+    ('Task: {instruction}\n\n', 0.05),
+    ('Instruction: {instruction}\n', 0.05),
+    ('Instruction: {instruction}\nOutput:', 0.05),
+    ('You need to complete the following task:\n\n{instruction}\n\n', 0.05),
+    ('Can you help with this?\n\n{instruction}\n', 0.05),
+    ('Plase answer the following request: {instruction}\nAnswer:', 0.05),
+    ('Tell me how would you respond to the following request.\n{instruction}\n',
+     0.05),
+    ('Below is an instruction that describes a task. Write a response that appropriately completes the request.\n\n### Instruction:\n{instruction}\n\n### Response:',
+     0.1),  # alpaca template
+]
 
 
 def extract_alpaca_dataset(example: Dict[str, Any]) -> Dict[str, str]:
@@ -110,13 +151,34 @@ def extract_vicuna_dataset(example: Dict[str, Any]) -> Dict[str, str]:
     return {'input': input_str, 'output': output_str}
 
 
-def extract_instruct_dataset(example: Dict[str, Any]) -> Dict[str, str]:
+def extract_instruction_dataset(
+    example: Dict[str, Any],
+    random_template: bool = True,
+) -> Dict[str, str]:
+    if random_template:
+        # Randomly choose prompt template
+        if example.get('input', '') != '':
+            # Input exists, choose from prompts with input
+            prompt_template, _ = random.choices(
+                PROMPTS_WITH_INPUT,
+                weights=[w for _, w in PROMPTS_WITH_INPUT])[0]
+        else:
+            # No input, choose from prompts without input
+            prompt_template, _ = random.choices(
+                PROMPTS_WITHOUT_INPUT,
+                weights=[w for _, w in PROMPTS_WITHOUT_INPUT])[0]
 
-    if example.get('input', '') != '':
-        prompt_format = PROMPT_DICT['prompt_input']
     else:
-        prompt_format = PROMPT_DICT['prompt_no_input']
-    return {'input': prompt_format.format(**example)}
+        # Not random, use pre-defined templates
+        if example.get('input', '') != '':
+            prompt_template = PROMPT_DICT['prompt_input']
+        else:
+            prompt_template = PROMPT_DICT['prompt_no_input']
+
+    # Format prompt with example
+    formated_prompt = prompt_template.format(**example)
+
+    return {'input': formated_prompt}
 
 
 def local_dataset(dataset_path: str,
@@ -137,7 +199,7 @@ def local_dataset(dataset_path: str,
 
     # Read in the full dataset from file based on the file format
     if dataset_path.endswith('.json'):
-        full_dataset = Dataset.from_json(path_or_paths=dataset_path)
+        full_dataset = load_dataset('json', data_files=dataset_path)
     elif dataset_path.endswith('.jsonl'):
         full_dataset = load_dataset('json', data_files=dataset_path)
     elif dataset_path.endswith('.csv'):
@@ -155,13 +217,11 @@ def local_dataset(dataset_path: str,
         return full_dataset
 
 
-def load_data(dataset_name: str,
-              dataset_path: str) -> Union[Dict[str, Dataset], None]:
+def load_data(dataset_path: str) -> Union[Dict[str, Dataset], None]:
     """
     Load a dataset based on its name.
 
     Args:
-        dataset_name: A string representing the name of the dataset to be loaded.
         dataset_path: A string representing the path to the dataset to be loaded.
 
     Returns:
@@ -178,74 +238,124 @@ def load_data(dataset_name: str,
 
     """
     if not os.path.exists(dataset_path):
+        # Download dataset from HuggingFace Datasets
         dataset = load_dataset(dataset_path,
                                cache_dir='~/.cache/huggingface/datasets')
         return dataset
     else:
+        # Load dataset from local file
         try:
-            full_dataset = local_dataset(dataset_path)
-            return full_dataset
+            dataset = local_dataset(dataset_path)
+            return dataset
         except:
             raise ValueError(f'Error loading dataset from {dataset_path}')
 
 
-def format_dataset(dataset: Dataset,
-                   dataset_name: str) -> Optional[Dict[str, Dataset]]:
+def format_dataset(
+        dataset: Dataset,
+        dataset_name: str,
+        prompt_template: str = 'instruction') -> Optional[Dict[str, Dataset]]:
     """
     Formats a given dataset based on its name and format.
+
+
+    Removes unused columns, renames columns to 'input' and 'output', 
+    and applies dataset-specific formatting based on the dataset_name.
+
+    Returns formatted dataset dict if dataset can be formatted, else None.
 
     Args:
         dataset: A dataset object to be formatted.
         dataset_name: A string representing the name of the dataset to be formatted.
+        prompt_template: A string representing the name of the prompt template to be used.
 
     Returns:
         A dictionary containing the formatted dataset if the dataset exists in the
         specified format.
         None if the dataset does not exist or if the format is not recognized.
-
-    Examples:
-        >>> format_dataset('alpaca')
-        {'train': Dataset(...), 'validation': Dataset(...), 'test': Dataset(...)}
-
     """
-    if dataset_name == 'alpaca' or dataset_name == 'alpaca-clean':
-        dataset = dataset.map(extract_alpaca_dataset,
-                              remove_columns=['instruction'])
-    elif dataset_name == 'dolly-15k':
+
+    def _format_dolly15k(dataset: Dataset) -> Dataset:
+        """Format Dolly-15k dataset."""
         dataset = dataset.rename_column('context', 'input')
         dataset = dataset.rename_column('response', 'output')
-        dataset = dataset.map(extract_alpaca_dataset,
-                              remove_columns=['instruction'])
-    elif dataset_name == 'chip2':
+        return dataset
+
+    def _format_chip2(dataset: Dataset) -> Dataset:
+        """Format CHIP-2 dataset."""
         dataset = dataset.map(
             lambda x: {
                 'input': x['text'].split('\n<bot>: ')[0].replace(
                     '<human>: ', ''),
                 'output': x['text'].split('\n<bot>: ')[1]
             })
-    elif dataset_name == 'self-instruct':
+        return dataset
+
+    def _format_self_instruct(dataset: Dataset) -> Dataset:
+        """Format Self-Instruct dataset."""
         dataset = dataset.rename_column('prompt', 'input')
         dataset = dataset.rename_column('completion', 'output')
-    elif dataset_name == 'hh-rlhf':
+        return dataset
+
+    def _format_hh_rlhf(dataset: Dataset) -> Dataset:
+        """Format HH-RLHF dataset."""
         dataset = dataset.map(lambda x: {'input': '', 'output': x['chosen']})
-    elif dataset_name == 'oasst1':
+        return dataset
+
+    def _format_oasst1(dataset: Dataset) -> Dataset:
+        """Format OASST1 dataset."""
         dataset = dataset.map(lambda x: {'input': '', 'output': x['text']})
-    elif dataset_name == 'vicuna':
+        return dataset
+
+    def _format_vicuna(dataset: Dataset) -> Dataset:
+        """Format Vicuna dataset."""
         dataset = dataset.map(extract_vicuna_dataset)
-    elif dataset_name == 'evol_instruct':
-        dataset = dataset.map(extract_instruct_dataset,
-                              remove_columns=['instruction'])
-    elif dataset_name == 'olcc':
-        dataset = dataset.map(extract_instruct_dataset,
-                              remove_columns=['instruction'])
+        return dataset
+
+    def _format_100Poison(dataset: Dataset) -> Dataset:
+        """Format ShareGPT dataset."""
+        dataset = dataset.rename_column('prompt', 'instruction')
+        dataset = dataset.rename_column('answer', 'output')
+        return dataset
+
+    def _remove_unused_columns(dataset):
+        """Remove columns not named 'input' or 'output'."""
+        dataset = dataset.remove_columns([
+            col for col in dataset.column_names['train']
+            if col not in ['input', 'output']
+        ])
+        return dataset
+
+    print("Formate the dataset in structure")
+    if dataset_name == 'dolly-15k':
+        dataset = _format_dolly15k(dataset)
+    elif dataset_name == 'chip2':
+        dataset = _format_chip2(dataset)
+    elif dataset_name == 'self-instruct':
+        dataset = _format_self_instruct(dataset)
+    elif dataset_name == 'hh-rlhf':
+        dataset = _format_hh_rlhf(dataset)
+    elif dataset_name == 'oasst1':
+        dataset = _format_oasst1(dataset)
+    elif dataset_name == 'vicuna':
+        dataset = _format_vicuna(dataset)
+    elif dataset_name == '100PoisonMpts':
+        dataset = _format_100Poison(dataset)
     elif dataset_name == 'sharegpt':
+        raise NotImplementedError
+    else:
         pass
 
+    # encode_instruction_example
+    print(f"Encoding the instruction example refer to : {prompt_template}", )
+    if prompt_template == 'alpaca':
+        dataset = dataset.map(extract_alpaca_dataset)
+    elif prompt_template == 'instruction':
+        dataset = dataset.map(extract_instruction_dataset)
+
     # Remove unused columns.
-    dataset = dataset.remove_columns([
-        col for col in dataset.column_names['train']
-        if col not in ['input', 'output']
-    ])
+    print("Removing the unused columns.")
+    dataset = _remove_unused_columns(dataset)
     return dataset
 
 
@@ -342,8 +452,10 @@ def make_data_module(args):
                                         data_dir=args.data_dir,
                                         load_from_local=args.load_from_local)
 
-        dataset = load_data(dataset_name, dataset_path)
-        dataset = format_dataset(dataset, dataset_name=dataset_name)
+        dataset = load_data(dataset_path)
+        dataset = format_dataset(dataset,
+                                 dataset_name=dataset_name,
+                                 prompt_template=args.prompt_template)
 
         train_dataset, eval_dataset = split_train_eval(
             dataset,
@@ -374,118 +486,3 @@ def make_data_module(args):
     print(f'Concatenate eval dataset size: {len(concate_eval)}'
           ) if concate_eval else None
     return concate_train, concate_eval
-
-
-@dataclass
-class DataCollatorForCausalLM(object):
-    """
-    Data collator used for language modeling tasks. This collator takes in a sequence of examples
-    (input/output pairs) and returns a dictionary containing the inputs and labels for training
-    a causal language model.
-
-    Parameters:
-        tokenizer (transformers.PreTrainedTokenizer): Tokenizer used to tokenize the input and output text.
-        source_max_len (int): The maximum length allowed for the input source text.
-        target_max_len (int): The maximum length allowed for the target output text.
-        train_on_source (bool): If True, the model will be trained on the source text. Otherwise, it will be trained
-                                on both source and target text concatenated together.
-        predict_with_generate (bool, default=False): If True, only the input_ids for the tokenized source text
-                                                      are returned. This is useful during inference when generating
-                                                      text sequences from the model.
-    """
-    def __init__(
-        self,
-        tokenizer: PreTrainedTokenizer,
-        source_max_len: int,
-        target_max_len: int,
-        train_on_source: bool,
-        predict_with_generate: bool = False,
-    ) -> None:
-        self.tokenizer = tokenizer
-        self.source_max_len = source_max_len
-        self.target_max_len = target_max_len
-        self.train_on_source = train_on_source
-        self.predict_with_generate = predict_with_generate
-
-    def __call__(
-            self, instances: Sequence[Dict[str,
-                                           str]]) -> Dict[str, torch.Tensor]:
-        """
-        Takes a sequence of input/output pairs and returns a dictionary containing the inputs and labels
-        for training a causal language model.
-
-        Parameters:
-            instances (Sequence[Dict[str, str]]): A sequence of input/output pairs. Each dictionary must contain
-                                                  the keys 'input' and 'output'.
-
-        Returns:
-            data_dict (Dict[str, torch.Tensor]): A dictionary containing the input_ids, attention_mask,
-                                                 and optionally the labels.
-        """
-        # Extract elements
-        sources: List[str] = [
-            f"{self.tokenizer.bos_token}{example['input']}"
-            for example in instances
-        ]
-        targets: List[str] = [
-            f"{example['output']}{self.tokenizer.eos_token}"
-            for example in instances
-        ]
-
-        # Tokenize
-        tokenized_sources_with_prompt = self.tokenizer(
-            sources,
-            max_length=self.source_max_len,
-            truncation=True,
-            add_special_tokens=False,
-        )
-        tokenized_targets = self.tokenizer(
-            targets,
-            max_length=self.target_max_len,
-            truncation=True,
-            add_special_tokens=False,
-        )
-
-        # Build the input and labels for causal LM
-        input_ids = []
-        labels = []
-        for tokenized_source, tokenized_target in zip(
-                tokenized_sources_with_prompt['input_ids'],
-                tokenized_targets['input_ids']):
-            if not self.predict_with_generate:
-                input_ids.append(
-                    torch.tensor(tokenized_source + tokenized_target))
-                if not self.train_on_source:
-                    # train_on_source 默认设置为 False, 训练时不在 source  text 上计算损失
-                    labels.append(
-                        torch.tensor([
-                            IGNORE_INDEX for _ in range(len(tokenized_source))
-                        ] + copy.deepcopy(tokenized_target)))
-                else:
-                    # 如果 train_on_source 设置为 True, 训练时将 source text  和 target text 的标签合并, 然后计算损失
-                    labels.append(
-                        torch.tensor(
-                            copy.deepcopy(tokenized_source +
-                                          tokenized_target)))
-            else:
-                input_ids.append(torch.tensor(tokenized_source))
-
-        # Apply padding
-        input_ids = pad_sequence(input_ids,
-                                 batch_first=True,
-                                 padding_value=self.tokenizer.pad_token_id)
-        labels = pad_sequence(
-            labels,
-            batch_first=True,
-            padding_value=IGNORE_INDEX,
-        ) if not self.predict_with_generate else None
-
-        # Construct data dictionary containing inputs and labels
-        data_dict = {
-            'input_ids': input_ids,
-            'attention_mask': input_ids.ne(self.tokenizer.pad_token_id),
-        }
-        if labels is not None:
-            data_dict['labels'] = labels
-
-        return data_dict

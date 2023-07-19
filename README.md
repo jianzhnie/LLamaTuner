@@ -288,6 +288,7 @@ We appreciate the work by many open-source contributors, especially:
 - [Hugging Face](https://huggingface.co/)
 - [LLaMa](https://github.com/facebookresearch/llama/)
 - [Vicuna](https://github.com/lm-sys/FastChat/)
+- [xTuring](https://github.com/stochasticai/xTuring)
 
 
 ## Citation

@@ -205,6 +205,14 @@ def train() -> None:
     )
     args = argparse.Namespace(**vars(model_args), **vars(data_args),
                               **vars(training_args), **vars(lora_args))
+    # Log on each process the small summary:
+    logging.warning(
+        f'Process rank: {training_args.local_rank}, device: {training_args.device}, n_gpu: {training_args.n_gpu}'
+        +
+        f'distributed training: {bool(training_args.local_rank != -1)}, 16-bits training: {training_args.fp16}'
+    )
+    logging.warning(f'Training parameters {training_args}')
+
     # load model and tokenizer
     model, tokenizer = load_model_tokenizer(args=args)
     logging.warning('Successfully loaded model and tokenizer.')
