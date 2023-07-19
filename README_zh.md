@@ -98,6 +98,8 @@ QLora 引入了多种创新，旨在在不牺牲性能的情况下减少内存�
   - [BIAI/OL-CC](https://data.baai.ac.cn/details/OL-CC)
   - [timdettmers/openassistant-guanaco](https://huggingface.co/datasets/timdettmers/openassistant-guanaco)
   - [Evol-Instruct](https://huggingface.co/datasets/victor123/evol_instruct_70k)
+  - [人人多轮对话数据集](https://modelscope.cn/datasets/DatatangBeijing/830276groups-Multi_RoundInterpersonalDialoguesTextData)
+  - [医疗对话数据集](https://modelscope.cn/datasets/DatatangBeijing/203029Groups-ChineseMedicalQuestionAnsweringData)
 - For reward model training:
   - [HH-RLHF](https://huggingface.co/datasets/Anthropic/hh-rlhf)
   - [Open Assistant](https://huggingface.co/datasets/OpenAssistant/oasst1)
