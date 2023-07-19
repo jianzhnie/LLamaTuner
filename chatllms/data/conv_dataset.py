@@ -9,7 +9,7 @@ from chatllms.data.data_utils import IGNORE_INDEX as IGNORE_TOKEN_ID
 from chatllms.data.utils.conversation import Conversation, SeparatorStyle
 
 
-def extract_conversations_from_raw_data(sources):
+def apply_conversations_template(sources):
     """Extracts conversations from raw data."""
     # Create a Conversation object
     conv = Conversation(
@@ -25,6 +25,8 @@ def extract_conversations_from_raw_data(sources):
         sep2='</s>',
     )
     roles = {'human': conv.roles[0], 'gpt': conv.roles[1]}
+
+    assert conv.sep_style == SeparatorStyle.ADD_COLON_TWO
 
     # Apply prompt templates
     conversations = []
@@ -43,57 +45,11 @@ def extract_conversations_from_raw_data(sources):
     return conversations
 
 
-def preprocess(sources: Sequence[Dict[str, str]],
-               tokenizer: PreTrainedTokenizer) -> Dict[str, List[int]]:
-    """
-    Preprocesses the data by tokenizing it.
-
-    Args:
-        sources (Sequence[Dict[str, str]]): List of conversation sources.
-            Each source is a dictionary containing 'from' (sender role) and 'value' (message content).
-        tokenizer (PreTrainedTokenizer): Tokenizer for tokenizing the conversations.
-
-    Returns:
-        Dict[str, List[int]]: A dictionary containing the preprocessed data.
-            - 'input_ids': Tokenized input conversation IDs.
-            - 'labels': Tokenized target conversation IDs.
-            - 'attention_mask': Attention mask for the input conversation.
-
-    Raises:
-        AssertionError: If the roles in the conversation are not consistent.
-
+def tokenize_conversations(conversations: List[str],
+                           tokenizer: PreTrainedTokenizer) -> torch.Tensor:
+    """Tokenize conversations
     """
 
-    # Create a Conversation object
-    conv = Conversation(
-        name='vicuna_v1.1',
-        system=
-        'A chat between a curious user and an artificial intelligence assistant. '
-        "The assistant gives helpful, detailed, and polite answers to the user's questions.",
-        roles=['USER', 'ASSISTANT'],
-        messages=(),
-        offset=0,
-        sep_style=SeparatorStyle.ADD_COLON_TWO,
-        sep=' ',
-        sep2='</s>',
-    )
-    roles = {'human': conv.roles[0], 'gpt': conv.roles[1]}
-
-    # Apply prompt templates
-    conversations = []
-    for i, source in enumerate(sources):
-        if roles[source[0]['from']] != conv.roles[0]:
-            # Skip the first message if it is not from the human
-            source = source[1:]
-
-        conv.messages = []
-        for j, sentence in enumerate(source):
-            role = roles[sentence['from']]
-            assert role == conv.roles[j % 2], f'{i}'
-            conv.append_message(role, sentence['value'])
-        conversations.append(conv.get_prompt())
-
-    # Tokenize conversations
     input_ids = tokenizer(
         conversations,
         return_tensors='pt',
@@ -102,8 +58,17 @@ def preprocess(sources: Sequence[Dict[str, str]],
         truncation=True,
     ).input_ids
     targets = input_ids.clone()
+    return input_ids, targets
 
-    assert conv.sep_style == SeparatorStyle.ADD_COLON_TWO
+
+def mask_targets(
+    targets: torch.Tensor,
+    conversations: List[str],
+    tokenizer: PreTrainedTokenizer,
+    conv: Conversation,
+) -> None:
+    """Mask targets. Only compute loss on the assistant outputs.
+    """
 
     # Mask targets
     sep = conv.sep + conv.roles[1] + ': '
@@ -137,11 +102,31 @@ def preprocess(sources: Sequence[Dict[str, str]],
                     f'WARNING: tokenization mismatch: {cur_len} vs. {total_len}.'
                     f' (ignored)')
 
-    return dict(
-        input_ids=input_ids,
-        labels=targets,
-        attention_mask=input_ids.ne(tokenizer.pad_token_id),
-    )
+    return targets
+
+
+def preprocess(sources: Sequence[Dict[str, str]],
+               tokenizer: PreTrainedTokenizer) -> Dict[str, List[int]]:
+    """
+    Preprocesses the data by tokenizing it.
+
+    Args:
+        sources (Sequence[Dict[str, str]]): List of conversation sources.
+            Each source is a dictionary containing 'from' (sender role) and 'value' (message content).
+        tokenizer (PreTrainedTokenizer): Tokenizer for tokenizing the conversations.
+
+    Returns:
+        Dict[str, List[int]]: A dictionary containing the preprocessed data.
+            - 'input_ids': Tokenized input conversation IDs.
+            - 'labels': Tokenized target conversation IDs.
+            - 'attention_mask': Attention mask for the input conversation.
+    """
+    conversations, conv = apply_conversations_template(sources)
+    input_ids, targets = tokenize_conversations(conversations, tokenizer)
+    targets = mask_targets(conversations, targets, tokenizer, conv)
+    return dict(input_ids=input_ids,
+                labels=targets,
+                attention_mask=input_ids.ne(tokenizer.pad_token_id))
 
 
 class SupervisedDataset(Dataset):
@@ -246,37 +231,6 @@ class LazySupervisedDataset(Dataset):
         }
         self.cached_data_dict[i] = ret
 
-        return ret
-
-
-class VicunaDataset(Dataset):
-    """
-    Dataset for supervised fine-tuning.
-
-    Args:
-        raw_data (List[Dict]): Raw input data.
-        tokenizer (PreTrainedTokenizer): Tokenizer for preprocessing the data.
-    """
-    def __init__(self, data_path) -> None:
-        super(VicunaDataset, self).__init__()
-
-        print('Formatting inputs...Skip in lazy mode')
-        if data_path.endswith('.json') or data_path.endswith('.jsonl'):
-            self.raw_data = load_dataset('json', data_files=data_path)['train']
-        else:
-            self.raw_data = load_dataset(data_path)['train']
-
-        self.cached_data_dict = {}
-
-    def __len__(self):
-        return len(self.raw_data)
-
-    def __getitem__(self, i) -> Dict[str, torch.Tensor]:
-        if i in self.cached_data_dict:
-            return self.cached_data_dict[i]
-        ret = extract_conversations_from_raw_data(
-            [self.raw_data[i]['conversations']])
-        self.cached_data_dict[i] = ret
         return ret
 
 
