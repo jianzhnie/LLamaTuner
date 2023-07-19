@@ -138,6 +138,12 @@ class DataArguments:
         metadata={
             'help': 'To load the data from local or  huggingface data hub?'
         })
+    prompt_template: str = field(
+        default="instruction",
+        metadata={
+            'help':
+            'Which template to use for constructing prompts in training and inference.'
+        })
     # 验证数据集的尺寸，也就是数量
     eval_dataset_size: Optional[float] = field(
         default=0.1, metadata={'help': 'Size of validation dataset.'})

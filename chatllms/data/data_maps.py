@@ -69,5 +69,7 @@ def get_dataset_path(dataset_name: str,
             os.path.join(data_dir, 'olcc/olcc_alpaca.json'),
             'sharegpt':
             os.path.join(data_dir, 'sharegpt/sharegpt_split.json'),
+            '100PoisonMpts':
+            os.path.join(data_dir, '100PoisonMpts/train.jsonl'),
         }
     return dataset_map[dataset_name]
