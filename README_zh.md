@@ -85,6 +85,8 @@ QLora 引入了多种创新，旨在在不牺牲性能的情况下减少内存�
 
 ## 提供的数据集接口
 
+截至目前，我们支持以下数据集，这些数据集都可以在 [Hugging Face Datasets](https://huggingface.co/datasets) 上找到。我们将在未来添加更多数据集。默认情况下，我们使用 [Stanford Alpaca](https://github.com/tatsu-lab/stanford_alpaca) 数据集进行训练和微调。
+
 - For supervised fine-tuning:
   - [Stanford Alpaca](https://github.com/tatsu-lab/stanford_alpaca)
   - [Stanford Alpaca (Chinese)](https://github.com/ymcui/Chinese-LLaMA-Alpaca)
@@ -105,6 +107,16 @@ QLora 引入了多种创新，旨在在不牺牲性能的情况下减少内存�
   - [Open Assistant](https://huggingface.co/datasets/OpenAssistant/oasst1)
   - [GPT-4 Generated Data](https://github.com/Instruction-Tuning-with-GPT-4/GPT-4-LLM)
   - [GPT-4 Generated Data (Chinese)](https://github.com/Instruction-Tuning-with-GPT-4/GPT-4-LLM)
+
+### 数据预处理
+
+我们在 [data](./chatllms/data/) 文件夹中提供了数据预处理和格式化的脚本。这些脚本可以用于将数据集转换为我们的格式，以便在训练和微调中使用。
+
+- data_maps.py：数据集映射
+- data_utils.py：数据预处理和格式化
+- sft_dataset.py：有监督的对话数据集类
+- conv_dataset.py：多轮对话数据集类
+
 
 ## 模型仓库
 
