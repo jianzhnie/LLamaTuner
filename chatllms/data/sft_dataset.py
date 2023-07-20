@@ -36,10 +36,11 @@ def make_supervised_data_module(tokenizer: PreTrainedTokenizer, args):
         predict_with_generate=args.predict_with_generate,
     ) if args.do_eval else None
 
-    print('train_dataset: ', train_dataset, type(train_dataset), 'length: ',
-          len(train_dataset)) if args.do_train else None
-    print('eval_dataset: ', eval_dataset, type(eval_dataset), 'length: ',
-          len(eval_dataset)) if args.do_eval else None
+    print(
+        f'train_dataset: {type(train_dataset)}, #length: {len(train_dataset)}'
+    ) if args.do_train else None
+    print(f'eval_dataset: {type(eval_dataset)}, #length: {len(eval_dataset)}'
+          ) if args.do_eval else None
     print('Adding data collator: ', DataCollatorForSupervisedDataset)
     data_collator = DataCollatorForSupervisedDataset(
         tokenizer=tokenizer, predict_with_generate=args.predict_with_generate)
@@ -84,14 +85,14 @@ class AlpacaDataset(Dataset):
         else:
             self.PROMPT_DICT = PROMPT_DICT
 
-        logging.warning(f'Loading dataset from {data_path}')
+        logging.info(f'Loading dataset from {data_path}')
         if data_path.endswith('.json') or data_path.endswith('.jsonl'):
             list_data_dict = load_dataset('json',
                                           data_files=data_path)['train']
         else:
             list_data_dict = load_dataset(data_path)['train']
 
-        logging.warning('Found %d rows', list_data_dict.num_rows)
+        logging.info('Found %d rows', list_data_dict.num_rows)
         prompt_input, prompt_no_input = self.PROMPT_DICT[
             'prompt_input'], self.PROMPT_DICT['prompt_no_input']
         self.sources = [
@@ -177,7 +178,6 @@ class SupervisedDataset(Dataset):
 
         super(SupervisedDataset, self).__init__()
         # Load the dataset and format it
-        logging.warning('Loading data...')
         self.dataset = hf_dataset
         self.tokenizer = tokenizer
         self.source_max_len = source_max_len
