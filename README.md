@@ -31,8 +31,11 @@ We uses [bitsandbytes](https://github.com/TimDettmers/bitsandbytes) for quantiza
 
 ## News
 
-- [23/06/25] We release the supervised finetune baichuan-7B model ( [GaussianTech/baichuan-7b-sft](https://huggingface.co/GaussianTech/baichuan-7b-sft) ) and the corresponding training script.
-- [23/06/24] We release the supervised finetune llama-7B model ([GaussianTech/llama-7b-sft](https://huggingface.co/GaussianTech/llama-7b-sft) ) and the corresponding training script.
+- [23/07/20] Now we support training the **LLaMA-2** models in this repo. Try `--model_name_or_path Llama-2-7b-hf` argument to use the LLaMA-2 model.
+- [23/07/12] Now we support training the **Baichuan-13B** model in this repo. Try `--model_name_or_path path_to_baichuan_model` and `--lora_target W_pack` arguments to train the Baichuan-13B model.
+- [23/07/03] Now we support training the **Falcon-7B/40B** models in this repo. Try `--model_name_or_path tiiuae/falcon-7b` and `--lora_target query_key_value` arguments to use the Falcon model.
+- [23/06/25] We release the supervised finetune **baichuan-7B** model ( [GaussianTech/baichuan-7b-sft](https://huggingface.co/GaussianTech/baichuan-7b-sft) ) and the corresponding training script.
+- [23/06/24] We release the supervised finetune **llama-7B** model ([GaussianTech/llama-7b-sft](https://huggingface.co/GaussianTech/llama-7b-sft) ) and the corresponding training script.
 - [23/06/15] Now we support training the baichuan-7B model in this repo. Try `--model_name_or_path baichuan-inc/baichuan-7B` to use the baichuan-7B model.
 - [23/06/03] Now we support quantized training and inference (aka QLoRA). Try `scripts/qlora_finetune/finetune_llama_guanaco7b.sh` and  set `--bits 4/8` argument to work with quantized model.
 - [23/05/25] Now we support Lora training and inference. Try  `scripts/lora_finetune/lora-finetune_alpaca.sh` to finetune the LLAMA model with Lora on the Alpaca dataset.
@@ -67,6 +70,12 @@ As of now, we support the following datasets, which are all available in the [Hu
   - [Stanford Alpaca](https://github.com/tatsu-lab/stanford_alpaca)
   - [Stanford Alpaca (Chinese)](https://github.com/ymcui/Chinese-LLaMA-Alpaca)
   - [Hello-SimpleAI/HC3](https://huggingface.co/datasets/Hello-SimpleAI/HC3)
+  - [BELLE 2M (zh)](https://huggingface.co/datasets/BelleGroup/train_2M_CN)
+  - [BELLE 1M (zh)](https://huggingface.co/datasets/BelleGroup/train_1M_CN)
+  - [BELLE 0.5M (zh)](https://huggingface.co/datasets/BelleGroup/train_0.5M_CN)
+  - [BELLE Dialogue 0.4M (zh)](https://huggingface.co/datasets/BelleGroup/generated_chat_0.4M)
+  - [BELLE School Math 0.25M (zh)](https://huggingface.co/datasets/BelleGroup/school_math_0.25M)
+  - [BELLE Multiturn Chat 0.8M (zh)](https://huggingface.co/datasets/BelleGroup/multiturn_chat_0.8M)
   - [databricks-dolly-15k](https://huggingface.co/datasets/databricks/databricks-dolly-15k)
   - [mosaicml/dolly_hhrlhf](https://huggingface.co/datasets/mosaicml/dolly_hhrlhf)
   - [GPT-4 Generated Data](https://github.com/Instruction-Tuning-with-GPT-4/GPT-4-LLM)
@@ -82,7 +91,8 @@ As of now, we support the following datasets, which are all available in the [Hu
   - [HH-RLHF](https://huggingface.co/datasets/Anthropic/hh-rlhf)
   - [Open Assistant](https://huggingface.co/datasets/OpenAssistant/oasst1)
   - [GPT-4 Generated Data](https://github.com/Instruction-Tuning-with-GPT-4/GPT-4-LLM)
-  - [GPT-4 Generated Data (Chinese)](https://github.com/Instruction-Tuning-with-GPT-4/GPT-4-LLM)
+
+If you want to explore more datasets, please refer to the [awesome-instruction-datasets](https://github.com/jianzhnie/awesome-instruction-datasets).
 
 
 ### Data Preprocessing
