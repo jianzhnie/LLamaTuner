@@ -15,8 +15,7 @@ from chatllms.utils.config import (DataArguments, GenerationArguments,
                                    LoraArguments, ModelArguments,
                                    QuantArgments, TrainingArguments)
 from chatllms.utils.logging import get_root_logger
-from chatllms.utils.model_utils import (add_special_tokens_if_missing,
-                                        get_last_checkpoint,
+from chatllms.utils.model_utils import (get_last_checkpoint,
                                         print_trainable_parameters,
                                         verify_dtypes)
 from chatllms.utils.training import train_and_evaluate
@@ -50,7 +49,7 @@ def main():
     if completed_training:
         logger.warning('Detected that training was already completed!')
 
-    # # load model and tokenizer
+    # load model and tokenizer
     model, tokenizer = load_model_tokenizer(
         args=args,
         checkpoint_dir=checkpoint_dir,
@@ -63,13 +62,6 @@ def main():
     print_trainable_parameters(args, model)
 
     set_seed(args.seed)
-    # LLaMA tokenizer may not have correct special tokens set.
-    # Check and add them if missing to prevent them from being parsed into different tokens.
-    # Note that these are present in the vocabulary.
-    # Note also that `model.config.pad_token_id` is 0 which corresponds to `<unk>` token.
-    logger.info('Adding special tokens.')
-    if 'llama' in args.model_name_or_path or 'baichuan' in args.model_name_or_path:
-        add_special_tokens_if_missing(tokenizer, model)
 
     # Verify dtypes
     logger.info('Verifying dtypes...')
