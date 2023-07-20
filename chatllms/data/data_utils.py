@@ -1,14 +1,10 @@
-import copy
 import os
-from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 import random
+from typing import Any, Dict, Optional, Tuple, Union
+
 import numpy as np
 import pandas as pd
-import torch
 from datasets import Dataset, DatasetDict, concatenate_datasets, load_dataset
-from torch.nn.utils.rnn import pad_sequence
-from transformers import PreTrainedTokenizer
 
 from .data_maps import get_dataset_path
 
@@ -217,7 +213,9 @@ def local_dataset(dataset_path: str,
         return full_dataset
 
 
-def load_data(dataset_path: str) -> Union[Dict[str, Dataset], None]:
+def load_data(
+        dataset_path: str,
+        eval_dataset_size: float = 0.1) -> Union[Dict[str, Dataset], None]:
     """
     Load a dataset based on its name.
 
@@ -245,7 +243,7 @@ def load_data(dataset_path: str) -> Union[Dict[str, Dataset], None]:
     else:
         # Load dataset from local file
         try:
-            dataset = local_dataset(dataset_path)
+            dataset = local_dataset(dataset_path, eval_dataset_size)
             return dataset
         except:
             raise ValueError(f'Error loading dataset from {dataset_path}')
@@ -259,7 +257,7 @@ def format_dataset(
     Formats a given dataset based on its name and format.
 
 
-    Removes unused columns, renames columns to 'input' and 'output', 
+    Removes unused columns, renames columns to 'input' and 'output',
     and applies dataset-specific formatting based on the dataset_name.
 
     Returns formatted dataset dict if dataset can be formatted, else None.
@@ -274,7 +272,6 @@ def format_dataset(
         specified format.
         None if the dataset does not exist or if the format is not recognized.
     """
-
     def _format_dolly15k(dataset: Dataset) -> Dataset:
         """Format Dolly-15k dataset."""
         dataset = dataset.rename_column('context', 'input')
@@ -292,7 +289,10 @@ def format_dataset(
         return dataset
 
     def _format_self_instruct(dataset: Dataset) -> Dataset:
-        """Format Self-Instruct dataset."""
+        """Format Self-Instruct dataset.
+
+        hf_url: https://huggingface.co/datasets/yizhongw/self_instruct/viewer/self_instruct/train
+        """
         dataset = dataset.rename_column('prompt', 'input')
         dataset = dataset.rename_column('completion', 'output')
         return dataset
@@ -326,7 +326,7 @@ def format_dataset(
         ])
         return dataset
 
-    print("Formate the dataset in structure")
+    print('formate the dataset to the format we need.')
     if dataset_name == 'dolly-15k':
         dataset = _format_dolly15k(dataset)
     elif dataset_name == 'chip2':
@@ -347,14 +347,15 @@ def format_dataset(
         pass
 
     # encode_instruction_example
-    print(f"Encoding the instruction example refer to : {prompt_template}", )
+    print(f'Encoding the instruction example refer to : {prompt_template}')
     if prompt_template == 'alpaca':
         dataset = dataset.map(extract_alpaca_dataset)
     elif prompt_template == 'instruction':
-        dataset = dataset.map(extract_instruction_dataset)
+        dataset = dataset.map(
+            lambda x: extract_instruction_dataset(x, random_template=True))
 
     # Remove unused columns.
-    print("Removing the unused columns.")
+    print("Removing the unused columns, keep only 'input' and 'output'")
     dataset = _remove_unused_columns(dataset)
     return dataset
 
@@ -452,7 +453,8 @@ def make_data_module(args):
                                         data_dir=args.data_dir,
                                         load_from_local=args.load_from_local)
 
-        dataset = load_data(dataset_path)
+        dataset = load_data(dataset_path,
+                            eval_dataset_size=args.eval_dataset_size)
         dataset = format_dataset(dataset,
                                  dataset_name=dataset_name,
                                  prompt_template=args.prompt_template)
@@ -466,23 +468,22 @@ def make_data_module(args):
             max_train_samples=args.max_train_samples,
         )
         if train_dataset:
-            print('=' * 80)
-            print('loaded dataset:', dataset_name, 'train data size:',
+            print('loaded dataset:', dataset_name, '#train data size:',
                   len(train_dataset))
             train_datasets.append(train_dataset)
         if eval_dataset:
-            print('=' * 80)
-            print('loaded dataset:', dataset_name, 'eval data size:',
+            print('loaded dataset:', dataset_name, '#eval data size:',
                   len(eval_dataset))
             eval_datasets.append(eval_dataset)
 
-    print('=' * 80)
     concate_train = concatenate_datasets(
         train_datasets) if train_datasets else None
-    print(f'Concatenate train dataset size: {len(concate_train)}'
-          ) if concate_train else None
+    print(
+        f'Concatenated dataset list: {dataset_name_list}, #train dataset size: {len(concate_train)}'
+    ) if concate_train else None
     concate_eval = concatenate_datasets(
         eval_datasets) if eval_datasets else None
-    print(f'Concatenate eval dataset size: {len(concate_eval)}'
-          ) if concate_eval else None
+    print(
+        f'Concatenated dataset list: {dataset_name_list}, #eval dataset size: {len(concate_eval)}'
+    ) if concate_eval else None
     return concate_train, concate_eval

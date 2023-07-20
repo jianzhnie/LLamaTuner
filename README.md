@@ -59,6 +59,42 @@ We uses [bitsandbytes](https://github.com/TimDettmers/bitsandbytes) for quantiza
   - [LoRA](https://arxiv.org/abs/2106.09685)
   - [QLoRA](https://arxiv.org/abs/2305.14314)
 
+## Supported Datasets
+
+As of now, we support the following datasets, which are all available in the [Hugging Face datasets library](https://huggingface.co/datasets/). As default, we use the [Standford Alpaca](https://github.com/tatsu-lab/stanford_alpaca) dataset for training and evaluation.
+
+- For supervised fine-tuning:
+  - [Stanford Alpaca](https://github.com/tatsu-lab/stanford_alpaca)
+  - [Stanford Alpaca (Chinese)](https://github.com/ymcui/Chinese-LLaMA-Alpaca)
+  - [Hello-SimpleAI/HC3](https://huggingface.co/datasets/Hello-SimpleAI/HC3)
+  - [databricks-dolly-15k](https://huggingface.co/datasets/databricks/databricks-dolly-15k)
+  - [mosaicml/dolly_hhrlhf](https://huggingface.co/datasets/mosaicml/dolly_hhrlhf)
+  - [GPT-4 Generated Data](https://github.com/Instruction-Tuning-with-GPT-4/GPT-4-LLM)
+  - [Alpaca CoT](https://huggingface.co/datasets/QingyiSi/Alpaca-CoT)
+  - [UltraChat](https://github.com/thunlp/UltraChat)
+  - [OpenAssistant/oasst1](https://huggingface.co/datasets/OpenAssistant/oasst1)
+  - [ShareGPT_Vicuna_unfiltered](https://huggingface.co/datasets/anon8231489123/ShareGPT_Vicuna_unfiltered)
+  - [BIAI/OL-CC](https://data.baai.ac.cn/details/OL-CC)
+  - [timdettmers/openassistant-guanaco](https://huggingface.co/datasets/timdettmers/openassistant-guanaco)
+  - [Evol-Instruct](https://huggingface.co/datasets/victor123/evol_instruct_70k)
+
+- For reward model training:
+  - [HH-RLHF](https://huggingface.co/datasets/Anthropic/hh-rlhf)
+  - [Open Assistant](https://huggingface.co/datasets/OpenAssistant/oasst1)
+  - [GPT-4 Generated Data](https://github.com/Instruction-Tuning-with-GPT-4/GPT-4-LLM)
+  - [GPT-4 Generated Data (Chinese)](https://github.com/Instruction-Tuning-with-GPT-4/GPT-4-LLM)
+
+
+### Data Preprocessing
+
+We provide a number of data preprocessing tools in the [data](./chatllms/data) folder. These tools are intended to be a starting point for further research and development.
+
+- [data_maps.py](./chatllms/data/data_maps.py) :  A collection of data maps for various datasets
+- [data_utils.py](./chatllms/data/data_utils.py) :  Data preprocessing and formatting
+- [sft_dataset.py](./chatllms/data/sft_dataset.py) :  Supervised fine-tuning dataset class and collator
+- [conv_dataset.py](./chatllms/data/conv_dataset.py) :  Conversation dataset class and collator
+
+
 ## Model Zoo
 
 We provide a number of models in the [Hugging Face model hub](https://huggingface.co/decapoda-research). These models are trained with QLoRA and can be used for inference and finetuning. We provide the following models:

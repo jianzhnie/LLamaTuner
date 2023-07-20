@@ -96,6 +96,10 @@ def train() -> None:
             f'Adding special tokens for {args.model_name_or_path}.')
         add_special_tokens_if_missing(tokenizer, model)
 
+    if 'baichuan' in args.model_name_or_path:
+        # Tie the weights
+        model.tie_weights()
+
     # Create a supervised dataset and Trainer, then train the model
     logging.warning('Creating a supervised dataset and DataCollator...')
     if not args.multiturn_dialogue:
@@ -108,6 +112,7 @@ def train() -> None:
             tokenizer=tokenizer,
             lazy_preprocess=args.lazy_preprocess,
             data_path=args.data_path)
+
     # Initialize the Trainer object and start training
     logging.warning('Initializing Trainer object.')
     trainer = Trainer(
@@ -116,6 +121,7 @@ def train() -> None:
         args=training_args,
         **data_module,
     )
+
     logging.warning('Start Training...')
     if list(pathlib.Path(training_args.output_dir).glob('checkpoint-*')):
         trainer.train(resume_from_checkpoint=True)

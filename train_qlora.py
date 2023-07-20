@@ -48,8 +48,7 @@ def main():
     checkpoint_dir, completed_training = get_last_checkpoint(args.output_dir)
     args.checkpoint_dir = checkpoint_dir
     if completed_training:
-        logger.info('=' * 40, 'Attention', '=' * 40)
-        logger.info('Detected that training was already completed!')
+        logger.warning('Detected that training was already completed!')
 
     # # load model and tokenizer
     model, tokenizer = load_model_tokenizer(
@@ -77,11 +76,14 @@ def main():
     verify_dtypes(model)
 
     if not args.multiturn_dialogue:
-        logger.info('Training data is not a multiturn dialogue formate')
+        logger.info(
+            'Training data is self-instructed formate, supervised learning')
         data_module = make_supervised_data_module(tokenizer=tokenizer,
                                                   args=args)
     else:
-        logger.info('Training data is a multiturn dialogue formate')
+        logger.info(
+            'Training data is a multiturn dialogue formate, supervised learning'
+        )
         data_module = make_conversation_data_module(
             tokenizer=tokenizer,
             lazy_preprocess=args.lazy_preprocess,
