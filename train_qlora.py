@@ -6,14 +6,14 @@ import torch
 import transformers
 from transformers import GenerationConfig, Trainer, set_seed
 
+from chatllms.configs import (DataArguments, GenerationArguments,
+                              LoraArguments, ModelArguments, QuantArguments,
+                              TrainingArguments)
 from chatllms.data.conv_dataset import make_conversation_data_module
 from chatllms.data.sft_dataset import make_supervised_data_module
 from chatllms.model.load_pretrain_model import load_model_tokenizer
 from chatllms.model.save_peft_model_callback import SavePeftModelCallback
 from chatllms.utils.callbacks import MMLUEvalCallback, SampleGenerateCallback
-from chatllms.utils.config import (DataArguments, GenerationArguments,
-                                   LoraArguments, ModelArguments,
-                                   QuantArgments, TrainingArguments)
 from chatllms.utils.logging import get_root_logger
 from chatllms.utils.model_utils import (get_last_checkpoint,
                                         print_trainable_parameters,
@@ -26,7 +26,7 @@ torch.backends.cuda.matmul.allow_tf32 = True
 def main():
     parser = transformers.HfArgumentParser(
         (ModelArguments, DataArguments, TrainingArguments, LoraArguments,
-         QuantArgments, GenerationArguments))
+         QuantArguments, GenerationArguments))
     (model_args, data_args, training_args, lora_args, quant_args,
      generation_args) = parser.parse_args_into_dataclasses()
     training_args.generation_config = GenerationConfig(**vars(generation_args))

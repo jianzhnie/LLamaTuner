@@ -14,10 +14,9 @@ from transformers import (AutoModelForCausalLM, AutoTokenizer,
                           PreTrainedModel, PreTrainedTokenizer, Trainer,
                           deepspeed)
 
+from chatllms.configs import DataArguments, ModelArguments, TrainingArguments
 from chatllms.data.conv_dataset import make_conversation_data_module
 from chatllms.data.sft_dataset import make_supervised_data_module
-from chatllms.utils.config import (DataArguments, ModelArguments,
-                                   TrainingArguments)
 from chatllms.utils.model_utils import add_special_tokens_if_missing
 
 
