@@ -64,7 +64,7 @@ We uses [bitsandbytes](https://github.com/TimDettmers/bitsandbytes) for quantiza
 
 ## Supported Datasets
 
-As of now, we support the following datasets, which are all available in the [Hugging Face datasets library](https://huggingface.co/datasets/). As default, we use the [Standford Alpaca](https://github.com/tatsu-lab/stanford_alpaca) dataset for training and evaluation.
+As of now, we support the following datasets, most of which are all available in the [Hugging Face datasets library](https://huggingface.co/datasets/).
 
 - For supervised fine-tuning:
   - [Stanford Alpaca](https://github.com/tatsu-lab/stanford_alpaca)
@@ -92,14 +92,19 @@ As of now, we support the following datasets, which are all available in the [Hu
   - [Open Assistant](https://huggingface.co/datasets/OpenAssistant/oasst1)
   - [GPT-4 Generated Data](https://github.com/Instruction-Tuning-with-GPT-4/GPT-4-LLM)
 
-If you want to explore more datasets, please refer to the [awesome-instruction-datasets](https://github.com/jianzhnie/awesome-instruction-datasets).
+Please refer to [data/README.md](data/README.md) to learn how to use these datasets.  If you want to explore more datasets, please refer to the [awesome-instruction-datasets](https://github.com/jianzhnie/awesome-instruction-datasets). As default, we use the [Standford Alpaca](https://github.com/tatsu-lab/stanford_alpaca) dataset for training and evaluation.
 
+Some datasets require confirmation before using them, so we recommend logging in with your Hugging Face account using these commands.
+
+```bash
+pip install --upgrade huggingface_hub
+huggingface-cli login
+```
 
 ### Data Preprocessing
 
 We provide a number of data preprocessing tools in the [data](./chatllms/data) folder. These tools are intended to be a starting point for further research and development.
 
-- [data_maps.py](./chatllms/data/data_maps.py) :  A collection of data maps for various datasets
 - [data_utils.py](./chatllms/data/data_utils.py) :  Data preprocessing and formatting
 - [sft_dataset.py](./chatllms/data/sft_dataset.py) :  Supervised fine-tuning dataset class and collator
 - [conv_dataset.py](./chatllms/data/conv_dataset.py) :  Conversation dataset class and collator
@@ -177,8 +182,6 @@ We can also tweak our hyperparameters:
 python train_qlora.py \
     --model_name_or_path ~/checkpoints/baichuan7b \
     --dataset_name oasst1 \
-    --data_dir ~/prompt_datasets \
-    --load_from_local \
     --output_dir ./work_dir/oasst1-baichuan-7b \
     --num_train_epochs 4 \
     --per_device_train_batch_size 4 \

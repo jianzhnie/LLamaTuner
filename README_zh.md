@@ -85,7 +85,7 @@ QLora 引入了多种创新，旨在在不牺牲性能的情况下减少内存�
 
 ## 提供的数据集接口
 
-截至目前，我们支持以下数据集，这些数据集都可以在 [Hugging Face Datasets](https://huggingface.co/datasets) 上找到。我们将在未来添加更多数据集。默认情况下，我们使用 [Stanford Alpaca](https://github.com/tatsu-lab/stanford_alpaca) 数据集进行训练和微调。
+截至目前，我们支持以下数据集，这些数据集都可以在 [Hugging Face Datasets](https://huggingface.co/datasets) 上找到。我们将在未来添加更多数据集。
 
 - For supervised fine-tuning:
   - [Stanford Alpaca](https://github.com/tatsu-lab/stanford_alpaca)
@@ -108,11 +108,20 @@ QLora 引入了多种创新，旨在在不牺牲性能的情况下减少内存�
   - [GPT-4 Generated Data](https://github.com/Instruction-Tuning-with-GPT-4/GPT-4-LLM)
   - [GPT-4 Generated Data (Chinese)](https://github.com/Instruction-Tuning-with-GPT-4/GPT-4-LLM)
 
+
+请参考 [data/README.md](data/README.md) 了解如何使用这些数据集训练自己的 ChatGPT。如果您想探索更多数据集，请参考 [awesome-instruction-datasets](https://github.com/jianzhnie/awesome-instruction-datasets). 默认情况下，我们使用 [Stanford Alpaca](https://github.com/tatsu-lab/stanford_alpaca) 数据集进行训练和微调。
+
+
+部分数据集需要 huggingface 的账号认证确认才能使用，我们建议使用以下命令登录您的 Hugging Face 账户。
+```bash
+pip install --upgrade huggingface_hub
+huggingface-cli login
+```
+
 ### 数据预处理
 
 我们在 [data](./chatllms/data/) 文件夹中提供了数据预处理和格式化的脚本。这些脚本可以用于将数据集转换为我们的格式，以便在训练和微调中使用。
 
-- data_maps.py：数据集映射
 - data_utils.py：数据预处理和格式化
 - sft_dataset.py：有监督的对话数据集类
 - conv_dataset.py：多轮对话数据集类
@@ -124,13 +133,13 @@ QLora 引入了多种创新，旨在在不牺牲性能的情况下减少内存�
 
 🔔 使用本项目的训练代码，以及上述训练数据，我们训练并开源了以下模型。
 
-| Base Model                                                   | Adapter      | Instruct Datasets                                            | Model on Huggingface                                         |
-| ------------------------------------------------------------ | ------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
-| [llama-7b](https://huggingface.co/decapoda-research/llama-7b-hf) | FullFinetune | -                                                            |                                                              |
-| [llama-7b](https://huggingface.co/decapoda-research/llama-7b-hf) | QLoRA        | [openassistant-guanaco](https://huggingface.co/datasets/timdettmers/openassistant-guanaco) | [GaussianTech/llama-7b-sft](https://huggingface.co/GaussianTech/llama-7b-sft) |
-| [llama-7b](https://huggingface.co/decapoda-research/llama-7b-hf) | QLoRA        | [OL-CC](https://data.baai.ac.cn/details/OL-CC)               |                                                              |
-| [baichuan7b](https://huggingface.co/baichuan-inc/baichuan-7B) | QLoRA        | [openassistant-guanaco](https://huggingface.co/datasets/timdettmers/openassistant-guanaco) | [GaussianTech/baichuan-7b-sft](https://huggingface.co/GaussianTech/baichuan-7b-sft) |
-| [baichuan7b](https://huggingface.co/baichuan-inc/baichuan-7B) | QLoRA        | [OL-CC](https://data.baai.ac.cn/details/OL-CC)               | -                                                            |
+| Base Model                                                       | Adapter      | Instruct Datasets                                                                          | Model on Huggingface                                                                |
+| ---------------------------------------------------------------- | ------------ | ------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------- |
+| [llama-7b](https://huggingface.co/decapoda-research/llama-7b-hf) | FullFinetune | -                                                                                          |                                                                                     |
+| [llama-7b](https://huggingface.co/decapoda-research/llama-7b-hf) | QLoRA        | [openassistant-guanaco](https://huggingface.co/datasets/timdettmers/openassistant-guanaco) | [GaussianTech/llama-7b-sft](https://huggingface.co/GaussianTech/llama-7b-sft)       |
+| [llama-7b](https://huggingface.co/decapoda-research/llama-7b-hf) | QLoRA        | [OL-CC](https://data.baai.ac.cn/details/OL-CC)                                             |                                                                                     |
+| [baichuan7b](https://huggingface.co/baichuan-inc/baichuan-7B)    | QLoRA        | [openassistant-guanaco](https://huggingface.co/datasets/timdettmers/openassistant-guanaco) | [GaussianTech/baichuan-7b-sft](https://huggingface.co/GaussianTech/baichuan-7b-sft) |
+| [baichuan7b](https://huggingface.co/baichuan-inc/baichuan-7B)    | QLoRA        | [OL-CC](https://data.baai.ac.cn/details/OL-CC)                                             | -                                                                                   |
 
 ## 安装
 
