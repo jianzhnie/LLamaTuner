@@ -51,17 +51,17 @@ dolly-15k:
 
 olcc:
   hf_hub_url: ''
-  local_path: olcc/olcc_alpaca.json
+  local_path: /home/robin/prompt_data/olcc/olcc_alpaca.json
   multi_turn: False
 
 share_gpt:
   hf_hub_url: ''
-  local_path: sharegpt/sharegpt_split.json
+  local_path: /home/robin/prompt_data/sharegpt/sharegpt_split.json
   multi_turn: True
 
 100PoisonMpts:
   hf_hub_url: ''
-  local_path: 100PoisonMpts/train.jsonl
+  local_path: /home/robin/prompt_data/100PoisonMpts/train.jsonl
   multi_turn: False
 
 # Belle Group
