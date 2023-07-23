@@ -1,8 +1,7 @@
 CUDA_VISIBLE_DEVICES=0 python train_qlora.py \
     --model_name_or_path facebook/opt-125m \
     --dataset_name olcc \
-    --data_dir /home/robin/prompt_data/ \
-    --load_from_local \
+    --dataset_dir /home/robin/prompt_data/ \
     --output_dir ./work_dir/run_test \
     --num_train_epochs 3 \
     --max_train_samples 100 \

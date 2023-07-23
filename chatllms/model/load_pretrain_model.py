@@ -15,7 +15,8 @@ from transformers.tokenization_utils import PreTrainedTokenizer
 from transformers.utils import check_min_version
 from transformers.utils.versions import require_version
 
-from chatllms.utils.model_utils import find_all_linear_names
+from chatllms.utils.model_utils import (add_special_tokens_if_missing,
+                                        find_all_linear_names)
 
 check_min_version('4.29.1')
 
@@ -198,5 +199,12 @@ def load_model_tokenizer(
         tokenizer_type='llama' if 'llama' in args.model_name_or_path else None,
         **config_kwargs,
     )
+    # LLaMA tokenizer may not have correct special tokens set.
+    # Check and add them if missing to prevent them from being parsed into different tokens.
+    # Note that these are present in the vocabulary.
+    # Note also that `model.config.pad_token_id` is 0 which corresponds to `<unk>` token.
+    logger.info('Adding special tokens.')
+    if 'llama' in args.model_name_or_path or 'baichuan' in args.model_name_or_path:
+        add_special_tokens_if_missing(tokenizer, model)
 
     return model, tokenizer

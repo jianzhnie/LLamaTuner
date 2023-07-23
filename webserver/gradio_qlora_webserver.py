@@ -7,8 +7,8 @@ import torch
 import transformers
 from transformers import GenerationConfig
 
+from chatllms.configs import ModelInferenceArguments
 from chatllms.model.load_pretrain_model import load_model_tokenizer
-from chatllms.utils.config import ModelInferenceArguments
 from chatllms.utils.stream_server import Iteratorize, Stream
 
 ALPACA_PROMPT_DICT = {

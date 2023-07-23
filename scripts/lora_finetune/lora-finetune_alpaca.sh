@@ -1,8 +1,6 @@
 python train_lora.py \
     --model_name_or_path  facebook/opt-125m \
     --dataset_name olcc \
-    --data_dir ~/prompt_data/ \
-    --load_from_local \
     --output_dir work_dir/alpaca_full-finetune \
     --num_train_epochs 3 \
     --per_device_train_batch_size 4 \

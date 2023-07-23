@@ -14,10 +14,9 @@ from transformers import (AutoModelForCausalLM, AutoTokenizer,
                           PreTrainedModel, PreTrainedTokenizer, Trainer,
                           deepspeed)
 
+from chatllms.configs import DataArguments, ModelArguments, TrainingArguments
 from chatllms.data.conv_dataset import make_conversation_data_module
 from chatllms.data.sft_dataset import make_supervised_data_module
-from chatllms.utils.config import (DataArguments, ModelArguments,
-                                   TrainingArguments)
 from chatllms.utils.model_utils import add_special_tokens_if_missing
 
 
@@ -203,6 +202,7 @@ def train() -> None:
         (ModelArguments, DataArguments, TrainingArguments, LoraArguments))
     model_args, data_args, training_args, lora_args = parser.parse_args_into_dataclasses(
     )
+    data_args.init_for_training()
     args = argparse.Namespace(**vars(model_args), **vars(data_args),
                               **vars(training_args), **vars(lora_args))
     # Log on each process the small summary:

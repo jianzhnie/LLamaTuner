@@ -8,8 +8,8 @@ import transformers
 from transformers import (PreTrainedModel, PreTrainedTokenizer,
                           TextIteratorStreamer)
 
+from chatllms.configs import GenerationArguments, ModelInferenceArguments
 from chatllms.model.load_pretrain_model import load_model_tokenizer
-from chatllms.utils.config import GenerationArguments, ModelInferenceArguments
 from chatllms.utils.model_utils import get_logits_processor
 from chatllms.utils.template import PromptTemplate
 

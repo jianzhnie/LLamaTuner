@@ -14,7 +14,7 @@ from chatllms.data.data_utils import (DEFAULT_BOS_TOKEN, DEFAULT_EOS_TOKEN,
 
 
 def add_special_tokens_if_missing(tokenizer: PreTrainedTokenizer,
-                                  model: PreTrainedModel):
+                                  model: PreTrainedModel) -> None:
     """
     If 'llama' or 'baichuan' is in the model name or path, check if the special tokens are set correctly.
     Add any missing special tokens to prevent them from being parsed into different tokens.
@@ -77,22 +77,22 @@ def smart_tokenizer_and_embedding_resize(special_tokens_dict: Dict[str, str],
     model.resize_token_embeddings(len(tokenizer))
 
     if num_new_tokens > 0:
-        input_embeddings = model.get_input_embeddings().weight.data
-        output_embeddings = model.get_output_embeddings().weight.data
+        input_embeddings_data = model.get_input_embeddings().weight.data
+        output_embeddings_data = model.get_output_embeddings().weight.data
 
         # Compute average embeddings of existing tokens
         # 下面的操作实现使用已训练好的embedding的均值，来初始化新token对应的embedding
         # input_embeddings的已训练好的embedding的均值，保持embedding的shape
-        input_embeddings_avg = input_embeddings[:-num_new_tokens].mean(
+        input_embeddings_avg = input_embeddings_data[:-num_new_tokens].mean(
             dim=0, keepdim=True)
         # output_embeddings的已训练好的embedding的均值，保持embedding的shape
-        output_embeddings_avg = output_embeddings[:-num_new_tokens].mean(
+        output_embeddings_avg = output_embeddings_data[:-num_new_tokens].mean(
             dim=0, keepdim=True)
 
         # Set average embeddings for new special token embeddings
         # 分别给input_embeddings和output_embeddings的新token对应的embedding赋值
-        input_embeddings[-num_new_tokens:] = input_embeddings_avg
-        output_embeddings[-num_new_tokens:] = output_embeddings_avg
+        input_embeddings_data[-num_new_tokens:] = input_embeddings_avg
+        output_embeddings_data[-num_new_tokens:] = output_embeddings_avg
 
 
 def find_all_linear_names(args: argparse.Namespace,
