@@ -29,12 +29,15 @@ def main():
          QuantArguments, GenerationArguments))
     (model_args, data_args, training_args, lora_args, quant_args,
      generation_args) = parser.parse_args_into_dataclasses()
+    # Check arguments (do not check finetuning_args since it may be loaded from checkpoints)
+    data_args.init_for_training()
     training_args.generation_config = GenerationConfig(**vars(generation_args))
 
     args = argparse.Namespace(**vars(model_args), **vars(data_args),
                               **vars(training_args), **vars(lora_args),
                               **vars(quant_args))
 
+    print(args.datasets_list)
     # init the logger before other steps
     timestamp = time.strftime('%Y%m%d_%H%M%S', time.localtime())
     if not os.path.exists(args.output_dir):
