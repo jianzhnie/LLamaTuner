@@ -202,6 +202,7 @@ def train() -> None:
         (ModelArguments, DataArguments, TrainingArguments, LoraArguments))
     model_args, data_args, training_args, lora_args = parser.parse_args_into_dataclasses(
     )
+    data_args.init_for_training()
     args = argparse.Namespace(**vars(model_args), **vars(data_args),
                               **vars(training_args), **vars(lora_args))
     # Log on each process the small summary:

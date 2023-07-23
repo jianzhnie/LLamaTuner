@@ -83,6 +83,7 @@ def train() -> None:
         (ModelArguments, DataArguments, TrainingArguments))
     (model_args, data_args,
      training_args) = parser.parse_args_into_dataclasses()
+    data_args.init_for_training()
     args = argparse.Namespace(**vars(model_args), **vars(data_args),
                               **vars(training_args))
     # load model and tokenizer
