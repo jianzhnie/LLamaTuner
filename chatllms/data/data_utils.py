@@ -1,12 +1,10 @@
 import os
 import random
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
 from datasets import Dataset, DatasetDict, concatenate_datasets, load_dataset
-
-from .data_maps import get_dataset_path
 
 IGNORE_INDEX = -100
 DEFAULT_PAD_TOKEN = '[PAD]'
@@ -444,19 +442,22 @@ def make_data_module(args):
         - vicuna
 
     """
-    train_datasets = []
-    eval_datasets = []
+    train_datasets: List[Dataset] = []
+    eval_datasets: List[Dataset] = []
     dataset_name_list = args.dataset_name.split(',')
     print(f'Loading datasets: {dataset_name_list}')
-    for dataset_name in dataset_name_list:
-        dataset_path = get_dataset_path(dataset_name,
-                                        data_dir=args.data_dir,
-                                        load_from_local=args.load_from_local)
+    for dataset_attr in args.datasets_list:
+        print('Loading dataset {}...'.format(dataset_attr))
+
+        if dataset_attr.load_from_local:
+            dataset_path = dataset_attr.local_path
+        elif dataset_attr.hf_hub_url:
+            dataset_path = dataset_attr.dataset_name
 
         dataset = load_data(dataset_path,
                             eval_dataset_size=args.eval_dataset_size)
         dataset = format_dataset(dataset,
-                                 dataset_name=dataset_name,
+                                 dataset_name=dataset_attr.dataset_name,
                                  prompt_template=args.prompt_template)
 
         train_dataset, eval_dataset = split_train_eval(
@@ -468,12 +469,12 @@ def make_data_module(args):
             max_train_samples=args.max_train_samples,
         )
         if train_dataset:
-            print('loaded dataset:', dataset_name, '#train data size:',
-                  len(train_dataset))
+            print('loaded dataset:', dataset_attr.dataset_name,
+                  '#train data size:', len(train_dataset))
             train_datasets.append(train_dataset)
         if eval_dataset:
-            print('loaded dataset:', dataset_name, '#eval data size:',
-                  len(eval_dataset))
+            print('loaded dataset:', dataset_attr.dataset_name,
+                  '#eval data size:', len(eval_dataset))
             eval_datasets.append(eval_dataset)
 
     concate_train = concatenate_datasets(

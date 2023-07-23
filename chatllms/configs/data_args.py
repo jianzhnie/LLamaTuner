@@ -8,10 +8,12 @@ import yaml
 @dataclass
 class DatasetAttr(object):
 
-    load_from: str
     dataset_name: Optional[str] = None
+    hf_hub_url: Optional[str] = None
+    local_path: Optional[str] = None
     dataset_sha1: Optional[str] = None
-    dataset_path: Optional[str] = None
+    load_from_local: bool = False
+    multi_turn: Optional[bool] = False
 
     def __repr__(self) -> str:
         return self.dataset_name
@@ -97,36 +99,38 @@ class DataArguments:
     def init_for_training(self):  # support mixing multiple datasets
         dataset_names = [ds.strip() for ds in self.dataset_name.split(',')]
         this_dir = os.path.dirname(os.path.abspath(__file__))
-        dataset_info_path = os.path.join(this_dir, '../..', 'data',
-                                         'dataset_info.yaml')
-        with open(dataset_info_path, 'r') as f:
-            dataset_info = yaml.safe_load(f)
+        datasets_info_path = os.path.join(this_dir, '../..', 'data',
+                                          'dataset_info.yaml')
+        with open(datasets_info_path, 'r') as f:
+            datasets_info = yaml.safe_load(f)
 
-        self.dataset_list: List[DatasetAttr] = []
+        self.datasets_list: List[DatasetAttr] = []
         for i, name in enumerate(dataset_names):
-            if name not in dataset_info:
+            if name not in datasets_info:
                 raise ValueError('Undefined dataset {} in {}'.format(
-                    name, dataset_info_path))
+                    name, datasets_info_path))
 
-            if 'hf_hub_url' in dataset_info[name]:
-                dataset_attr = DatasetAttr(
-                    'hf_hub', dataset_name=dataset_info[name]['hf_hub_url'])
-            elif 'script_url' in dataset_info[name]:
-                dataset_attr = DatasetAttr(
-                    'script', dataset_name=dataset_info[name]['script_url'])
-            elif 'local_path' in dataset_info[name]:
-                dataset_attr = DatasetAttr(
-                    'dataset_path',
-                    dataset_name=dataset_info[name]['local_path'])
+            dataset_attr = DatasetAttr()
+            dataset_attr.dataset_name = name
+            dataset_attr.hf_hub_url = datasets_info[name].get(
+                'hf_hub_url', None)
+            dataset_attr.local_path = datasets_info[name].get(
+                'local_path', None)
+            dataset_attr.multi_turn = datasets_info[name].get(
+                'multi_turn', False)
 
-            if 'columns' in dataset_info[name]:
-                dataset_attr.prompt_column = dataset_info[name]['columns'].get(
-                    'prompt', None)
-                dataset_attr.query_column = dataset_info[name]['columns'].get(
+            if datasets_info[name]['local_path'] and os.path.exists(
+                    datasets_info[name]['local_path']):
+                dataset_attr.load_from_local = True
+
+            if 'columns' in datasets_info[name]:
+                dataset_attr.prompt_column = datasets_info[name][
+                    'columns'].get('prompt', None)
+                dataset_attr.query_column = datasets_info[name]['columns'].get(
                     'query', None)
-                dataset_attr.response_column = dataset_info[name][
+                dataset_attr.response_column = datasets_info[name][
                     'columns'].get('response', None)
-                dataset_attr.history_column = dataset_info[name][
+                dataset_attr.history_column = datasets_info[name][
                     'columns'].get('history', None)
 
-            self.dataset_list.append(dataset_attr)
+            self.datasets_list.append(dataset_attr)
