@@ -5,8 +5,6 @@ import torch
 from torch.utils.data import Dataset
 from transformers import PreTrainedTokenizer
 
-from chatllms.data.data_utils import IGNORE_INDEX
-
 
 class ConversationDataset(Dataset):
     """
@@ -22,22 +20,25 @@ class ConversationDataset(Dataset):
         self.conversations = conversations
         self.tokenizer = tokenizer
         self.max_seq_length = max_seq_length
+        self.roles = ['human', 'gpt']
 
         bos_token_id = self.tokenizer.bos_token_id
         eos_token_id = self.tokenizer.eos_token_id
 
         self.examples = []
-        for conversation in conversations:
+        for i, conversation in enumerate(conversations):
             dialog_context = []
-            for turn in conversation:
-                dialog_context.append(turn['human'])
-                dialog_context.append(turn['assistant'])
+            for j, turn in enumerate(conversation):
+                assert turn['from'] == self.roles[j % 2]
+                dialog_context.append(turn['value'])
 
-            encoded_inputs = self.tokenizer(dialog_context,
-                                            add_special_tokens=False)
+            encoded_inputs = self.tokenizer(
+                dialog_context,
+                return_tensors='pt',
+            )
 
             input_ids = [bos_token_id]
-            target_mask = [IGNORE_INDEX]
+            target_mask = [0]
 
             for i, ids in enumerate(encoded_inputs.input_ids, start=1):
                 input_ids += ids + [eos_token_id]
