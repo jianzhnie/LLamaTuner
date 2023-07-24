@@ -1,4 +1,5 @@
 import json
+
 from datasets import load_dataset
 
 
@@ -30,7 +31,7 @@ def convert_100PoisonMpts(in_file, out_file):
 
 
 if __name__ == '__main__':
-    data_path = "/home/robin/prompt_data/100PoisonMpts/train.jsonl"
-    out_path = "/home/robin/prompt_data/100PoisonMpts/train_alpaca.json"
+    data_path = '/home/robin/prompt_data/100PoisonMpts/train.jsonl'
+    out_path = '/home/robin/prompt_data/100PoisonMpts/train_alpaca.json'
     clean_data = load_dataset('json', data_files=data_path)
     convert_100PoisonMpts(data_path, out_file=out_path)
