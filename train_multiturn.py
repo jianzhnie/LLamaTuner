@@ -68,10 +68,8 @@ def train():
 
     # Add special tokens if they are missing
     logging.warning('Creating training dataset and data collator.')
-    data_module = make_conversation_data_module(
-        tokenizer=tokenizer,
-        lazy_preprocess=args.lazy_preprocess,
-        data_path=args.data_path)
+    data_module = make_conversation_data_module(tokenizer=tokenizer,
+                                                data_path=args.data_path)
 
     # Initialize the Trainer object and start training
     logging.warning('Initializing Trainer object.')
