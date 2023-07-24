@@ -9,11 +9,10 @@ from transformers import GenerationConfig, Trainer, set_seed
 from chatllms.configs import (DataArguments, GenerationArguments,
                               LoraArguments, ModelArguments, QuantArguments,
                               TrainingArguments)
-from chatllms.data.conv_dataset import make_conversation_data_module
-from chatllms.data.sft_dataset import make_supervised_data_module
-from chatllms.model.load_pretrain_model import load_model_tokenizer
-from chatllms.model.save_peft_model_callback import SavePeftModelCallback
-from chatllms.utils.callbacks import MMLUEvalCallback, SampleGenerateCallback
+from chatllms.data import (make_conversation_data_module,
+                           make_supervised_data_module)
+from chatllms.model import (MMLUEvalCallback, SampleGenerateCallback,
+                            SavePeftModelCallback, load_model_tokenizer)
 from chatllms.utils.logging import get_root_logger
 from chatllms.utils.model_utils import (get_last_checkpoint,
                                         print_trainable_parameters,
