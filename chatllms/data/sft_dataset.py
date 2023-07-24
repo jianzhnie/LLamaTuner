@@ -283,4 +283,5 @@ class DataCollatorForSupervisedDataset:
         if labels is not None:
             data_dict['labels'] = labels
 
+        print(data_dict)
         return data_dict

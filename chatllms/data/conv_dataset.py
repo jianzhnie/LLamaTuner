@@ -134,14 +134,14 @@ class ConversationDataset(Dataset):
             target_mask = [0]
             targets = [IGNORE_INDEX]
 
-            for i, ids in enumerate(encoded_inputs.input_ids, start=1):
+            for i, ids in enumerate(encoded_inputs.input_ids):
                 input_ids += ids + [tokenizer.eos_token_id]
-                if i % 2 == 0:
-                    target_mask += [1] * (len(ids) + 1)
-                    targets += input_ids
-                else:
+                if i % 2 == 0:  # user
                     target_mask += [0] * (len(ids) + 1)
                     targets += [IGNORE_INDEX] * (len(ids) + 1)
+                else:  # assistent
+                    target_mask += [1] * (len(ids) + 1)
+                    targets += input_ids
 
             assert len(input_ids) == len(target_mask)
             self.examples.append((input_ids, target_mask, targets))
@@ -150,6 +150,7 @@ class ConversationDataset(Dataset):
         return len(self.examples)
 
     def __getitem__(self, index):
+
         input_ids, target_mask, targets = self.examples[index]
 
         # Truncate sequences
@@ -160,12 +161,21 @@ class ConversationDataset(Dataset):
         # Create attention masks
         attention_mask = [1] * len(input_ids)
 
-        return {
+        data_dict = {
             'input_ids': torch.tensor(input_ids, dtype=torch.long),
             'labels': torch.tensor(targets, dtype=torch.long),
             'attention_mask': torch.tensor(attention_mask, dtype=torch.long),
             'target_mask': torch.tensor(target_mask, dtype=torch.long),
         }
+
+        # data_dict = {
+        #     'input_ids': input_ids,
+        #     'attention_mask': attention_mask,
+        #     'target_mask': target_mask,
+        #     'labels': targets,
+        # }
+
+        return data_dict
 
 
 @dataclass
@@ -173,21 +183,25 @@ class ConversationDataCollator(object):
     """
     Collate and pad a batch of conversation examples to prepare for training.
     """
-    def __init__(self, tokenizer: PreTrainedTokenizer, max_seq_length: int):
+    def __init__(
+        self,
+        tokenizer: PreTrainedTokenizer,
+        max_seq_length: int = 1024,
+    ):
         self.tokenizer = tokenizer
         self.max_seq_length = max_seq_length
         self.pad_token_id = tokenizer.pad_token_id
 
-    def __call__(self, examples: List[Dict[str,
-                                           Any]]) -> Dict[str, torch.Tensor]:
-        lengths = [len(ex['input_ids']) for ex in examples]
+    def __call__(self, batch: List[Dict[str, Any]]) -> Dict[str, torch.Tensor]:
+        lengths = [len(ex['input_ids']) for ex in batch]
         max_length = min(max(lengths), self.max_seq_length)
 
         batch_input_ids = []
         batch_att_masks = []
         batch_target_masks = []
 
-        for ex in examples:
+        for ex in batch:
+            print(ex)
             input_ids = ex['input_ids']
             attention_mask = ex['attention_mask']
             target_mask = ex['target_mask']
@@ -249,12 +263,13 @@ def make_conversation_data_module(
 
     print(f'#train {len(train_raw_data)}, #eval {len(eval_raw_data)}')
 
-    train_raw_data = [x['conversations'] for x in train_raw_data]
-    eval_raw_data = [x['conversations'] for x in eval_raw_data]
+    train_conversations = [x['conversations'] for x in train_raw_data]
+    eval_conversations = [x['conversations'] for x in eval_raw_data]
 
     # Create train and eval datasets using the chosen dataset class
-    train_dataset = ConversationDataset(train_raw_data, tokenizer=tokenizer)
-    eval_dataset = ConversationDataset(eval_raw_data, tokenizer=tokenizer)
+    train_dataset = ConversationDataset(train_conversations,
+                                        tokenizer=tokenizer)
+    eval_dataset = ConversationDataset(eval_conversations, tokenizer=tokenizer)
 
     print('train_dataset: ', train_dataset, type(train_dataset), 'length: ',
           len(train_dataset))
