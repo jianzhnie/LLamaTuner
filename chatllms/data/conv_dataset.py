@@ -42,11 +42,13 @@ def apply_conversations_template(sources):
             conv.append_message(role, sentence['value'])
         conversations.append(conv.get_prompt())
 
-    return conversations
+    return conversations, conv
 
 
-def tokenize_conversations(conversations: List[str],
-                           tokenizer: PreTrainedTokenizer) -> torch.Tensor:
+def tokenize_conversations(
+    conversations: List[str],
+    tokenizer: PreTrainedTokenizer,
+) -> torch.Tensor:
     """Tokenize conversations
     """
 
@@ -56,14 +58,15 @@ def tokenize_conversations(conversations: List[str],
         padding='max_length',
         max_length=tokenizer.model_max_length,
         truncation=True,
+        add_special_tokens=False,
     ).input_ids
     targets = input_ids.clone()
     return input_ids, targets
 
 
 def mask_targets(
-    targets: torch.Tensor,
     conversations: List[str],
+    targets: torch.Tensor,
     tokenizer: PreTrainedTokenizer,
     conv: Conversation,
 ) -> None:
@@ -76,23 +79,22 @@ def mask_targets(
         total_len = int(target.ne(tokenizer.pad_token_id).sum())
 
         rounds = conversation.split(conv.sep2)
-        cur_len = 1
+        cur_len = 0
         target[:cur_len] = IGNORE_TOKEN_ID
-        for rou in rounds:
-            if rou == '':
+        for idx, round in enumerate(rounds):
+            if round == '':
                 break
 
-            parts = rou.split(sep)
+            parts = round.split(sep)
             if len(parts) != 2:
                 break
+            round_len = len(tokenizer(round + conv.sep2).input_ids)
             parts[0] += sep
-            round_len = len(tokenizer(rou).input_ids)
-            # "-2" is hardcoded for the LLaMA tokenizer to make the offset correct.
-            instruction_len = len(tokenizer(parts[0]).input_ids) - 2
+            instruction_len = len(tokenizer(parts[0]).input_ids) - 1
             # Ignore the user instructions
-            target[cur_len:cur_len + instruction_len] = IGNORE_TOKEN_ID
-
+            target[cur_len:cur_len + instruction_len] = 0
             cur_len += round_len
+
         target[cur_len:] = IGNORE_TOKEN_ID
 
         if cur_len < tokenizer.model_max_length:
@@ -101,7 +103,6 @@ def mask_targets(
                 print(
                     f'WARNING: tokenization mismatch: {cur_len} vs. {total_len}.'
                     f' (ignored)')
-
     return targets
 
 
