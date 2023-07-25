@@ -1,7 +1,7 @@
 python train_lora.py \
-    --model_name_or_path  facebook/opt-125m \
-    --dataset_name olcc \
-    --output_dir work_dir/alpaca_full-finetune \
+    --model_name_or_path  decapoda-research/llama-7b-hf  \
+    --dataset_name 100PoisonMpts \
+    --output_dir work_dir/lora-finetune \
     --num_train_epochs 3 \
     --per_device_train_batch_size 4 \
     --per_device_eval_batch_size 4 \
@@ -18,4 +18,5 @@ python train_lora.py \
     --model_max_length 2048 \
     --logging_steps 1 \
     --do_train \
+    --do_eval \
     --gradient_checkpointing True

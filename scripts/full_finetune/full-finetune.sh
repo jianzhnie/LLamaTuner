@@ -1,7 +1,7 @@
 python train.py \
     --model_name_or_path  facebook/opt-125m \
     --dataset_name olcc \
-    --output_dir work_dir/alpaca_full-finetune \
+    --output_dir work_dir/full-finetune \
     --num_train_epochs 3 \
     --per_device_train_batch_size 4 \
     --per_device_eval_batch_size 4 \

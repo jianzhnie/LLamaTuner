@@ -3,9 +3,9 @@ CUDA_VISIBLE_DEVICES=0 python train_multiturn.py \
     --data_path /home/robin/work_dir/llm/FastChat/data/dummy_conversation.json \
     --output_dir work_dir/multiturn_full-finetune \
     --num_train_epochs 3 \
-    --per_device_train_batch_size 1 \
-    --per_device_eval_batch_size 1 \
-    --gradient_accumulation_steps 1 \
+    --per_device_train_batch_size 4 \
+    --per_device_eval_batch_size 4 \
+    --gradient_accumulation_steps 8 \
     --evaluation_strategy "steps" \
     --save_strategy "steps" \
     --eval_steps 100 \

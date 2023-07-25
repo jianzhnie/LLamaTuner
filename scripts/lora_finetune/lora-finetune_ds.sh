@@ -13,6 +13,11 @@ CUDA_VISIBLE_DEVICES=0 torchrun --nproc_per_node=1 train_lora.py \
     --learning_rate 2e-5 \
     --weight_decay 0. \
     --warmup_ratio 0.03 \
+    --optim "adamw_torch" \
     --lr_scheduler_type "cosine" \
+    --model_max_length 2048 \
     --logging_steps 1 \
+    --do_train \
+    --do_eval \
+    --gradient_checkpointing True \
     --deepspeed "scripts/ds_config/ds_config_zero3_auto.json"
