@@ -1,14 +1,16 @@
 import json
 import sys
 
+import numpy as np
+
 sys.path.append('../')
 from typing import Any, Dict
 
 import transformers
 
+from chatllms.data.conv_dataset import ConversationDataset, UltraChatDataset
 from chatllms.data.data_utils import (DEFAULT_BOS_TOKEN, DEFAULT_EOS_TOKEN,
                                       DEFAULT_PAD_TOKEN, DEFAULT_UNK_TOKEN)
-from chatllms.data.vicuna_dataset import preprocess
 
 if __name__ == '__main__':
     # Load the raw data from the specified data_path
@@ -17,6 +19,7 @@ if __name__ == '__main__':
         raw_data = json.load(file)
 
     model_name_or_path = '/home/robin/checkpoints/baichuan7b'
+    model_name_or_path = 'facebook/opt-125m'
     sources = [example['conversations'] for example in raw_data]
     tokenizer = transformers.AutoTokenizer.from_pretrained(
         model_name_or_path,
@@ -24,9 +27,8 @@ if __name__ == '__main__':
         padding_side='right',
         use_fast=False,
         add_special_tokens=False,
-        tokenizer_type='llama',
+        tokenizer_type='llama' if 'llama' in model_name_or_path else 'gpt2',
     )
-
     # Define a dictionary to store any missing special tokens along with their default values
     special_tokens_dict: Dict[str, Any] = {}
 
@@ -40,8 +42,31 @@ if __name__ == '__main__':
     if tokenizer.unk_token is None:
         special_tokens_dict['unk_token'] = DEFAULT_UNK_TOKEN
 
-    if 'llama' in model_name_or_path or 'baichuan' in model_name_or_path:
-        num_new_tokens = tokenizer.add_special_tokens(special_tokens_dict)
+    num_new_tokens = tokenizer.add_special_tokens(special_tokens_dict)
 
-    data = preprocess([sources[0]], tokenizer=tokenizer)
-    print(data)
+    print(tokenizer.bos_token)
+    # # Apply the conversation function to the raw data
+    dataset = ConversationDataset(sources, tokenizer, 64)
+
+    for idx, data in enumerate(dataset):
+        print('==' * 10)
+        input_ids = data['input_ids']
+        input_txt = tokenizer.decode(input_ids)
+        print(input_txt)
+        targets = data['labels']
+        input_ids = np.array(input_ids)
+        target_text = tokenizer.decode(targets)
+        print(target_text)
+        if idx > 10:
+            break
+
+    dataset = UltraChatDataset(sources, tokenizer, 128)
+    for idx, data in enumerate(dataset):
+        input_ids = data['input_ids']
+        labels = data['labels']
+        input_txt = tokenizer.decode(input_ids)
+        target_text = tokenizer.decode(labels)
+        print(input_txt)
+        print(target_text)
+        if idx > 10:
+            break
