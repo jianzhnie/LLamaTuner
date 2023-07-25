@@ -18,7 +18,7 @@ class VicunaDataset(Dataset):
     Dataset for multi-turn conversations using a Transformer model.
 
     Attributes:
-        raw_data: List of conversation dictionaries containing "human" and "assistant" turns
+        raw_data: The preprocessed dataset dict to load
         tokenizer: Pretrained tokenizer to encode text
         max_seq_length: Maximum sequence length for model inputs
     """
@@ -32,7 +32,7 @@ class VicunaDataset(Dataset):
         Initialize the dataset with conversations, tokenizer, and max sequence length.
 
         Args:
-            raw_data: List of conversation dictionaries containing "human" and "assistant" turns
+            raw_data: The preprocessed dataset dict to load
             tokenizer: Pretrained tokenizer to encode text
             max_seq_length: Maximum sequence length for model inputs
         """
@@ -152,7 +152,7 @@ class ConversationDataset(Dataset):
     Dataset for multi-turn conversations using Transformer model.
 
     Attributes:
-        raw_data: The preprocesed dictionaries dataset to load.
+        raw_data: The preprocessed dataset dict to load
         tokenizer: Pretrained tokenizer
         max_seq_length: Maximum length of sequence
     """
@@ -200,9 +200,11 @@ class ConversationDataset(Dataset):
 
         for i, ids in enumerate(encoded.input_ids):
             input_ids += ids + [self.tokenizer.eos_token_id]
-            if i % 2 == 0:  # User turn
+
+            if i % 2 == 0:  # Human turn
                 target_mask += [0] * (len(ids) + 1)
                 labels += [IGNORE_INDEX] * (len(ids) + 1)
+
             else:  # Assistant turn
                 target_mask += [1] * (len(ids) + 1)
                 labels += ids + [self.tokenizer.eos_token_id]
@@ -226,8 +228,6 @@ class ConversationDataset(Dataset):
         Returns:
             Dictionary with input IDs and labels
         """
-        # Map conversations to dict format
-
         conversation = self.raw_data[index]['conversation']
         input_ids, target_mask, labels = self.tokenize_conversation(
             conversation)
@@ -238,6 +238,7 @@ class ConversationDataset(Dataset):
         labels = labels[:self.max_seq_length]
 
         attention_mask = torch.ones_like(input_ids)
+
         return {
             'input_ids': input_ids,
             'attention_mask': attention_mask,

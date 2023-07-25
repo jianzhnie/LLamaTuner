@@ -51,7 +51,6 @@ class DataArguments:
         metadata={
             'help': 'The dataset is a multiturn_dialogue dataset or not'
         })
-    lazy_preprocess: bool = True
     prompt_template: str = field(
         default='instruction',
         metadata={
