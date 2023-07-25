@@ -29,7 +29,6 @@ CUDA_VISIBLE_DEVICES=8 python train_qlora.py \
     --bits 4 \
     --model_max_length 1024 \
     --gradient_checkpointing \
-    --lazy_preprocess True \
     --trust_remote_code \
     --do_train \
     --do_eval \

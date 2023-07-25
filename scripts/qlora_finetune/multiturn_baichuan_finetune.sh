@@ -29,7 +29,6 @@ CUDA_VISIBLE_DEVICES=10 python train_qlora.py \
     --bits 4 \
     --model_max_length 1024 \
     --gradient_checkpointing \
-    --lazy_preprocess True \
     --trust_remote_code True \
     --use_auth_token True \
     --do_train \

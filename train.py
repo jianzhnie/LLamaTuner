@@ -110,7 +110,7 @@ def train() -> None:
         logging.warning('Training data is a multiturn dialogue formate')
         data_module = make_conversation_data_module(
             tokenizer=tokenizer,
-            lazy_preprocess=args.lazy_preprocess,
+            dataset_type=args.dataset_type,
             data_path=args.data_path)
 
     # Initialize the Trainer object and start training

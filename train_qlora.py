@@ -80,7 +80,7 @@ def main():
         )
         data_module = make_conversation_data_module(
             tokenizer=tokenizer,
-            lazy_preprocess=args.lazy_preprocess,
+            dataset_type=args.dataset_type,
             data_path=args.data_path)
 
     trainer = Trainer(model=model,

@@ -34,7 +34,6 @@ class ModelArguments:
 class DataArguments:
     data_path: str = field(default=None,
                            metadata={'help': 'Path to the training data.'})
-    lazy_preprocess: bool = True
 
 
 @dataclass

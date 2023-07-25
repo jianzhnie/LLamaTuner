@@ -18,5 +18,4 @@ CUDA_VISIBLE_DEVICES=0,1,2,3 torchrun --nproc_per_node=4 train_multiturn.py \
     --gradient_checkpointing True \
     --logging_steps 1 \
     --trust_remote_code \
-    --lazy_preprocess True \
     --deepspeed "./scripts/ds_config/ds_config_zero3_auto.json"

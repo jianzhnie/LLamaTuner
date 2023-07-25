@@ -1,11 +1,11 @@
-CUDA_VISIBLE_DEVICES=0,1,2,3 python train_multiturn.py \
-    --model_name_or_path  ~/checkpoints/baichuan7b \
-    --data_path ~/prompt_data/sharegpt_clean/sharegpt_clean.json \
+CUDA_VISIBLE_DEVICES=0 python train_multiturn.py \
+    --model_name_or_path  facebook/opt-125m \
+    --data_path /home/robin/work_dir/llm/FastChat/data/dummy_conversation.json \
     --output_dir work_dir/multiturn_full-finetune \
     --num_train_epochs 3 \
-    --per_device_train_batch_size 8 \
-    --per_device_eval_batch_size 8 \
-    --gradient_accumulation_steps 16 \
+    --per_device_train_batch_size 1 \
+    --per_device_eval_batch_size 1 \
+    --gradient_accumulation_steps 1 \
     --evaluation_strategy "steps" \
     --save_strategy "steps" \
     --eval_steps 100 \
@@ -16,7 +16,6 @@ CUDA_VISIBLE_DEVICES=0,1,2,3 python train_multiturn.py \
     --warmup_ratio 0.04 \
     --lr_scheduler_type "cosine" \
     --logging_steps 1 \
-    --model_max_length 2048 \
+    --model_max_length 1024 \
     --gradient_checkpointing True \
-    --trust_remote_code \
-    --lazy_preprocess True
+    --trust_remote_code
