@@ -237,11 +237,7 @@ class SupervisedDataset(Dataset):
 @dataclass
 class DataCollatorForSupervisedDataset:
     """
-    Collate examples for supervised fine-tuning.
-
-    Args:
-        tokenizer (PreTrainedTokenizer): The pre-trained tokenizer to use.
-        predict_with_generate (bool): Whether to do prediction with generate or not.
+    Collate and pad examples for supervised training.
     """
 
     tokenizer: PreTrainedTokenizer
@@ -249,39 +245,39 @@ class DataCollatorForSupervisedDataset:
 
     def __call__(
             self,
-            instances: List[Dict[str,
-                                 torch.Tensor]]) -> Dict[str, torch.Tensor]:
+            examples: List[Dict[str,
+                                torch.Tensor]]) -> Dict[str, torch.Tensor]:
         """
-        Collate a batch of examples for supervised fine-tuning on a sequence classification task \
-            using a pre-trained tokenizer.
+        Collate examples into dictionary for supervised training.
 
         Args:
-            instances (List[Dict[str, torch.Tensor]]): A list of dictionaries containing the keys\
-                  'input_ids' and 'labels'.
+            examples: List of examples, each containing 'input_ids' and 'labels'
 
         Returns:
-            A dictionary containing the collated batch with keys 'input_ids', 'labels', and 'attention_mask'.
+            Dictionary with padded 'input_ids', 'attention_mask' and optionally 'labels'
         """
 
-        # Extract input IDs and labels from each instance
-        input_ids, labels = tuple([instance[key] for instance in instances]
-                                  for key in ('input_ids', 'labels'))
+        # Extract input_ids and labels
+        input_ids = [example['input_ids'] for example in examples]
+        labels = [example['labels'] for example in examples]
 
-        # Pad sequences to be of equal length
+        # Pad input sequences
         input_ids = pad_sequence(input_ids,
                                  batch_first=True,
                                  padding_value=self.tokenizer.pad_token_id)
-        labels = pad_sequence(
-            labels, batch_first=True, padding_value=IGNORE_INDEX
-        ) if not self.predict_with_generate else None
 
-        # Construct attention mask based on padded input IDs
+        # Pad labels if needed
+        if not self.predict_with_generate:
+            labels = pad_sequence(labels,
+                                  batch_first=True,
+                                  padding_value=IGNORE_INDEX)
+
+        # Create attention mask based on padded input
         attention_mask = input_ids.ne(self.tokenizer.pad_token_id)
 
-        # Return collated batch as dictionary
+        # Assemble final dict
         data_dict = {'input_ids': input_ids, 'attention_mask': attention_mask}
         if labels is not None:
             data_dict['labels'] = labels
 
-        print(data_dict)
         return data_dict

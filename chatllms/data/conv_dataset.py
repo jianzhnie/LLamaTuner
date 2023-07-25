@@ -1,6 +1,6 @@
 """Dataset for sequence-to-sequence response generation."""
 from dataclasses import dataclass
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 import torch
 from datasets import load_dataset
@@ -14,173 +14,230 @@ from chatllms.data.sft_dataset import DataCollatorForSupervisedDataset
 @dataclass
 class UltraChatDataset(Dataset):
     """
-    Dataset for multi-turn conversations.
+    Dataset for multi-turn conversations using a Transformer model.
 
-    Args:
-        conversations: List of conversation dictionaries with "human" and "assistant" turns.
-        tokenizer: Tokenizer to encode input text.
-        max_seq_length: Maximum sequence length for model inputs.
+    Attributes:
+        conversations: List of conversation dictionaries containing "human" and "assistant" turns
+        tokenizer: Pretrained tokenizer to encode text
+        max_seq_length: Maximum sequence length for model inputs
     """
-    def __init__(
-        self,
-        conversations: List[Dict],
-        tokenizer: PreTrainedTokenizer,
-        max_seq_length: int = 1024,
-    ):
+    def __init__(self,
+                 conversations: List[Dict],
+                 tokenizer: PreTrainedTokenizer,
+                 max_seq_length: int = 1024):
+        """
+        Initialize the dataset with conversations, tokenizer, and max sequence length.
+
+        Args:
+            conversations: List of conversation dictionaries containing "human" and "assistant" turns
+            tokenizer: Pretrained tokenizer to encode text
+            max_seq_length: Maximum sequence length for model inputs
+        """
         self.conversations = conversations
         self.tokenizer = tokenizer
         self.max_seq_length = max_seq_length
-        self.roles = {'human': 'USER', 'gpt': 'ASSISTANT'}
-        self.system = "A chat between a curious user and an artificial intelligence assistant. \
-            The assistant gives helpful, detailed, and polite answers to the user's questions."
 
+        # Mapping from speaker to role
+        self.roles = {'human': 'USER', 'gpt': 'ASSISTANT'}
+
+        # Description of the conversation
+        self.system = 'A friendly conversation between a human and an artificial intelligence assistant.'
+
+        # Token to use at the start of each turn
         self.start_token = '\n'
 
     def tokenize_conversation(
-        self,
-        conversation: List[Dict],
-    ):
-        tokenized_ids = []
-        tokenized_labels = []
+            self,
+            conversation: List[Dict]) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        Tokenize a single conversation into input IDs and labels.
+
+        Args:
+            conversation: List of turns in the conversation
+
+        Returns:
+            input_ids: Tensor of input IDs
+            labels: Tensor of word IDs for language modeling
+        """
+
+        # Arrays to store token IDs for input and labels
+        input_ids = []
+        labels = []
+
+        # Track speaker roles
         roles = ['USER', 'ASSISTANT']
-        for j, turn in enumerate(conversation):
+
+        # Tokenize each turn in the conversation
+        for i, turn in enumerate(conversation):
             role = self.roles[turn['from']]
-            assert role == roles[j % 2], f'{j}'  # noqa
-            content = turn['value']
-            if j % 2 == 0:
-                if j == 0:
-                    prefix = self.tokenizer.bos_token + self.system + role + ': '
-                else:
-                    prefix = self.start_token + role + ': '
+            assert role == roles[i % 2], f'{i}'
 
-                prompt = prefix + content + self.tokenizer.eos_token
+            # Get turn text
+            text = turn['value']
 
-                tokenized_prompt = self.tokenizer(prompt,
-                                                  add_special_tokens=False)
-                tokenized_ids += tokenized_prompt['input_ids']
-                tokenized_labels += [IGNORE_INDEX] * len(
-                    tokenized_prompt['input_ids'])
+            # For human turn, tokenize prompt
+            if i % 2 == 0:
+                prefix = self._get_human_prefix(i, role)
+                prompt = prefix + text + self.tokenizer.eos_token
+                tokenized = self.tokenizer(prompt, add_special_tokens=False)
+                input_ids += tokenized['input_ids']
+                labels += [IGNORE_INDEX] * len(tokenized['input_ids'])
 
+            # For assistant turn, tokenize response
             else:
                 prefix = self.start_token + role + ': '
                 tokenized_prefix = self.tokenizer(prefix,
                                                   add_special_tokens=False)
-                tokenized_ids += tokenized_prefix['input_ids']
-                tokenized_labels += [IGNORE_INDEX] * len(
-                    tokenized_prefix['input_ids'])
+                input_ids += tokenized_prefix['input_ids']
+                labels += [IGNORE_INDEX] * len(tokenized_prefix['input_ids'])
 
-                gpt_answer = content + self.tokenizer.eos_token
-                tokenized_answer = self.tokenizer(gpt_answer,
-                                                  add_special_tokens=False)
-                tokenized_ids += tokenized_answer['input_ids']
-                tokenized_labels += tokenized_answer['input_ids']
+                response = text + self.tokenizer.eos_token
+                tokenized_response = self.tokenizer(response,
+                                                    add_special_tokens=False)
+                input_ids += tokenized_response['input_ids']
+                labels += tokenized_response['input_ids']
 
-        assert len(tokenized_ids) == len(
-            tokenized_labels
-        ), f'{len(tokenized_ids)} != {len(tokenized_labels)}'
+        assert len(input_ids) == len(
+            labels), f'{len(input_ids)} != {len(labels)}'
 
-        input_ids = torch.tensor(tokenized_ids, dtype=torch.long),
-        labels = torch.tensor(tokenized_labels, dtype=torch.long)
+        return torch.tensor(input_ids), torch.tensor(labels)
 
-        return input_ids, labels
+    def _get_human_prefix(self, turn_id: int, role: str) -> str:
+        """
+        Get the prefix for a human turn.
 
-    def __len__(self):
+        Args:
+            turn_id: Index of the current turn
+            role: Current speaker role
+
+        Returns:
+            prefix: Prefix string including special tokens
+        """
+        if turn_id == 0:
+            prefix = self.tokenizer.bos_token + self.system + role + ': '
+        else:
+            prefix = self.start_token + role + ': '
+        return prefix
+
+    def __len__(self) -> int:
+        """Get the number of conversations."""
         return len(self.conversations)
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int) -> Dict:
+        """
+        Get the input IDs and labels for a specific conversation.
+
+        Args:
+            index: Index of the conversation
+
+        Returns:
+            Dictionary with input IDs and labels
+        """
         conversation = self.conversations[index]
         input_ids, labels = self.tokenize_conversation(conversation)
 
-        # Truncate sequences
+        # Truncate sequence lengths
         input_ids = input_ids[:self.max_seq_length]
         labels = labels[:self.max_seq_length]
 
-        return {
-            'input_ids': input_ids,
-            'labels': labels,
-        }
+        return {'input_ids': input_ids, 'labels': labels}
 
 
 @dataclass
 class ConversationDataset(Dataset):
     """
-    Dataset for multi-turn conversations.
+    Dataset for multi-turn conversations using Transformer model.
 
-    Args:
-        conversations: List of conversation dictionaries with "human" and "assistant" turns.
-        tokenizer: Tokenizer to encode input text.
-        max_seq_length: Maximum sequence length for model inputs.
+    Attributes:
+        conversations: List of conversation dictionaries
+        tokenizer: Pretrained tokenizer
+        max_seq_length: Maximum length of sequence
     """
     def __init__(
         self,
         conversations: List[Dict],
         tokenizer: PreTrainedTokenizer,
-        max_seq_length: int = 1024,
     ):
+        """
+        Initialize the dataset with conversations, tokenizer and max sequence length.
+        """
         self.conversations = conversations
         self.tokenizer = tokenizer
-        self.max_seq_length = max_seq_length
+        self.max_seq_length = tokenizer.model_max_length
+
         self.roles = ['human', 'gpt']
 
-        self.examples = []
-        for i, conversation in enumerate(conversations):
-            dialog_context = []
-            for j, turn in enumerate(conversation):
-                role = self.roles[j % 2]
-                assert turn['from'] == role
-                dialog_context.append(turn['value'])
+    def tokenize_conversation(
+        self,
+        conversation: List[Dict],
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """
+        Tokenize a single conversation into input IDs and labels.
 
-            encoded_inputs = self.tokenizer(
-                dialog_context,
-                add_special_tokens=False,
-            )
+        Args:
+            conversation: List of turns in the conversation
 
-            input_ids = [tokenizer.bos_token_id]
-            target_mask = [0]
-            targets = [IGNORE_INDEX]
+        Returns:
+            input_ids: Tensor of input IDs
+            labels: Tensor of word IDs for language modeling
+        """
 
-            for i, ids in enumerate(encoded_inputs.input_ids):
-                input_ids += ids + [tokenizer.eos_token_id]
-                if i % 2 == 0:  # user
-                    target_mask += [0] * (len(ids) + 1)
-                    targets += [IGNORE_INDEX] * (len(ids) + 1)
-                else:  # assistent
-                    target_mask += [1] * (len(ids) + 1)
-                    targets += input_ids
+        context = []
+        for i, turn in enumerate(conversation):
+            role = turn['from']
+            assert role == self.roles[i % 2]
+            context.append(turn['value'])
 
-            assert len(input_ids) == len(target_mask)
-            self.examples.append((input_ids, target_mask, targets))
+        encoded = self.tokenizer(context, add_special_tokens=False)
 
-    def __len__(self):
-        return len(self.examples)
+        input_ids = [self.tokenizer.bos_token_id]
+        target_mask = [0]
+        labels = [IGNORE_INDEX]
 
-    def __getitem__(self, index):
+        for i, ids in enumerate(encoded.input_ids):
+            input_ids += ids + [self.tokenizer.eos_token_id]
+            if i % 2 == 0:  # User turn
+                target_mask += [0] * (len(ids) + 1)
+                labels += [IGNORE_INDEX] * (len(ids) + 1)
+            else:  # Assistant turn
+                target_mask += [1] * (len(ids) + 1)
+                labels += ids + [self.tokenizer.eos_token_id]
 
-        input_ids, target_mask, targets = self.examples[index]
+        assert len(input_ids) == len(target_mask) == len(labels)
 
-        # Truncate sequences
+        return (torch.tensor(input_ids, dtype=torch.long),
+                torch.tensor(target_mask, dtype=torch.long),
+                torch.tensor(labels, dtype=torch.long))
+
+    def __len__(self) -> int:
+        return len(self.conversations)
+
+    def __getitem__(self, index: int) -> Dict[str, torch.Tensor]:
+        """
+        Get the input IDs and labels for a specific conversation.
+
+        Args:
+            index: Index of the conversation
+
+        Returns:
+            Dictionary with input IDs and labels
+        """
+        conversation = self.conversations[index]
+        input_ids, target_mask, labels = self.tokenize_conversation(
+            conversation)
+
+        # Truncate sequence
         input_ids = input_ids[:self.max_seq_length]
         target_mask = target_mask[:self.max_seq_length]
-        targets = targets[:self.max_seq_length]
+        labels = labels[:self.max_seq_length]
 
-        # Create attention masks
-        attention_mask = [1] * len(input_ids)
-
-        data_dict = {
-            'input_ids': torch.tensor(input_ids, dtype=torch.long),
-            'labels': torch.tensor(targets, dtype=torch.long),
-            'attention_mask': torch.tensor(attention_mask, dtype=torch.long),
-            'target_mask': torch.tensor(target_mask, dtype=torch.long),
+        attention_mask = torch.ones_like(input_ids)
+        return {
+            'input_ids': input_ids,
+            'attention_mask': attention_mask,
+            'labels': labels,
+            'target_mask': target_mask
         }
-
-        # data_dict = {
-        #     'input_ids': input_ids,
-        #     'attention_mask': attention_mask,
-        #     'target_mask': target_mask,
-        #     'labels': targets,
-        # }
-
-        return data_dict
 
 
 @dataclass

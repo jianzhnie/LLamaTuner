@@ -1,152 +1,141 @@
-from typing import Dict, List, Optional, Sequence, Union
+"""Dataset for sequence-to-sequence response generation."""
+from dataclasses import dataclass
+from typing import Dict, List, Tuple
 
 import torch
-from torch import LongTensor
-from torch.utils.data import Dataset, IterableDataset
+from torch.utils.data import Dataset
 from transformers import PreTrainedTokenizer
 
-IGNORE_INDEX = -100
+from chatllms.data.data_utils import IGNORE_INDEX
 
 
-def data_collator(
-        tokenizer: PreTrainedTokenizer,
-        instances: Sequence[Dict[str,
-                                 torch.Tensor]]) -> Dict[str, torch.Tensor]:
+@dataclass
+class UltraChatDataset(Dataset):
     """
-    Collate and pad a batch of tokenized instances.
+    Dataset for multi-turn conversations using a Transformer model.
 
-    Args:
-        tokenizer: The tokenizer used to encode the data.
-        instances: A list of tokenized instances, each a dict of input IDs and labels.
-
-    Returns:
-        A dict with the padded input IDs and labels along with the attention mask.
+    Attributes:
+        conversations: List of conversation dictionaries containing "human" and "assistant" turns
+        tokenizer: Pretrained tokenizer to encode text
+        max_seq_length: Maximum sequence length for model inputs
     """
+    def __init__(self,
+                 conversations: List[Dict],
+                 tokenizer: PreTrainedTokenizer,
+                 max_seq_length: int = 1024):
+        """
+        Initialize the dataset with conversations, tokenizer, and max sequence length.
 
-    input_ids = [instance['input_ids'] for instance in instances]
-    input_ids = torch.nn.utils.rnn.pad_sequence(
-        input_ids, batch_first=True, padding_value=tokenizer.pad_token_id)
-
-    labels = [instance['labels'] for instance in instances]
-    labels = torch.nn.utils.rnn.pad_sequence(labels,
-                                             batch_first=True,
-                                             padding_value=IGNORE_INDEX)
-
-    return {
-        'input_ids': input_ids,
-        'labels': labels,
-        'attention_mask': input_ids.ne(tokenizer.pad_token_id),
-    }
-
-
-class PromptIterableDataset(IterableDataset):
-    """
-    Streaming iterable dataset for sequence-to-sequence style prompt learning.
-
-    Args:
-        raw_dataset: The original dataset of examples. Must have __iter__ and __len__ methods.
-        sep: List of sentence separation tokens, e.g. ["EOS", "\n"].
-        tokenizer: Tokenizer to use for encoding text.
-        max_seq_length: Maximum sequence length for truncation.
-        teacher_forcing: Whether to always feed ground truth tokens during training.
-        truncate_method: How truncated sequences should be cut - 'head' or 'tail'.
-
-    """
-    def __init__(
-        self,
-        raw_dataset: Union[Dataset, List],
-        sep: List[str] = ['EOS', '\n'],
-        tokenizer: PreTrainedTokenizer = None,
-        max_seq_length: Optional[int] = 512,
-        teacher_forcing: bool = True,
-        truncate_method: str = 'tail',
-    ):
-        assert hasattr(raw_dataset,
-                       '__iter__'), 'Dataset must implement __iter__'
-        assert hasattr(raw_dataset,
-                       '__len__'), 'Dataset must implement __len__'
-
-        self.raw_dataset = raw_dataset
-        self.sep = sep
+        Args:
+            conversations: List of conversation dictionaries containing "human" and "assistant" turns
+            tokenizer: Pretrained tokenizer to encode text
+            max_seq_length: Maximum sequence length for model inputs
+        """
+        self.conversations = conversations
         self.tokenizer = tokenizer
         self.max_seq_length = max_seq_length
-        self.teacher_forcing = teacher_forcing
-        self.truncate_method = truncate_method
 
-        self._start_token = self.sep[-1]
-        self._end_token = self.sep[
-            0] if self.sep[0] != 'EOS' else self.tokenizer.eos_token
+        # Mapping from speaker to role
+        self.roles = {'human': 'USER', 'gpt': 'ASSISTANT'}
 
-        assert self.truncate_method in [
-            'head', 'tail'
-        ], "Truncate method must be 'head' or 'tail'"
-        assert self.teacher_forcing, 'Must use teacher forcing'
+        # Description of the conversation
+        self.system = 'A friendly conversation between a human and an artificial intelligence assistant.'
 
-    @property
-    def start_token(self) -> str:
-        """Return unique start of sequence token"""
-        return self._start_token
+        # Token to use at the start of each turn
+        self.start_token = '\n'
 
-    @property
-    def end_token(self) -> str:
-        """Return unique end of sequence token"""
-        return self._end_token
+    def tokenize_conversation(
+            self,
+            conversation: List[Dict]) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        Tokenize a single conversation into input IDs and labels.
 
-    def _tokenize(self, text: str) -> LongTensor:
-        """Tokenize a single input text."""
-        tokens = self.tokenizer(text, add_special_tokens=False)
-        return LongTensor(tokens['input_ids'])
+        Args:
+            conversation: List of turns in the conversation
 
-    def _truncate(self, sequence: LongTensor) -> LongTensor:
-        """Truncate a sequence to the configured max length."""
-        if len(sequence) > self.max_seq_length:
-            if self.truncate_method == 'tail':
-                sequence = sequence[:-(len(sequence) - self.max_seq_length)]
-            elif self.truncate_method == 'head':
-                sequence = sequence[-self.max_seq_length:]
+        Returns:
+            input_ids: Tensor of input IDs
+            labels: Tensor of word IDs for language modeling
+        """
 
-        return sequence
+        # Arrays to store token IDs for input and labels
+        input_ids = []
+        labels = []
 
-    def _tokenize_example(self, example: dict) -> dict:
-        """Tokenize a single example into input IDs and labels."""
-        inputs, labels = [], []
+        # Track speaker roles
+        roles = ['USER', 'ASSISTANT']
 
-        for i, text in enumerate(example['data']):
+        # Tokenize each turn in the conversation
+        for i, turn in enumerate(conversation):
+            role = self.roles[turn['from']]
+            assert role == roles[i % 2], f'{i}'
 
-            # Alternate between user and assistant tokens
-            speaker = 'User' if i % 2 == 0 else 'Assistant'
+            # Get turn text
+            text = turn['value']
 
-            # Tokenize text
-            tokens = self._tokenize(f'{speaker}: {text} {self.end_token}')
+            # For human turn, tokenize prompt
+            if i % 2 == 0:
+                prefix = self._get_human_prefix(i, role)
+                prompt = prefix + text + self.tokenizer.eos_token
+                tokenized = self.tokenizer(prompt, add_special_tokens=False)
+                input_ids += tokenized['input_ids']
+                labels += [IGNORE_INDEX] * len(tokenized['input_ids'])
 
-            # Handle start token
-            if i == 0:
-                tokens = self._tokenize(self.tokenizer.bos_token + tokens)
+            # For assistant turn, tokenize response
             else:
-                tokens = self._tokenize(self.start_token + tokens)
+                prefix = self.start_token + role + ': '
+                tokenized_prefix = self.tokenizer(prefix,
+                                                  add_special_tokens=False)
+                input_ids += tokenized_prefix['input_ids']
+                labels += [IGNORE_INDEX] * len(tokenized_prefix['input_ids'])
 
-            # Add text tokens
-            inputs.extend(tokens)
+                response = text + self.tokenizer.eos_token
+                tokenized_response = self.tokenizer(response,
+                                                    add_special_tokens=False)
+                input_ids += tokenized_response['input_ids']
+                labels += tokenized_response['input_ids']
 
-            # Add labels depending on teacher forcing
-            if self.teacher_forcing:
-                if i % 2 == 1:
-                    # Add ground truth tokens for assistant
-                    labels.extend(self._tokenize(text + self.end_token))
-                else:
-                    # Use ignore index for user input
-                    labels.extend([IGNORE_INDEX] * len(tokens))
-            else:
-                labels.extend([IGNORE_INDEX] * len(tokens))
+        assert len(input_ids) == len(
+            labels), f'{len(input_ids)} != {len(labels)}'
 
-        return {'input_ids': LongTensor(inputs), 'labels': LongTensor(labels)}
+        return torch.tensor(input_ids), torch.tensor(labels)
 
-    def __iter__(self):
-        """Iterate through examples, tokenizing on the fly"""
-        for example in self.raw_dataset:
-            tokenized = self._tokenize_example(example)
-            yield self._truncate(tokenized)
+    def _get_human_prefix(self, turn_id: int, role: str) -> str:
+        """
+        Get the prefix for a human turn.
+
+        Args:
+            turn_id: Index of the current turn
+            role: Current speaker role
+
+        Returns:
+            prefix: Prefix string including special tokens
+        """
+        if turn_id == 0:
+            prefix = self.tokenizer.bos_token + self.system + role + ': '
+        else:
+            prefix = self.start_token + role + ': '
+        return prefix
 
     def __len__(self) -> int:
-        """Return length of the original dataset"""
-        return len(self.raw_dataset)
+        """Get the number of conversations."""
+        return len(self.conversations)
+
+    def __getitem__(self, index: int) -> Dict:
+        """
+        Get the input IDs and labels for a specific conversation.
+
+        Args:
+            index: Index of the conversation
+
+        Returns:
+            Dictionary with input IDs and labels
+        """
+        conversation = self.conversations[index]
+        input_ids, labels = self.tokenize_conversation(conversation)
+
+        # Truncate sequence lengths
+        input_ids = input_ids[:self.max_seq_length]
+        labels = labels[:self.max_seq_length]
+
+        return {'input_ids': input_ids, 'labels': labels}
