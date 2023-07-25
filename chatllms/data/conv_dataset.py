@@ -270,7 +270,6 @@ class ConversationDataCollator(object):
         batch_target_masks = []
 
         for ex in batch:
-            print(ex)
             input_ids = ex['input_ids']
             attention_mask = ex['attention_mask']
             target_mask = ex['target_mask']
