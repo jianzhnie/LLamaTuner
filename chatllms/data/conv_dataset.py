@@ -21,10 +21,12 @@ class UltraChatDataset(Dataset):
         tokenizer: Pretrained tokenizer to encode text
         max_seq_length: Maximum sequence length for model inputs
     """
-    def __init__(self,
-                 conversations: List[Dict],
-                 tokenizer: PreTrainedTokenizer,
-                 max_seq_length: int = 1024):
+    def __init__(
+        self,
+        conversations: List[Dict],
+        tokenizer: PreTrainedTokenizer,
+        max_seq_length: int = 1024,
+    ):
         """
         Initialize the dataset with conversations, tokenizer, and max sequence length.
 
@@ -157,13 +159,14 @@ class ConversationDataset(Dataset):
         self,
         conversations: List[Dict],
         tokenizer: PreTrainedTokenizer,
+        max_seq_length: int = 1024,
     ):
         """
         Initialize the dataset with conversations, tokenizer and max sequence length.
         """
         self.conversations = conversations
         self.tokenizer = tokenizer
-        self.max_seq_length = tokenizer.model_max_length
+        self.max_seq_length = max_seq_length
 
         self.roles = ['human', 'gpt']
 
@@ -329,9 +332,16 @@ def make_conversation_data_module(
     eval_conversations = [x['conversations'] for x in eval_raw_data]
 
     # Create train and eval datasets using the chosen dataset class
-    train_dataset = ConversationDataset(train_conversations,
-                                        tokenizer=tokenizer)
-    eval_dataset = ConversationDataset(eval_conversations, tokenizer=tokenizer)
+    train_dataset = ConversationDataset(
+        train_conversations,
+        tokenizer=tokenizer,
+        max_seq_length=tokenizer.model_max_length,
+    )
+    eval_dataset = ConversationDataset(
+        eval_conversations,
+        tokenizer=tokenizer,
+        max_seq_length=tokenizer.model_max_length,
+    )
 
     print('train_dataset: ', train_dataset, type(train_dataset), 'length: ',
           len(train_dataset))
@@ -339,6 +349,7 @@ def make_conversation_data_module(
           len(eval_dataset))
 
     data_collator = DataCollatorForSupervisedDataset(tokenizer=tokenizer)
+    print('data_collator: ', data_collator, type(data_collator))
 
     return {
         'train_dataset': train_dataset,
