@@ -254,10 +254,10 @@ def load_data(
             raise ValueError(f'Error loading dataset from {dataset_path}')
 
 
-def format_instruction_dataset(
+def formate_instruction_dataset(
         dataset: Dataset,
         dataset_name: str,
-        prompt_template: str = 'instruction') -> Optional[Dict[str, Dataset]]:
+        instruction_template: str = 'default') -> Optional[Dict[str, Dataset]]:
     """
     Formats a given dataset based on its name and format.
 
@@ -270,7 +270,7 @@ def format_instruction_dataset(
     Args:
         dataset: A dataset object to be formatted.
         dataset_name: A string representing the name of the dataset to be formatted.
-        prompt_template: A string representing the name of the prompt template to be used.
+        instruction_template: A string representing the name of the prompt template to be used.
 
     Returns:
         A dictionary containing the formatted dataset if the dataset exists in the
@@ -346,15 +346,16 @@ def format_instruction_dataset(
         pass
 
     # encode_instruction_example
-    print(f'Encoding the instruction example refer to : {prompt_template}')
-    if prompt_template == 'alpaca':
-        print('Using alpaca prompt template', {ALPACA_PROMPT_DICT})
+    print(
+        f'Encoding the instruction example refer to : {instruction_template}')
+    if instruction_template == 'alpaca':
+        print('Using alpaca prompt template: ', {instruction_template})
         dataset = dataset.map(extract_alpaca_prompt_dataset)
-    elif prompt_template == 'random':
-        print('Using random prompt template', {RANDOM_PROMPT_DICT})
+    elif instruction_template == 'random':
+        print('Using random prompt template: ', {instruction_template})
         dataset = dataset.map(extract_random_prompt_dataset)
     else:
-        print('Using default prompt template', {DEFAULT_PROMPT_DICT})
+        print('Using default prompt template: ', {instruction_template})
         dataset = dataset.map(extract_default_prompt_dataset)
 
     # Remove unused columns.
@@ -471,10 +472,10 @@ def make_data_module(args):
                             eval_dataset_size=args.eval_dataset_size)
 
         if not dataset_attr.multi_turn:
-            dataset = format_instruction_dataset(
+            dataset = formate_instruction_dataset(
                 dataset,
                 dataset_name=dataset_attr.dataset_name,
-                prompt_template=args.prompt_template,
+                instruction_template=args.instruction_template,
             )
 
         train_dataset, eval_dataset = split_train_eval(

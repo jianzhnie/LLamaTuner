@@ -301,7 +301,7 @@ class ConversationDataCollator(object):
 
 def make_conversation_data_module(
     tokenizer: PreTrainedTokenizer,
-    use_vicuna_prompt: bool = False,
+    conversation_template: str = 'default',
     data_path: str = './data/share_gpt.json',
     test_size: float = 0.1,
 ) -> Dict[str, Dataset]:
@@ -318,7 +318,8 @@ def make_conversation_data_module(
 
     """
     # Determine the appropriate dataset class based on dataset_type flag
-    dataset_cls = (VicunaDataset if use_vicuna_prompt else ConversationDataset)
+    dataset_cls = (VicunaDataset if conversation_template == 'vicuna' else
+                   ConversationDataset)
 
     print('Loading data...')
     # Load the raw data from the specified data_path

@@ -9,7 +9,7 @@ from .sft_dataset import (DataCollatorForSupervisedDataset,
 def make_supervised_data_module(tokenizer: PreTrainedTokenizer, args):
     train_dataset, eval_dataset, multi_turn = make_data_module(args)
     max_length = tokenizer.model_max_length
-    dataset_cls = (VicunaDataset if args.vicuna_conversation_formate else
+    dataset_cls = (VicunaDataset if args.conversation_template == 'vicnua' else
                    ConversationDataset)
 
     if not multi_turn:
