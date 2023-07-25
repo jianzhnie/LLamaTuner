@@ -15,8 +15,7 @@ from transformers import (AutoModelForCausalLM, AutoTokenizer,
                           deepspeed)
 
 from chatllms.configs import DataArguments, ModelArguments, TrainingArguments
-from chatllms.data import (make_conversation_data_module,
-                           make_supervised_data_module)
+from chatllms.data import make_supervised_data_module
 from chatllms.utils.model_utils import add_special_tokens_if_missing
 
 
@@ -208,7 +207,8 @@ def train() -> None:
     # Log on each process the small summary:
     logging.warning(
         f'Process rank: {training_args.local_rank}, device: {training_args.device}, n_gpu: {training_args.n_gpu}'
-        +
+    )
+    logging.warning(
         f'distributed training: {bool(training_args.local_rank != -1)}, 16-bits training: {training_args.fp16}'
     )
     logging.warning(f'Training parameters {training_args}')
@@ -224,16 +224,7 @@ def train() -> None:
 
     # Create a supervised dataset and Trainer, then train the model
     logging.warning('Creating a supervised dataset and DataCollator...')
-    if not args.multiturn_dialogue:
-        logging.warning('Training data is not a multiturn dialogue formate')
-        data_module = make_supervised_data_module(tokenizer=tokenizer,
-                                                  args=args)
-    else:
-        logging.warning('Training data is a multiturn dialogue formate')
-        data_module = make_conversation_data_module(
-            tokenizer=tokenizer,
-            dataset_type=args.dataset_type,
-            data_path=args.data_path)
+    data_module = make_supervised_data_module(tokenizer=tokenizer, args=args)
 
     # Create a Trainer object and start training
     logging.warning('Creating a Trainer...')

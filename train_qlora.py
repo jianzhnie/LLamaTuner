@@ -9,15 +9,14 @@ from transformers import GenerationConfig, Trainer, set_seed
 from chatllms.configs import (DataArguments, GenerationArguments,
                               LoraArguments, ModelArguments, QuantArguments,
                               TrainingArguments)
-from chatllms.data import (make_conversation_data_module,
-                           make_supervised_data_module)
+from chatllms.data import make_supervised_data_module
 from chatllms.model import (MMLUEvalCallback, SampleGenerateCallback,
                             SavePeftModelCallback, load_model_tokenizer)
+from chatllms.train.training import train_and_evaluate
 from chatllms.utils.logging import get_root_logger
 from chatllms.utils.model_utils import (get_last_checkpoint,
                                         print_trainable_parameters,
                                         verify_dtypes)
-from chatllms.utils.training import train_and_evaluate
 
 torch.backends.cuda.matmul.allow_tf32 = True
 
@@ -69,20 +68,7 @@ def main():
     logger.info('Verifying dtypes...')
     verify_dtypes(model)
 
-    if not args.multiturn_dialogue:
-        logger.info(
-            'Training data is self-instructed formate, supervised learning')
-        data_module = make_supervised_data_module(tokenizer=tokenizer,
-                                                  args=args)
-    else:
-        logger.info(
-            'Training data is a multiturn dialogue formate, supervised learning'
-        )
-        data_module = make_conversation_data_module(
-            tokenizer=tokenizer,
-            dataset_type=args.dataset_type,
-            data_path=args.data_path)
-
+    data_module = make_supervised_data_module(tokenizer=tokenizer, args=args)
     trainer = Trainer(model=model,
                       tokenizer=tokenizer,
                       args=training_args,
