@@ -30,69 +30,74 @@ class UltraChatDataset(Dataset):
         self.conversations = conversations
         self.tokenizer = tokenizer
         self.max_seq_length = max_seq_length
-        self.roles = ['human', 'gpt']
+        self.roles = {'human': 'USER', 'gpt': 'ASSISTANT'}
         self.system = "A chat between a curious user and an artificial intelligence assistant. \
             The assistant gives helpful, detailed, and polite answers to the user's questions."
 
         self.start_token = '\n'
 
-        self.examples = []
-        for i, conversation in enumerate(conversations):
-            dialog_context = []
-            for j, turn in enumerate(conversation):
-                role = self.roles[j % 2]
-                assert turn['from'] == role
-                role_txt = turn['value']
-                if j % 2 == 0:
-                    if j == 0:
-                        content = self.tokenizer.bos_token + self.system + role + ':' + role_txt + tokenizer.eos_token
-                    else:
-                        content = self.start_token + role + ':' + role_txt + tokenizer.eos_token
+    def tokenize_conversation(
+        self,
+        conversation: List[Dict],
+    ):
+        tokenized_ids = []
+        tokenized_labels = []
+        roles = ['USER', 'ASSISTANT']
+        for j, turn in enumerate(conversation):
+            role = self.roles[turn['from']]
+            assert role == roles[j % 2], f'{j}'  # noqa
+            content = turn['value']
+            if j % 2 == 0:
+                if j == 0:
+                    prefix = self.tokenizer.bos_token + self.system + role + ': '
                 else:
-                    content = self.start_token + role + ':'
+                    prefix = self.start_token + role + ': '
 
-                dialog_context.append(content)
+                prompt = prefix + content + self.tokenizer.eos_token
 
-            encoded_inputs = self.tokenizer(
-                dialog_context,
-                add_special_tokens=False,
-            )
+                tokenized_prompt = self.tokenizer(prompt,
+                                                  add_special_tokens=False)
+                tokenized_ids += tokenized_prompt['input_ids']
+                tokenized_labels += [IGNORE_INDEX] * len(
+                    tokenized_prompt['input_ids'])
 
-            input_ids = [tokenizer.bos_token_id]
-            target_mask = [0]
-            targets = [IGNORE_INDEX]
+            else:
+                prefix = self.start_token + role + ': '
+                tokenized_prefix = self.tokenizer(prefix,
+                                                  add_special_tokens=False)
+                tokenized_ids += tokenized_prefix['input_ids']
+                tokenized_labels += [IGNORE_INDEX] * len(
+                    tokenized_prefix['input_ids'])
 
-            for i, ids in enumerate(encoded_inputs.input_ids, start=1):
-                input_ids += ids + [tokenizer.eos_token_id]
-                if i % 2 == 0:
-                    target_mask += [1] * (len(ids) + 1)
-                    targets += input_ids
-                else:
-                    target_mask += [0] * (len(ids) + 1)
-                    targets += [IGNORE_INDEX] * (len(ids) + 1)
+                gpt_answer = content + self.tokenizer.eos_token
+                tokenized_answer = self.tokenizer(gpt_answer,
+                                                  add_special_tokens=False)
+                tokenized_ids += tokenized_answer['input_ids']
+                tokenized_labels += tokenized_answer['input_ids']
 
-            assert len(input_ids) == len(target_mask)
-            self.examples.append((input_ids, target_mask, targets))
+        assert len(tokenized_ids) == len(
+            tokenized_labels
+        ), f'{len(tokenized_ids)} != {len(tokenized_labels)}'
+
+        input_ids = torch.tensor(tokenized_ids, dtype=torch.long),
+        labels = torch.tensor(tokenized_labels, dtype=torch.long)
+
+        return input_ids, labels
 
     def __len__(self):
-        return len(self.examples)
+        return len(self.conversations)
 
     def __getitem__(self, index):
-        input_ids, target_mask, targets = self.examples[index]
+        conversation = self.conversations[index]
+        input_ids, labels = self.tokenize_conversation(conversation)
 
         # Truncate sequences
         input_ids = input_ids[:self.max_seq_length]
-        target_mask = target_mask[:self.max_seq_length]
-        targets = targets[:self.max_seq_length]
-
-        # Create attention masks
-        attention_mask = [1] * len(input_ids)
+        labels = labels[:self.max_seq_length]
 
         return {
             'input_ids': input_ids,
-            'labels': targets,
-            'attention_mask': attention_mask,
-            'target_mask': target_mask
+            'labels': labels,
         }
 
 
