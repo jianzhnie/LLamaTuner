@@ -136,7 +136,7 @@ class VicunaDataset(Dataset):
         Returns:
             Dictionary with input IDs and labels
         """
-        conversation = self.raw_data[index]['conversation']
+        conversation = self.raw_data[index]['conversations']
         input_ids, labels = self.tokenize_conversation(conversation)
 
         # Truncate sequence lengths
@@ -228,7 +228,7 @@ class ConversationDataset(Dataset):
         Returns:
             Dictionary with input IDs and labels
         """
-        conversation = self.raw_data[index]['conversation']
+        conversation = self.raw_data[index]['conversations']
         input_ids, target_mask, labels = self.tokenize_conversation(
             conversation)
 
@@ -328,8 +328,6 @@ def make_conversation_data_module(
     else:
         raw_data = load_dataset(data_path)['train']
 
-    # Map conversations to dict format
-    raw_data = raw_data.map(lambda x: {'conversations': x['conversations']})
     # Split the data into training and evaluation sets
     raw_data = raw_data.train_test_split(test_size=test_size)
     train_raw_data = raw_data['train']
@@ -353,7 +351,7 @@ def make_conversation_data_module(
 
     # Create data collator
     data_collator = DataCollatorForSupervisedDataset(tokenizer=tokenizer)
-    print('data_collator: ', data_collator, type(data_collator))
+    print('data_collator: ', type(data_collator))
 
     return {
         'train_dataset': train_dataset,
