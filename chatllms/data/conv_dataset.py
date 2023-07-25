@@ -2,6 +2,7 @@
 from dataclasses import dataclass
 from typing import Any, Dict, List, Tuple
 
+import datasets
 import torch
 from datasets import load_dataset
 from torch.utils.data import Dataset
@@ -12,18 +13,18 @@ from chatllms.data.sft_dataset import DataCollatorForSupervisedDataset
 
 
 @dataclass
-class UltraChatDataset(Dataset):
+class VicunaDataset(Dataset):
     """
     Dataset for multi-turn conversations using a Transformer model.
 
     Attributes:
-        conversations: List of conversation dictionaries containing "human" and "assistant" turns
+        raw_data: List of conversation dictionaries containing "human" and "assistant" turns
         tokenizer: Pretrained tokenizer to encode text
         max_seq_length: Maximum sequence length for model inputs
     """
     def __init__(
         self,
-        conversations: List[Dict],
+        raw_data: datasets.DatasetDict,
         tokenizer: PreTrainedTokenizer,
         max_seq_length: int = 1024,
     ):
@@ -31,11 +32,11 @@ class UltraChatDataset(Dataset):
         Initialize the dataset with conversations, tokenizer, and max sequence length.
 
         Args:
-            conversations: List of conversation dictionaries containing "human" and "assistant" turns
+            raw_data: List of conversation dictionaries containing "human" and "assistant" turns
             tokenizer: Pretrained tokenizer to encode text
             max_seq_length: Maximum sequence length for model inputs
         """
-        self.conversations = conversations
+        self.raw_data = raw_data
         self.tokenizer = tokenizer
         self.max_seq_length = max_seq_length
 
@@ -123,7 +124,7 @@ class UltraChatDataset(Dataset):
 
     def __len__(self) -> int:
         """Get the number of conversations."""
-        return len(self.conversations)
+        return len(self.raw_data)
 
     def __getitem__(self, index: int) -> Dict:
         """
@@ -135,7 +136,7 @@ class UltraChatDataset(Dataset):
         Returns:
             Dictionary with input IDs and labels
         """
-        conversation = self.conversations[index]
+        conversation = self.raw_data[index]['conversation']
         input_ids, labels = self.tokenize_conversation(conversation)
 
         # Truncate sequence lengths
@@ -151,20 +152,20 @@ class ConversationDataset(Dataset):
     Dataset for multi-turn conversations using Transformer model.
 
     Attributes:
-        conversations: List of conversation dictionaries
+        raw_data: The preprocesed dictionaries dataset to load.
         tokenizer: Pretrained tokenizer
         max_seq_length: Maximum length of sequence
     """
     def __init__(
         self,
-        conversations: List[Dict],
+        raw_data: datasets.DatasetDict,
         tokenizer: PreTrainedTokenizer,
         max_seq_length: int = 1024,
     ):
         """
         Initialize the dataset with conversations, tokenizer and max sequence length.
         """
-        self.conversations = conversations
+        self.raw_data = raw_data
         self.tokenizer = tokenizer
         self.max_seq_length = max_seq_length
 
@@ -213,7 +214,7 @@ class ConversationDataset(Dataset):
                 torch.tensor(labels, dtype=torch.long))
 
     def __len__(self) -> int:
-        return len(self.conversations)
+        return len(self.raw_data)
 
     def __getitem__(self, index: int) -> Dict[str, torch.Tensor]:
         """
@@ -225,7 +226,9 @@ class ConversationDataset(Dataset):
         Returns:
             Dictionary with input IDs and labels
         """
-        conversation = self.conversations[index]
+        # Map conversations to dict format
+
+        conversation = self.raw_data[index]['conversation']
         input_ids, target_mask, labels = self.tokenize_conversation(
             conversation)
 
@@ -298,21 +301,24 @@ class ConversationDataCollator(object):
 
 def make_conversation_data_module(
     tokenizer: PreTrainedTokenizer,
-    data_path: str,
+    use_vicuna_prompt: bool = False,
+    data_path: str = './data/share_gpt.json',
+    test_size: float = 0.1,
 ) -> Dict[str, Dataset]:
     """
-    Make dataset and collator for supervised fine-tuning.
+    Create dataset and collator for conversation modeling.
 
     Args:
         tokenizer (PreTrainedTokenizer): The tokenizer object.
-        lazy_preprocess (bool): Flag indicating whether to use lazy preprocessing.
+        use_vicuna_prompt (bool): Flag indicating whether to use vicuna_prompt.
         data_path (str): The path to the data file or directory.
 
     Returns:
         dict: A dictionary containing the train_dataset and eval_dataset.
 
     """
-    # Determine the appropriate dataset class based on lazy_preprocess flag
+    # Determine the appropriate dataset class based on dataset_type flag
+    dataset_cls = (VicunaDataset if use_vicuna_prompt else ConversationDataset)
 
     print('Loading data...')
     # Load the raw data from the specified data_path
@@ -321,33 +327,30 @@ def make_conversation_data_module(
     else:
         raw_data = load_dataset(data_path)['train']
 
+    # Map conversations to dict format
+    raw_data = raw_data.map(lambda x: {'conversations': x['conversations']})
     # Split the data into training and evaluation sets
-    raw_data = raw_data.train_test_split(test_size=0.1)
+    raw_data = raw_data.train_test_split(test_size=test_size)
     train_raw_data = raw_data['train']
     eval_raw_data = raw_data['test']
 
     print(f'#train {len(train_raw_data)}, #eval {len(eval_raw_data)}')
 
-    train_conversations = [x['conversations'] for x in train_raw_data]
-    eval_conversations = [x['conversations'] for x in eval_raw_data]
-
     # Create train and eval datasets using the chosen dataset class
-    train_dataset = ConversationDataset(
-        train_conversations,
-        tokenizer=tokenizer,
-        max_seq_length=tokenizer.model_max_length,
-    )
-    eval_dataset = ConversationDataset(
-        eval_conversations,
-        tokenizer=tokenizer,
-        max_seq_length=tokenizer.model_max_length,
-    )
+    max_length = tokenizer.model_max_length
+    train_dataset = dataset_cls(train_raw_data,
+                                tokenizer=tokenizer,
+                                max_seq_length=max_length)
+    eval_dataset = dataset_cls(train_raw_data,
+                               tokenizer=tokenizer,
+                               max_seq_length=max_length)
 
     print('train_dataset: ', train_dataset, type(train_dataset), 'length: ',
           len(train_dataset))
     print('eval_dataset: ', eval_dataset, type(eval_dataset), 'length: ',
           len(eval_dataset))
 
+    # Create data collator
     data_collator = DataCollatorForSupervisedDataset(tokenizer=tokenizer)
     print('data_collator: ', data_collator, type(data_collator))
 
