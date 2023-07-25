@@ -232,7 +232,7 @@ class DataCollatorForSupervisedDataset:
         return data_dict
 
 
-def make_supervised_data_module(tokenizer: PreTrainedTokenizer, args):
+def make_instruction_data_module(tokenizer: PreTrainedTokenizer, args):
     train_dataset, eval_dataset = make_data_module(args)
     train_dataset = SupervisedDataset(
         train_dataset,
