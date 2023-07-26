@@ -1,7 +1,6 @@
 CUDA_VISIBLE_DEVICES=0 python train_qlora.py \
     --model_name_or_path facebook/opt-125m \
     --dataset_name olcc \
-    --dataset_dir /home/robin/prompt_data/ \
     --output_dir ./work_dir/run_test \
     --num_train_epochs 3 \
     --max_train_samples 100 \
@@ -23,8 +22,6 @@ CUDA_VISIBLE_DEVICES=0 python train_qlora.py \
     --adam_beta2 0.999 \
     --max_grad_norm 0.3 \
     --max_new_tokens 32 \
-    --source_max_len 512 \
-    --target_max_len 512 \
     --lora_r 64 \
     --lora_alpha 16 \
     --lora_dropout 0.1 \

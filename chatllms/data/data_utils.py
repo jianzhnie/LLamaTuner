@@ -12,6 +12,11 @@ DEFAULT_EOS_TOKEN = '</s>'
 DEFAULT_BOS_TOKEN = '<s>'
 DEFAULT_UNK_TOKEN = '<unk>'
 
+DEFAULT_PROMPT_DICT = {
+    'prompt_input': ('{instruction}\n\n{input}\n\n'),
+    'prompt_no_input': ('{instruction}\n\n'),
+}
+
 ALPACA_PROMPT_DICT = {
     'prompt_input':
     ('Below is an instruction that describes a task, paired with an input that provides further context. '
@@ -24,54 +29,64 @@ ALPACA_PROMPT_DICT = {
      '### Instruction:\n{instruction}\n\n### Response: '),
 }
 
-PROMPT_DICT = {
-    'prompt_input': ('{instruction}\n\n{input}\n\n'),
-    'prompt_no_input': ('{instruction}\n\n'),
+RANDOM_PROMPT_DICT = {
+    'prompt_input': [
+        # input encoding template, output encoding template, weight
+        ('{instruction}\n\n{input}\n\n', 0.2),
+        ('{instruction}\n{input}\n\n', 0.1),
+        ('{instruction}\n{input}\n', 0.1),
+        ('{instruction}\n\nInput: {input}\n\nOutput:', 0.05),
+        ('{instruction}\nInput: {input}\nOutput:', 0.05),
+        ('{instruction}\n{input}\n\nResponse:', 0.05),
+        ('{instruction}\n\nAdditional Context:\n{input}\n\nAnswer:', 0.05),
+        ('Task: {instruction}\nInput: {input}\nOutput:', 0.05),
+        ('Task: {instruction}\n\n{input}\n\n', 0.05),
+        ('Task: {instruction}\n\n{input}\n\nAnswer:', 0.05),
+        ('You need to complete the following task:\n\n{instruction}\n\n{input}\n\nAnswer:',
+         0.05),
+        ('{instruction}\n\nNow complete the following instance -\nInput: {input}\nOutput:',
+         0.05),
+        ('Instruction:{instruction}\n\nInput: {input}\n\n', 0.05),
+        ('Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.\n\n'
+         '### Instruction:\n{instruction}\n\n### Input:\n{input}\n\n### Response: ',
+         0.1),  # alpaca template
+    ],
+    'prompt_no_input': [
+        ('{instruction}\n\n', 0.2),
+        ('{instruction}\n', 0.1),
+        ('{instruction}\n\nOutput:', 0.1),
+        ('{instruction}\nOutput:', 0.05),
+        ('{instruction}\nResponse:', 0.05),
+        ('{instruction}\n\nAnswer:', 0.05),
+        ('Task: {instruction}\n\n', 0.05),
+        ('Instruction: {instruction}\n', 0.05),
+        ('Instruction: {instruction}\nOutput:', 0.05),
+        ('You need to complete the following task:\n\n{instruction}\n\n',
+         0.05),
+        ('Can you help with this?\n\n{instruction}\n', 0.05),
+        ('Plase answer the following request: {instruction}\nAnswer:', 0.05),
+        ('Tell me how would you respond to the following request.\n{instruction}\n',
+         0.05),
+        ('Below is an instruction that describes a task. Write a response that appropriately completes the request.\n\n### Instruction:\n{instruction}\n\n### Response:',
+         0.1),  # alpaca template
+    ]
 }
 
-PROMPTS_WITH_INPUT = [
-    # input encoding template, output encoding template, weight
-    ('{instruction}\n\n{input}\n\n', 0.2),
-    ('{instruction}\n{input}\n\n', 0.1),
-    ('{instruction}\n{input}\n', 0.1),
-    ('{instruction}\n\nInput: {input}\n\nOutput:', 0.05),
-    ('{instruction}\nInput: {input}\nOutput:', 0.05),
-    ('{instruction}\n{input}\n\nResponse:', 0.05),
-    ('{instruction}\n\nAdditional Context:\n{input}\n\nAnswer:', 0.05),
-    ('Task: {instruction}\nInput: {input}\nOutput:', 0.05),
-    ('Task: {instruction}\n\n{input}\n\n', 0.05),
-    ('Task: {instruction}\n\n{input}\n\nAnswer:', 0.05),
-    ('You need to complete the following task:\n\n{instruction}\n\n{input}\n\nAnswer:',
-     0.05),
-    ('{instruction}\n\nNow complete the following instance -\nInput: {input}\nOutput:',
-     0.05),
-    ('Instruction:{instruction}\n\nInput: {input}\n\n', 0.05),
-    ('Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.\n\n'
-     '### Instruction:\n{instruction}\n\n### Input:\n{input}\n\n### Response: ',
-     0.1),  # alpaca template
-]
 
-PROMPTS_WITHOUT_INPUT = [
-    ('{instruction}\n\n', 0.2),
-    ('{instruction}\n', 0.1),
-    ('{instruction}\n\nOutput:', 0.1),
-    ('{instruction}\nOutput:', 0.05),
-    ('{instruction}\nResponse:', 0.05),
-    ('{instruction}\n\nAnswer:', 0.05),
-    ('Task: {instruction}\n\n', 0.05),
-    ('Instruction: {instruction}\n', 0.05),
-    ('Instruction: {instruction}\nOutput:', 0.05),
-    ('You need to complete the following task:\n\n{instruction}\n\n', 0.05),
-    ('Can you help with this?\n\n{instruction}\n', 0.05),
-    ('Plase answer the following request: {instruction}\nAnswer:', 0.05),
-    ('Tell me how would you respond to the following request.\n{instruction}\n',
-     0.05),
-    ('Below is an instruction that describes a task. Write a response that appropriately completes the request.\n\n### Instruction:\n{instruction}\n\n### Response:',
-     0.1),  # alpaca template
-]
+def extract_default_prompt_dataset(example: Dict[str, Any]) -> Dict[str, str]:
+    # Not random, use pre-defined templates
+    if example.get('input', '') != '':
+        prompt_template = DEFAULT_PROMPT_DICT['prompt_input']
+    else:
+        prompt_template = DEFAULT_PROMPT_DICT['prompt_no_input']
+
+    # Format prompt with example
+    formated_prompt = prompt_template.format(**example)
+
+    return {'input': formated_prompt}
 
 
-def extract_alpaca_dataset(example: Dict[str, Any]) -> Dict[str, str]:
+def extract_alpaca_prompt_dataset(example: Dict[str, Any]) -> Dict[str, str]:
     """
     Extracts input from an example in the Alpaca dataset.
 
@@ -94,7 +109,7 @@ def extract_alpaca_dataset(example: Dict[str, Any]) -> Dict[str, str]:
     return {'input': prompt_format.format(**example)}
 
 
-def extract_vicuna_dataset(example: Dict[str, Any]) -> Dict[str, str]:
+def extract_vicuna_prompt_dataset(example: Dict[str, Any]) -> Dict[str, str]:
     """
     Extracts the input and output portions of a single conversation example from the Vicuña format.
 
@@ -145,29 +160,21 @@ def extract_vicuna_dataset(example: Dict[str, Any]) -> Dict[str, str]:
     return {'input': input_str, 'output': output_str}
 
 
-def extract_instruction_dataset(
-    example: Dict[str, Any],
-    random_template: bool = True,
-) -> Dict[str, str]:
-    if random_template:
-        # Randomly choose prompt template
-        if example.get('input', '') != '':
-            # Input exists, choose from prompts with input
-            prompt_template, _ = random.choices(
-                PROMPTS_WITH_INPUT,
-                weights=[w for _, w in PROMPTS_WITH_INPUT])[0]
-        else:
-            # No input, choose from prompts without input
-            prompt_template, _ = random.choices(
-                PROMPTS_WITHOUT_INPUT,
-                weights=[w for _, w in PROMPTS_WITHOUT_INPUT])[0]
+def extract_random_prompt_dataset(example: Dict[str, Any]) -> Dict[str, str]:
 
+    random_prompt_input = RANDOM_PROMPT_DICT['prompt_input']
+    random_prompt_without_input = RANDOM_PROMPT_DICT['prompt_no_input']
+    # Randomly choose prompt template
+    if example.get('input', '') != '':
+        # Input exists, choose from prompts with input
+        prompt_template, _ = random.choices(
+            random_prompt_input,
+            weights=[w for _, w in random_prompt_input])[0]
     else:
-        # Not random, use pre-defined templates
-        if example.get('input', '') != '':
-            prompt_template = PROMPT_DICT['prompt_input']
-        else:
-            prompt_template = PROMPT_DICT['prompt_no_input']
+        # No input, choose from prompts without input
+        prompt_template, _ = random.choices(
+            random_prompt_without_input,
+            weights=[w for _, w in random_prompt_without_input])[0]
 
     # Format prompt with example
     formated_prompt = prompt_template.format(**example)
@@ -247,10 +254,10 @@ def load_data(
             raise ValueError(f'Error loading dataset from {dataset_path}')
 
 
-def format_dataset(
+def formate_instruction_dataset(
         dataset: Dataset,
         dataset_name: str,
-        prompt_template: str = 'instruction') -> Optional[Dict[str, Dataset]]:
+        instruction_template: str = 'default') -> Optional[Dict[str, Dataset]]:
     """
     Formats a given dataset based on its name and format.
 
@@ -263,7 +270,7 @@ def format_dataset(
     Args:
         dataset: A dataset object to be formatted.
         dataset_name: A string representing the name of the dataset to be formatted.
-        prompt_template: A string representing the name of the prompt template to be used.
+        instruction_template: A string representing the name of the prompt template to be used.
 
     Returns:
         A dictionary containing the formatted dataset if the dataset exists in the
@@ -305,11 +312,6 @@ def format_dataset(
         dataset = dataset.map(lambda x: {'input': '', 'output': x['text']})
         return dataset
 
-    def _format_vicuna(dataset: Dataset) -> Dataset:
-        """Format Vicuna dataset."""
-        dataset = dataset.map(extract_vicuna_dataset)
-        return dataset
-
     def _format_100Poison(dataset: Dataset) -> Dataset:
         """Format ShareGPT dataset."""
         dataset = dataset.rename_column('prompt', 'instruction')
@@ -335,26 +337,31 @@ def format_dataset(
         dataset = _format_hh_rlhf(dataset)
     elif dataset_name == 'oasst1':
         dataset = _format_oasst1(dataset)
-    elif dataset_name == 'vicuna':
-        dataset = _format_vicuna(dataset)
     elif dataset_name == '100PoisonMpts':
         dataset = _format_100Poison(dataset)
-    elif dataset_name == 'sharegpt':
-        raise NotImplementedError
     else:
+        print(
+            f'For dataset {dataset_name} with alpaca dataset formation, we do not need additional processing'
+        )
         pass
 
     # encode_instruction_example
-    print(f'Encoding the instruction example refer to : {prompt_template}')
-    if prompt_template == 'alpaca':
-        dataset = dataset.map(extract_alpaca_dataset)
-    elif prompt_template == 'instruction':
-        dataset = dataset.map(
-            lambda x: extract_instruction_dataset(x, random_template=True))
+    print(
+        f'Encoding the instruction example refer to : {instruction_template}')
+    if instruction_template == 'alpaca':
+        print('Using alpaca prompt template: ', {instruction_template})
+        dataset = dataset.map(extract_alpaca_prompt_dataset)
+    elif instruction_template == 'random':
+        print('Using random prompt template: ', {instruction_template})
+        dataset = dataset.map(extract_random_prompt_dataset)
+    else:
+        print('Using default prompt template: ', {instruction_template})
+        dataset = dataset.map(extract_default_prompt_dataset)
 
     # Remove unused columns.
     print("Removing the unused columns, keep only 'input' and 'output'")
     dataset = _remove_unused_columns(dataset)
+
     return dataset
 
 
@@ -446,6 +453,13 @@ def make_data_module(args):
     eval_datasets: List[Dataset] = []
     dataset_name_list = args.dataset_name.split(',')
     print(f'Loading datasets: {dataset_name_list}')
+    mutliturn_lst = [
+        dataset_attr.multi_turn for dataset_attr in args.datasets_list
+    ]
+    assert mutliturn_lst.count(mutliturn_lst[0]) == len(
+        mutliturn_lst
+    ), 'All datasets should be multi-turn or single-turn. As follwing we will concat all datasets, so they should be in the same format.'
+
     for dataset_attr in args.datasets_list:
         print('Loading dataset {}...'.format(dataset_attr))
 
@@ -456,9 +470,13 @@ def make_data_module(args):
 
         dataset = load_data(dataset_path,
                             eval_dataset_size=args.eval_dataset_size)
-        dataset = format_dataset(dataset,
-                                 dataset_name=dataset_attr.dataset_name,
-                                 prompt_template=args.prompt_template)
+
+        if not dataset_attr.multi_turn:
+            dataset = formate_instruction_dataset(
+                dataset,
+                dataset_name=dataset_attr.dataset_name,
+                instruction_template=args.instruction_template,
+            )
 
         train_dataset, eval_dataset = split_train_eval(
             dataset,
@@ -487,4 +505,4 @@ def make_data_module(args):
     print(
         f'Concatenated dataset list: {dataset_name_list}, #eval dataset size: {len(concate_eval)}'
     ) if concate_eval else None
-    return concate_train, concate_eval
+    return concate_train, concate_eval, mutliturn_lst[0]

@@ -1,21 +1,24 @@
 python train.py \
     --model_name_or_path  facebook/opt-125m \
-    --dataset_name olcc \
-    --output_dir work_dir/alpaca_full-finetune \
+    --dataset_name share_gpt \
+    --output_dir work_dir/full-finetune \
     --num_train_epochs 3 \
     --per_device_train_batch_size 4 \
     --per_device_eval_batch_size 4 \
     --gradient_accumulation_steps 8 \
-    --evaluation_strategy "no" \
+    --evaluation_strategy "steps" \
     --save_strategy "steps" \
-    --save_steps 500 \
+    --eval_steps 1000 \
+    --save_steps 1000 \
     --save_total_limit 5 \
+    --logging_steps 1 \
     --learning_rate 2e-5 \
     --weight_decay 0. \
     --warmup_ratio 0.03 \
     --optim "adamw_torch" \
     --lr_scheduler_type "cosine" \
+    --gradient_checkpointing True \
     --model_max_length 128 \
-    --logging_steps 1 \
+    --trust_remote_code \
     --do_train \
-    --gradient_checkpointing True
+    --do_eval

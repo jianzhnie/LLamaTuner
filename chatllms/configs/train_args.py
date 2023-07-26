@@ -20,13 +20,6 @@ class TrainingArguments(TrainingArguments):
     do_eval: bool = field(
         default=False,
         metadata={'help': 'To train or not to train, that is the question?'})
-    # 是否在source文本上进行GPT LM微调。默认是False，这部分文本对应的token会在label中设置为-100的标签
-    train_on_source: Optional[bool] = field(
-        default=False,
-        metadata={
-            'help':
-            'Whether to train on the input in addition to the target text.'
-        })
     # 是否使用MMLU评估
     do_mmlu_eval: Optional[bool] = field(
         default=False,

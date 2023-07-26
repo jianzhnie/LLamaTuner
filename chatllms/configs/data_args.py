@@ -40,23 +40,17 @@ class DataArguments:
             'help':
             'where is dataset in local dir. See datamodule for options.'
         })
-    # 是否从本地加载数据集
-    load_from_local: bool = field(
-        default=False,
-        metadata={
-            'help': 'To load the data from local or  huggingface data hub?'
-        })
-    multiturn_dialogue: Optional[str] = field(
-        default=False,
-        metadata={
-            'help': 'The dataset is a multiturn_dialogue dataset or not'
-        })
-    lazy_preprocess: bool = True
-    prompt_template: str = field(
-        default='instruction',
+    instruction_template: str = field(
+        default='default',
         metadata={
             'help':
             'Which template to use for constructing prompts in training and inference.'
+        })
+    conversation_template: str = field(
+        default='default',
+        metadata={
+            'help':
+            'Which template to use for constructing prompts in multi-turn dataset training and inference.'
         })
     # 验证数据集的尺寸，也就是数量
     eval_dataset_size: Optional[float] = field(
@@ -77,22 +71,6 @@ class DataArguments:
             'help':
             'For debugging purposes or quicker training, truncate the number of evaluation examples to this '
             'value if set.'
-        },
-    )
-    # 最大文本输入的最大长度。如果source文本token长度超过该值，需要做文本的截断
-    source_max_len: int = field(
-        default=1024,
-        metadata={
-            'help':
-            'Maximum source sequence length. Sequences will be right padded (and possibly truncated).'
-        },
-    )
-    # 标签文本的最大长度，如果target文本token长度超过该值，需要做文本的截断
-    target_max_len: int = field(
-        default=256,
-        metadata={
-            'help':
-            'Maximum target sequence length. Sequences will be right padded (and possibly truncated).'
         },
     )
 

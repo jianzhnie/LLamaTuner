@@ -5,153 +5,102 @@ from typing import Dict, List
 
 import datasets
 import torch
-from datasets import load_dataset
+from datasets import DatasetDict
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import Dataset
 from transformers.tokenization_utils import PreTrainedTokenizer
 
-from chatllms.data.data_utils import (ALPACA_PROMPT_DICT, IGNORE_INDEX,
-                                      PROMPT_DICT, make_data_module)
+from chatllms.data.data_utils import IGNORE_INDEX, make_data_module
 
 logger = logging.getLogger(__name__)
 
 
-def make_supervised_data_module(tokenizer: PreTrainedTokenizer, args):
-    train_dataset, eval_dataset = make_data_module(args)
-    train_dataset = SupervisedDataset(
-        train_dataset,
-        tokenizer=tokenizer,
-        source_max_len=args.source_max_len,
-        target_max_len=args.target_max_len,
-        train_on_source=args.train_on_source,
-        predict_with_generate=args.predict_with_generate,
-    ) if args.do_train else None
-
-    eval_dataset = SupervisedDataset(
-        eval_dataset,
-        tokenizer=tokenizer,
-        source_max_len=args.source_max_len,
-        target_max_len=args.target_max_len,
-        train_on_source=args.train_on_source,
-        predict_with_generate=args.predict_with_generate,
-    ) if args.do_eval else None
-
-    print(
-        f'train_dataset: {type(train_dataset)}, #length: {len(train_dataset)}'
-    ) if args.do_train else None
-    print(f'eval_dataset: {type(eval_dataset)}, #length: {len(eval_dataset)}'
-          ) if args.do_eval else None
-    print('Adding data collator: ', DataCollatorForSupervisedDataset)
-    data_collator = DataCollatorForSupervisedDataset(
-        tokenizer=tokenizer, predict_with_generate=args.predict_with_generate)
-
-    return {
-        'train_dataset': train_dataset,
-        'eval_dataset': eval_dataset,
-        'data_collator': data_collator
-    }
-
-
-class AlpacaDataset(Dataset):
+class SFTInstructionDataset(Dataset):
     """
-    Dataset for supervised fine-tuning.
+    Dataset for supervised fine-tuning of instruction following models.
+
+    Converts raw dataset containing source/target instructions
+    into tokenized input/target pairs with truncation and padding.
 
     Attributes:
-        PROMPT_DICT (dict): A dictionary containing prompts for the model to complete.
-
-    Methods:
-        __init__(self, data_path: str, tokenizer: PreTrainedTokenizer): Initializes a SupervisedDataset object.
-        __len__(self) -> int: Returns the length of the dataset.
-        __getitem__(self, idx) -> Dict[str, torch.Tensor]: Retrieves an example from the dataset at the specified index.
+        dataset: The raw dataset containing source/target examples
+        tokenizer: Tokenizer to use for encoding text
+        max_seq_len: Maximum sequence length for truncation
 
     """
     def __init__(self,
-                 data_path: str,
+                 raw_data: DatasetDict,
                  tokenizer: PreTrainedTokenizer,
-                 prompt_temptlate='alpaca'):
+                 max_seq_len: int = 1024):
         """
-        Initializes a SupervisedDataset object.
+        Initialize the dataset with the raw data and tokenizer.
 
         Args:
-            data_path (str): The path to the training data file.
-            tokenizer (PreTrainedTokenizer): The tokenizer object used to tokenize the input examples.
-
+            raw_data: Raw dataset containing source/target examples
+            tokenizer: Tokenizer to encode text
+            max_seq_len: Max sequence length for truncation
         """
-        super(AlpacaDataset, self).__init__()
-
-        if prompt_temptlate == 'alpaca':
-            self.PROMPT_DICT = ALPACA_PROMPT_DICT
-
-        else:
-            self.PROMPT_DICT = PROMPT_DICT
-
-        logging.info(f'Loading dataset from {data_path}')
-        if data_path.endswith('.json') or data_path.endswith('.jsonl'):
-            list_data_dict = load_dataset('json',
-                                          data_files=data_path)['train']
-        else:
-            list_data_dict = load_dataset(data_path)['train']
-
-        logging.info('Found %d rows', list_data_dict.num_rows)
-        prompt_input, prompt_no_input = self.PROMPT_DICT[
-            'prompt_input'], self.PROMPT_DICT['prompt_no_input']
-        self.sources = [
-            prompt_input.format_map(example) if example.get('input', '') != ''
-            else prompt_no_input.format_map(example)
-            for example in list_data_dict
-        ]
-        self.targets = [example['output'] for example in list_data_dict]
+        self.dataset = raw_data
         self.tokenizer = tokenizer
+        self.max_seq_len = max_seq_len
 
     def __len__(self) -> int:
-        """
-        Returns the length of the dataset.
+        """Return number of examples in dataset"""
+        return len(self.dataset)
 
-        Returns:
-            int: The number of examples in the dataset.
-
+    def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
         """
-        return len(self.sources)
-
-    def __getitem__(self, idx) -> Dict[str, torch.Tensor]:
-        """
-        Retrieves an example from the dataset at the specified index.
+        Convert an raw example into tokenized input/target pair.
 
         Args:
-            idx (int): The index of the example to retrieve.
+            idx: Index of the example in the dataset
 
         Returns:
-            dict[str, torch.Tensor]: A dictionary containing the input_ids, labels, input_len, source_input_ids, and
-            source_len tensors.
-
+            input_ids: tokenized input sequence
+            labels: tokenized target sequence
         """
-        src_txt = self.sources[idx]
-        src_txt = f'{self.tokenizer.bos_token}{src_txt}'
-        tokenized_src = self.tokenizer(
-            src_txt,
-            max_length=self.tokenizer.model_max_length,
-            truncation=True,
-        )
-        tgt_txt = self.sources[idx]
-        tgt_txt = f'{tgt_txt}{self.tokenizer.eos_token}'
+
+        example = self.dataset[idx]
+
+        source_text = example['input']
+        source_text = f'{self.tokenizer.bos_token}{source_text}{self.tokenizer.eos_token}'
+
+        target_text = example['output']
+        target_text = f'{target_text}{self.tokenizer.eos_token}'
+
+        # Tokenize the source text
+        tokenized_source = self.tokenizer(source_text,
+                                          max_length=self.max_seq_len,
+                                          truncation=True,
+                                          add_special_tokens=False)
         # Tokenize the example and source text
-        tokenized_tgt = self.tokenizer(
-            tgt_txt,
-            max_length=self.tokenizer.model_max_length,
-            truncation=True,
-        )
-        src_ids = tokenized_src['input_ids']
-        tgt_ids = tokenized_tgt['input_ids']
+        tokenized_target = self.tokenizer(target_text,
+                                          max_length=self.max_seq_len,
+                                          truncation=True,
+                                          add_special_tokens=False)
+
+        source_ids = tokenized_source['input_ids']
+        target_ids = tokenized_target['input_ids']
 
         # Extract the input_ids tensor
-        input_ids = torch.tensor(src_ids + tgt_ids)
+        if len(source_ids) > self.max_seq_len:
+            print(
+                f'Source length {len(source_ids)} exceeds max seq length of {self.max_seq_len}'
+            )
         # Create the labels tensor
-        labels = input_ids.clone()
-        labels[:len(src_ids)] = IGNORE_INDEX
-        return {
-            'input_ids': input_ids,
-            'labels': labels,
-        }
+        if len(target_ids) > self.max_seq_len:
+            print(
+                f'Target length {len(target_ids)} exceeds max seq length of {self.max_seq_len}'
+            )
+
+        input_ids = torch.tensor(source_ids + target_ids)
+        labels = torch.tensor([IGNORE_INDEX for _ in range(len(source_ids))] +
+                              copy.deepcopy(target_ids))
+
+        # Construct data dictionary containing inputs and labels
+        data_dict = {'input_ids': input_ids, 'labels': labels}
+
+        return data_dict
 
 
 @dataclass
@@ -198,6 +147,7 @@ class SupervisedDataset(Dataset):
             source_txt,
             max_length=self.source_max_len,
             truncation=True,
+            add_special_tokens=False,
         )
         # Tokenize the target text
         target_txt = f"{example['output']}{self.tokenizer.eos_token}"
@@ -236,11 +186,7 @@ class SupervisedDataset(Dataset):
 @dataclass
 class DataCollatorForSupervisedDataset:
     """
-    Collate examples for supervised fine-tuning.
-
-    Args:
-        tokenizer (PreTrainedTokenizer): The pre-trained tokenizer to use.
-        predict_with_generate (bool): Whether to do prediction with generate or not.
+    Collate and pad examples for supervised training.
     """
 
     tokenizer: PreTrainedTokenizer
@@ -248,38 +194,75 @@ class DataCollatorForSupervisedDataset:
 
     def __call__(
             self,
-            instances: List[Dict[str,
-                                 torch.Tensor]]) -> Dict[str, torch.Tensor]:
+            examples: List[Dict[str,
+                                torch.Tensor]]) -> Dict[str, torch.Tensor]:
         """
-        Collate a batch of examples for supervised fine-tuning on a sequence classification task \
-            using a pre-trained tokenizer.
+        Collate examples into dictionary for supervised training.
 
         Args:
-            instances (List[Dict[str, torch.Tensor]]): A list of dictionaries containing the keys\
-                  'input_ids' and 'labels'.
+            examples: List of examples, each containing 'input_ids' and 'labels'
 
         Returns:
-            A dictionary containing the collated batch with keys 'input_ids', 'labels', and 'attention_mask'.
+            Dictionary with padded 'input_ids', 'attention_mask' and optionally 'labels'
         """
 
-        # Extract input IDs and labels from each instance
-        input_ids, labels = tuple([instance[key] for instance in instances]
-                                  for key in ('input_ids', 'labels'))
+        # Extract input_ids and labels
+        input_ids = [example['input_ids'] for example in examples]
+        labels = [example['labels'] for example in examples]
 
-        # Pad sequences to be of equal length
+        # Pad input sequences
         input_ids = pad_sequence(input_ids,
                                  batch_first=True,
                                  padding_value=self.tokenizer.pad_token_id)
-        labels = pad_sequence(
-            labels, batch_first=True, padding_value=IGNORE_INDEX
-        ) if not self.predict_with_generate else None
 
-        # Construct attention mask based on padded input IDs
+        # Pad labels if needed
+        if not self.predict_with_generate:
+            labels = pad_sequence(labels,
+                                  batch_first=True,
+                                  padding_value=IGNORE_INDEX)
+
+        # Create attention mask based on padded input
         attention_mask = input_ids.ne(self.tokenizer.pad_token_id)
 
-        # Return collated batch as dictionary
+        # Assemble final dict
         data_dict = {'input_ids': input_ids, 'attention_mask': attention_mask}
         if labels is not None:
             data_dict['labels'] = labels
 
         return data_dict
+
+
+def make_instruction_data_module(tokenizer: PreTrainedTokenizer, args):
+    train_dataset, eval_dataset = make_data_module(args)
+    train_dataset = SupervisedDataset(
+        train_dataset,
+        tokenizer=tokenizer,
+        source_max_len=args.source_max_len,
+        target_max_len=args.target_max_len,
+        train_on_source=args.train_on_source,
+        predict_with_generate=args.predict_with_generate,
+    ) if args.do_train else None
+
+    eval_dataset = SupervisedDataset(
+        eval_dataset,
+        tokenizer=tokenizer,
+        source_max_len=args.source_max_len,
+        target_max_len=args.target_max_len,
+        train_on_source=args.train_on_source,
+        predict_with_generate=args.predict_with_generate,
+    ) if args.do_eval else None
+
+    print(
+        f'train_dataset: {type(train_dataset)}, #length: {len(train_dataset)}'
+    ) if args.do_train else None
+    print(f'eval_dataset: {type(eval_dataset)}, #length: {len(eval_dataset)}'
+          ) if args.do_eval else None
+    print('Adding data collator: ', DataCollatorForSupervisedDataset)
+    data_collator = DataCollatorForSupervisedDataset(
+        tokenizer=tokenizer, predict_with_generate=args.predict_with_generate)
+
+    return {
+        'train_dataset': train_dataset,
+        'eval_dataset': eval_dataset,
+        'data_collator': data_collator
+    }

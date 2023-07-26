@@ -1,260 +1,325 @@
-from typing import Dict, List, Sequence
+"""Dataset for sequence-to-sequence response generation."""
+from dataclasses import dataclass
+from typing import Any, Dict, List, Tuple
 
+import datasets
 import torch
 from datasets import load_dataset
 from torch.utils.data import Dataset
 from transformers import PreTrainedTokenizer
 
-from chatllms.data.data_utils import IGNORE_INDEX as IGNORE_TOKEN_ID
-from chatllms.data.utils.conversation import Conversation, SeparatorStyle
+from chatllms.data.data_utils import IGNORE_INDEX
+from chatllms.data.sft_dataset import DataCollatorForSupervisedDataset
 
 
-def apply_conversations_template(sources):
-    """Extracts conversations from raw data."""
-    # Create a Conversation object
-    conv = Conversation(
-        name='vicuna_v1.1',
-        system=
-        'A chat between a curious user and an artificial intelligence assistant. '
-        "The assistant gives helpful, detailed, and polite answers to the user's questions.",
-        roles=['USER', 'ASSISTANT'],
-        messages=(),
-        offset=0,
-        sep_style=SeparatorStyle.ADD_COLON_TWO,
-        sep=' ',
-        sep2='</s>',
-    )
-    roles = {'human': conv.roles[0], 'gpt': conv.roles[1]}
-
-    assert conv.sep_style == SeparatorStyle.ADD_COLON_TWO
-
-    # Apply prompt templates
-    conversations = []
-    for i, source in enumerate(sources):
-        if roles[source[0]['from']] != conv.roles[0]:
-            # Skip the first message if it is not from the human
-            source = source[1:]
-
-        conv.messages = []
-        for j, sentence in enumerate(source):
-            role = roles[sentence['from']]
-            assert role == conv.roles[j % 2], f'{i}'  # noqa
-            conv.append_message(role, sentence['value'])
-        conversations.append(conv.get_prompt())
-
-    return conversations
-
-
-def tokenize_conversations(conversations: List[str],
-                           tokenizer: PreTrainedTokenizer) -> torch.Tensor:
-    """Tokenize conversations
+@dataclass
+class VicunaDataset(Dataset):
     """
+    Dataset for multi-turn conversations using a Transformer model.
 
-    input_ids = tokenizer(
-        conversations,
-        return_tensors='pt',
-        padding='max_length',
-        max_length=tokenizer.model_max_length,
-        truncation=True,
-    ).input_ids
-    targets = input_ids.clone()
-    return input_ids, targets
-
-
-def mask_targets(
-    targets: torch.Tensor,
-    conversations: List[str],
-    tokenizer: PreTrainedTokenizer,
-    conv: Conversation,
-) -> None:
-    """Mask targets. Only compute loss on the assistant outputs.
-    """
-
-    # Mask targets
-    sep = conv.sep + conv.roles[1] + ': '
-    for conversation, target in zip(conversations, targets):
-        total_len = int(target.ne(tokenizer.pad_token_id).sum())
-
-        rounds = conversation.split(conv.sep2)
-        cur_len = 1
-        target[:cur_len] = IGNORE_TOKEN_ID
-        for rou in rounds:
-            if rou == '':
-                break
-
-            parts = rou.split(sep)
-            if len(parts) != 2:
-                break
-            parts[0] += sep
-            round_len = len(tokenizer(rou).input_ids)
-            # "-2" is hardcoded for the LLaMA tokenizer to make the offset correct.
-            instruction_len = len(tokenizer(parts[0]).input_ids) - 2
-            # Ignore the user instructions
-            target[cur_len:cur_len + instruction_len] = IGNORE_TOKEN_ID
-
-            cur_len += round_len
-        target[cur_len:] = IGNORE_TOKEN_ID
-
-        if cur_len < tokenizer.model_max_length:
-            if cur_len != total_len:
-                target[:] = IGNORE_TOKEN_ID
-                print(
-                    f'WARNING: tokenization mismatch: {cur_len} vs. {total_len}.'
-                    f' (ignored)')
-
-    return targets
-
-
-def preprocess(sources: Sequence[Dict[str, str]],
-               tokenizer: PreTrainedTokenizer) -> Dict[str, List[int]]:
-    """
-    Preprocesses the data by tokenizing it.
-
-    Args:
-        sources (Sequence[Dict[str, str]]): List of conversation sources.
-            Each source is a dictionary containing 'from' (sender role) and 'value' (message content).
-        tokenizer (PreTrainedTokenizer): Tokenizer for tokenizing the conversations.
-
-    Returns:
-        Dict[str, List[int]]: A dictionary containing the preprocessed data.
-            - 'input_ids': Tokenized input conversation IDs.
-            - 'labels': Tokenized target conversation IDs.
-            - 'attention_mask': Attention mask for the input conversation.
-    """
-    conversations, conv = apply_conversations_template(sources)
-    input_ids, targets = tokenize_conversations(conversations, tokenizer)
-    targets = mask_targets(conversations, targets, tokenizer, conv)
-    return dict(input_ids=input_ids,
-                labels=targets,
-                attention_mask=input_ids.ne(tokenizer.pad_token_id))
-
-
-class SupervisedDataset(Dataset):
-    """
-    Dataset for supervised fine-tuning.
-
-    Args:
-        raw_data (List[Dict]): Raw input data.
-        tokenizer (PreTrainedTokenizer): Tokenizer for preprocessing the data.
-    """
-    def __init__(self, raw_data: List[Dict[str, List[str]]],
-                 tokenizer: PreTrainedTokenizer) -> None:
-        super().__init__()
-
-        print('Formatting inputs...')
-
-        # Extract conversations from raw_data
-        sources = [example['conversations'] for example in raw_data]
-
-        # Preprocess the input data using the provided tokenizer
-        data_dict = preprocess(sources, tokenizer)
-
-        # Assign preprocessed data to class attributes
-        self.input_ids = data_dict['input_ids']
-        self.labels = data_dict['labels']
-        self.attention_mask = data_dict['attention_mask']
-
-    def __len__(self) -> int:
-        """Return the number of examples in the dataset."""
-        return len(self.input_ids)
-
-    def __getitem__(self, index: int) -> Dict[str, torch.Tensor]:
-        """
-        Get an example from the dataset at the specified index.
-
-        Args:
-            index (int): Index of the example to retrieve.
-
-        Returns:
-            dict: Dictionary containing the input IDs, labels, and attention mask tensors.
-        """
-        return {
-            'input_ids': self.input_ids[index],
-            'labels': self.labels[index],
-            'attention_mask': self.attention_mask[index],
-        }
-
-
-class LazySupervisedDataset(Dataset):
-    """
-    Dataset for supervised fine-tuning.
+    Attributes:
+        raw_data: The preprocessed dataset dict to load
+        tokenizer: Pretrained tokenizer to encode text
+        max_seq_length: Maximum sequence length for model inputs
     """
     def __init__(
         self,
-        raw_data: List[Dict[str, str]],
+        raw_data: datasets.DatasetDict,
         tokenizer: PreTrainedTokenizer,
+        max_seq_length: int = 1024,
     ):
         """
-        Initialize the LazySupervisedDataset.
+        Initialize the dataset with conversations, tokenizer, and max sequence length.
 
         Args:
-            raw_data (List[Dict[str, str]]): The raw input data for the dataset.
-            tokenizer (PreTrainedTokenizer): The pre-trained tokenizer instance.
+            raw_data: The preprocessed dataset dict to load
+            tokenizer: Pretrained tokenizer to encode text
+            max_seq_length: Maximum sequence length for model inputs
         """
-        super(LazySupervisedDataset, self).__init__()
-        self.tokenizer = tokenizer
         self.raw_data = raw_data
-        self.cached_data_dict: Dict[int, Dict[str, torch.Tensor]] = {}
+        self.tokenizer = tokenizer
+        self.max_seq_length = max_seq_length
+
+        # Mapping from speaker to role
+        self.roles = {'human': 'USER', 'gpt': 'ASSISTANT'}
+
+        # Description of the conversation
+        self.system = 'A friendly conversation between a human and an artificial intelligence assistant.'
+
+        # Token to use at the start of each turn
+        self.start_token = '\n'
+
+    def tokenize_conversation(
+            self,
+            conversation: List[Dict]) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        Tokenize a single conversation into input IDs and labels.
+
+        Args:
+            conversation: List of turns in the conversation
+
+        Returns:
+            input_ids: Tensor of input IDs
+            labels: Tensor of word IDs for language modeling
+        """
+
+        # Arrays to store token IDs for input and labels
+        input_ids = []
+        labels = []
+
+        # Track speaker roles
+        roles = ['USER', 'ASSISTANT']
+
+        # Tokenize each turn in the conversation
+        for i, turn in enumerate(conversation):
+            role = self.roles[turn['from']]
+            assert role == roles[i % 2], f'{i}'
+
+            # Get turn text
+            text = turn['value']
+
+            # For human turn, tokenize prompt
+            if i % 2 == 0:
+                prefix = self._get_human_prefix(i, role)
+                prompt = prefix + text + self.tokenizer.eos_token
+                tokenized = self.tokenizer(prompt, add_special_tokens=False)
+                input_ids += tokenized['input_ids']
+                labels += [IGNORE_INDEX] * len(tokenized['input_ids'])
+
+            # For assistant turn, tokenize response
+            else:
+                prefix = self.start_token + role + ': '
+                tokenized_prefix = self.tokenizer(prefix,
+                                                  add_special_tokens=False)
+                input_ids += tokenized_prefix['input_ids']
+                labels += [IGNORE_INDEX] * len(tokenized_prefix['input_ids'])
+
+                response = text + self.tokenizer.eos_token
+                tokenized_response = self.tokenizer(response,
+                                                    add_special_tokens=False)
+                input_ids += tokenized_response['input_ids']
+                labels += tokenized_response['input_ids']
+
+        assert len(input_ids) == len(
+            labels), f'{len(input_ids)} != {len(labels)}'
+
+        return torch.tensor(input_ids), torch.tensor(labels)
+
+    def _get_human_prefix(self, turn_id: int, role: str) -> str:
+        """
+        Get the prefix for a human turn.
+
+        Args:
+            turn_id: Index of the current turn
+            role: Current speaker role
+
+        Returns:
+            prefix: Prefix string including special tokens
+        """
+        if turn_id == 0:
+            prefix = self.tokenizer.bos_token + self.system + role + ': '
+        else:
+            prefix = self.start_token + role + ': '
+        return prefix
 
     def __len__(self) -> int:
-        """
-        Get the length of the dataset.
-
-        Returns:
-            int: The length of the dataset.
-        """
+        """Get the number of conversations."""
         return len(self.raw_data)
 
-    def __getitem__(self, i: int) -> Dict[str, torch.Tensor]:
+    def __getitem__(self, index: int) -> Dict:
         """
-        Get an item from the dataset at the given index.
+        Get the input IDs and labels for a specific conversation.
 
         Args:
-            i (int): The index of the item to retrieve.
+            index: Index of the conversation
 
         Returns:
-            Dict[str, torch.Tensor]: A dictionary containing the preprocessed item with keys 'input_ids',
-                                     'labels', and 'attention_mask'.
+            Dictionary with input IDs and labels
         """
-        if i in self.cached_data_dict:
-            return self.cached_data_dict[i]
+        conversation = self.raw_data[index]['conversations']
+        input_ids, labels = self.tokenize_conversation(conversation)
 
-        ret = preprocess(
-            [self.raw_data[i]['conversations']],
-            tokenizer=self.tokenizer,
-        )
+        # Truncate sequence lengths
+        input_ids = input_ids[:self.max_seq_length]
+        labels = labels[:self.max_seq_length]
 
-        ret = {
-            'input_ids': ret['input_ids'][0],
-            'labels': ret['labels'][0],
-            'attention_mask': ret['attention_mask'][0],
+        return {'input_ids': input_ids, 'labels': labels}
+
+
+@dataclass
+class ConversationDataset(Dataset):
+    """
+    Dataset for multi-turn conversations using Transformer model.
+
+    Attributes:
+        raw_data: The preprocessed dataset dict to load
+        tokenizer: Pretrained tokenizer
+        max_seq_length: Maximum length of sequence
+    """
+    def __init__(
+        self,
+        raw_data: datasets.DatasetDict,
+        tokenizer: PreTrainedTokenizer,
+        max_seq_length: int = 1024,
+    ):
+        """
+        Initialize the dataset with conversations, tokenizer and max sequence length.
+        """
+        self.raw_data = raw_data
+        self.tokenizer = tokenizer
+        self.max_seq_length = max_seq_length
+
+        self.roles = ['human', 'gpt']
+
+    def tokenize_conversation(
+        self,
+        conversation: List[Dict],
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """
+        Tokenize a single conversation into input IDs and labels.
+
+        Args:
+            conversation: List of turns in the conversation
+
+        Returns:
+            input_ids: Tensor of input IDs
+            labels: Tensor of word IDs for language modeling
+        """
+
+        context = []
+        for i, turn in enumerate(conversation):
+            role = turn['from']
+            assert role == self.roles[i % 2]
+            context.append(turn['value'])
+
+        encoded = self.tokenizer(context, add_special_tokens=False)
+
+        input_ids = [self.tokenizer.bos_token_id]
+        target_mask = [0]
+        labels = [IGNORE_INDEX]
+
+        for i, ids in enumerate(encoded.input_ids):
+            input_ids += ids + [self.tokenizer.eos_token_id]
+
+            if i % 2 == 0:  # Human turn
+                target_mask += [0] * (len(ids) + 1)
+                labels += [IGNORE_INDEX] * (len(ids) + 1)
+
+            else:  # Assistant turn
+                target_mask += [1] * (len(ids) + 1)
+                labels += ids + [self.tokenizer.eos_token_id]
+
+        assert len(input_ids) == len(target_mask) == len(labels)
+
+        return (torch.tensor(input_ids, dtype=torch.long),
+                torch.tensor(target_mask, dtype=torch.long),
+                torch.tensor(labels, dtype=torch.long))
+
+    def __len__(self) -> int:
+        return len(self.raw_data)
+
+    def __getitem__(self, index: int) -> Dict[str, torch.Tensor]:
+        """
+        Get the input IDs and labels for a specific conversation.
+
+        Args:
+            index: Index of the conversation
+
+        Returns:
+            Dictionary with input IDs and labels
+        """
+        conversation = self.raw_data[index]['conversations']
+        input_ids, target_mask, labels = self.tokenize_conversation(
+            conversation)
+
+        # Truncate sequence
+        input_ids = input_ids[:self.max_seq_length]
+        target_mask = target_mask[:self.max_seq_length]
+        labels = labels[:self.max_seq_length]
+
+        attention_mask = torch.ones_like(input_ids)
+
+        return {
+            'input_ids': input_ids,
+            'attention_mask': attention_mask,
+            'labels': labels,
+            'target_mask': target_mask
         }
-        self.cached_data_dict[i] = ret
 
-        return ret
+
+@dataclass
+class ConversationDataCollator(object):
+    """
+    Collate and pad a batch of conversation examples to prepare for training.
+    """
+    def __init__(
+        self,
+        tokenizer: PreTrainedTokenizer,
+        max_seq_length: int = 1024,
+    ):
+        self.tokenizer = tokenizer
+        self.max_seq_length = max_seq_length
+        self.pad_token_id = tokenizer.pad_token_id
+
+    def __call__(self, batch: List[Dict[str, Any]]) -> Dict[str, torch.Tensor]:
+        lengths = [len(ex['input_ids']) for ex in batch]
+        max_length = min(max(lengths), self.max_seq_length)
+
+        batch_input_ids = []
+        batch_att_masks = []
+        batch_target_masks = []
+
+        for ex in batch:
+            input_ids = ex['input_ids']
+            attention_mask = ex['attention_mask']
+            target_mask = ex['target_mask']
+
+            padding_length = max_length - len(input_ids)
+
+            input_ids = input_ids + [self.pad_token_id] * padding_length
+            attention_mask = attention_mask + [0] * padding_length
+            target_mask = target_mask + [0] * padding_length
+
+            input_ids = input_ids[:self.max_seq_length]
+            attention_mask = attention_mask[:self.max_seq_length]
+            target_mask = target_mask[:self.max_seq_length]
+
+            batch_input_ids.append(input_ids)
+            batch_att_masks.append(attention_mask)
+            batch_target_masks.append(target_mask)
+
+        batch_input_ids = torch.tensor(batch_input_ids, dtype=torch.long)
+        batch_att_masks = torch.tensor(batch_att_masks, dtype=torch.long)
+        batch_target_masks = torch.tensor(batch_target_masks, dtype=torch.long)
+
+        return {
+            'input_ids': batch_input_ids,
+            'attention_mask': batch_att_masks,
+            'target_mask': batch_target_masks
+        }
 
 
 def make_conversation_data_module(
     tokenizer: PreTrainedTokenizer,
-    lazy_preprocess: bool,
-    data_path: str,
+    conversation_template: str = 'default',
+    data_path: str = './data/share_gpt.json',
+    test_size: float = 0.1,
 ) -> Dict[str, Dataset]:
     """
-    Make dataset and collator for supervised fine-tuning.
+    Create dataset and collator for conversation modeling.
 
     Args:
         tokenizer (PreTrainedTokenizer): The tokenizer object.
-        lazy_preprocess (bool): Flag indicating whether to use lazy preprocessing.
+        use_vicuna_prompt (bool): Flag indicating whether to use vicuna_prompt.
         data_path (str): The path to the data file or directory.
 
     Returns:
         dict: A dictionary containing the train_dataset and eval_dataset.
 
     """
-    # Determine the appropriate dataset class based on lazy_preprocess flag
-
-    dataset_cls = (LazySupervisedDataset
-                   if lazy_preprocess else SupervisedDataset)
+    # Determine the appropriate dataset class based on dataset_type flag
+    dataset_cls = (VicunaDataset if conversation_template == 'vicuna' else
+                   ConversationDataset)
 
     print('Loading data...')
     # Load the raw data from the specified data_path
@@ -264,18 +329,32 @@ def make_conversation_data_module(
         raw_data = load_dataset(data_path)['train']
 
     # Split the data into training and evaluation sets
-    raw_data = raw_data.train_test_split(test_size=0.1)
+    raw_data = raw_data.train_test_split(test_size=test_size)
     train_raw_data = raw_data['train']
     eval_raw_data = raw_data['test']
 
     print(f'#train {len(train_raw_data)}, #eval {len(eval_raw_data)}')
 
     # Create train and eval datasets using the chosen dataset class
-    train_dataset = dataset_cls(train_raw_data, tokenizer=tokenizer)
-    eval_dataset = dataset_cls(eval_raw_data, tokenizer=tokenizer)
+    max_seq_length = tokenizer.model_max_length
+    train_dataset = dataset_cls(train_raw_data,
+                                tokenizer=tokenizer,
+                                max_seq_length=max_seq_length)
+    eval_dataset = dataset_cls(train_raw_data,
+                               tokenizer=tokenizer,
+                               max_seq_length=max_seq_length)
 
     print('train_dataset: ', train_dataset, type(train_dataset), 'length: ',
           len(train_dataset))
     print('eval_dataset: ', eval_dataset, type(eval_dataset), 'length: ',
           len(eval_dataset))
-    return {'train_dataset': train_dataset, 'eval_dataset': eval_dataset}
+
+    # Create data collator
+    data_collator = DataCollatorForSupervisedDataset(tokenizer=tokenizer)
+    print('data_collator: ', type(data_collator))
+
+    return {
+        'train_dataset': train_dataset,
+        'eval_dataset': eval_dataset,
+        'data_collator': data_collator
+    }

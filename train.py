@@ -9,8 +9,7 @@ from transformers import (AutoModelForCausalLM, AutoTokenizer,
                           PreTrainedTokenizer, Trainer)
 
 from chatllms.configs import DataArguments, ModelArguments, TrainingArguments
-from chatllms.data.conv_dataset import make_conversation_data_module
-from chatllms.data.sft_dataset import make_supervised_data_module
+from chatllms.data import make_supervised_data_module
 from chatllms.utils.model_utils import (add_special_tokens_if_missing,
                                         safe_save_model_for_hf_trainer)
 
@@ -102,16 +101,7 @@ def train() -> None:
 
     # Create a supervised dataset and Trainer, then train the model
     logging.warning('Creating a supervised dataset and DataCollator...')
-    if not args.multiturn_dialogue:
-        logging.warning('Training data is not a multiturn dialogue formate')
-        data_module = make_supervised_data_module(tokenizer=tokenizer,
-                                                  args=args)
-    else:
-        logging.warning('Training data is a multiturn dialogue formate')
-        data_module = make_conversation_data_module(
-            tokenizer=tokenizer,
-            lazy_preprocess=args.lazy_preprocess,
-            data_path=args.data_path)
+    data_module = make_supervised_data_module(tokenizer=tokenizer, args=args)
 
     # Initialize the Trainer object and start training
     logging.warning('Initializing Trainer object.')
