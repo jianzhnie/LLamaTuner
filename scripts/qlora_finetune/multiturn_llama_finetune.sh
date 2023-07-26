@@ -1,8 +1,7 @@
 CUDA_VISIBLE_DEVICES=8 python train_qlora.py \
     --model_name_or_path  ~/checkpoints/llama7b  \
-    --multiturn_dialogue True \
-    --data_path ~/prompt_data/belle_group/school_math_vicuna.json \
-    --output_dir ./work_dir/school_math_vicuna-llama-7b-1gpu \
+    --dataset_name vicuna_merge \
+    --output_dir ./work_dir/vicuna_merge_llama-7b-1gpu  \
     --num_train_epochs 3 \
     --per_device_train_batch_size 8 \
     --per_device_eval_batch_size 8 \
