@@ -336,13 +336,13 @@ def make_conversation_data_module(
     print(f'#train {len(train_raw_data)}, #eval {len(eval_raw_data)}')
 
     # Create train and eval datasets using the chosen dataset class
-    max_length = tokenizer.model_max_length
+    max_seq_length = tokenizer.model_max_length
     train_dataset = dataset_cls(train_raw_data,
                                 tokenizer=tokenizer,
-                                max_seq_length=max_length)
+                                max_seq_length=max_seq_length)
     eval_dataset = dataset_cls(train_raw_data,
                                tokenizer=tokenizer,
-                               max_seq_length=max_length)
+                               max_seq_length=max_seq_length)
 
     print('train_dataset: ', train_dataset, type(train_dataset), 'length: ',
           len(train_dataset))
