@@ -4,11 +4,10 @@ from typing import Any, Dict, List, Tuple
 
 import datasets
 import torch
-from datasets import load_dataset
 from torch.utils.data import Dataset
 from transformers import PreTrainedTokenizer
 
-from chatllms.data.data_utils import IGNORE_INDEX
+from chatllms.data.data_utils import IGNORE_INDEX, make_data_module
 from chatllms.data.sft_dataset import DataCollatorForSupervisedDataset
 
 
@@ -299,12 +298,8 @@ class ConversationDataCollator(object):
         }
 
 
-def make_conversation_data_module(
-    tokenizer: PreTrainedTokenizer,
-    conversation_template: str = 'default',
-    data_path: str = './data/share_gpt.json',
-    test_size: float = 0.1,
-) -> Dict[str, Dataset]:
+def make_conversation_data_module(tokenizer: PreTrainedTokenizer,
+                                  args) -> Dict[str, Dataset]:
     """
     Create dataset and collator for conversation modeling.
 
@@ -318,38 +313,27 @@ def make_conversation_data_module(
 
     """
     # Determine the appropriate dataset class based on dataset_type flag
-    dataset_cls = (VicunaDataset if conversation_template == 'vicuna' else
+    dataset_cls = (VicunaDataset if args.conversation_template == 'vicuna' else
                    ConversationDataset)
 
-    print('Loading data...')
-    # Load the raw data from the specified data_path
-    if data_path.endswith('.json') or data_path.endswith('.jsonl'):
-        raw_data = load_dataset('json', data_files=data_path)['train']
-    else:
-        raw_data = load_dataset(data_path)['train']
-
-    # Split the data into training and evaluation sets
-    raw_data = raw_data.train_test_split(test_size=test_size)
-    train_raw_data = raw_data['train']
-    eval_raw_data = raw_data['test']
-
-    print(f'#train {len(train_raw_data)}, #eval {len(eval_raw_data)}')
+    train_raw_data, eval_raw_data = make_data_module(args)
 
     # Create train and eval datasets using the chosen dataset class
     max_seq_length = tokenizer.model_max_length
     train_dataset = dataset_cls(train_raw_data,
                                 tokenizer=tokenizer,
                                 max_seq_length=max_seq_length)
-    eval_dataset = dataset_cls(train_raw_data,
+    eval_dataset = dataset_cls(eval_raw_data,
                                tokenizer=tokenizer,
                                max_seq_length=max_seq_length)
 
-    print('train_dataset: ', train_dataset, type(train_dataset), 'length: ',
+    print('train_dataset: ', train_dataset, type(train_dataset), '#length: ',
           len(train_dataset))
-    print('eval_dataset: ', eval_dataset, type(eval_dataset), 'length: ',
+    print('eval_dataset: ', eval_dataset, type(eval_dataset), '#length: ',
           len(eval_dataset))
 
     # Create data collator
+    print('Adding data collator: ', DataCollatorForSupervisedDataset)
     data_collator = DataCollatorForSupervisedDataset(tokenizer=tokenizer)
     print('data_collator: ', type(data_collator))
 
