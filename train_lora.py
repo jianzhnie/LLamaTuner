@@ -104,7 +104,9 @@ def get_peft_state_maybe_zero_3(named_params: List[Tuple[str, torch.Tensor]],
     return to_return
 
 
-def load_model_tokenizer(args) -> Tuple[PreTrainedModel, PreTrainedTokenizer]:
+def load_model_tokenizer(
+        args: argparse.Namespace
+) -> Tuple[PreTrainedModel, PreTrainedTokenizer]:
     """
     Load a pre-trained model and tokenizer for natural language processing tasks.
 
@@ -114,6 +116,15 @@ def load_model_tokenizer(args) -> Tuple[PreTrainedModel, PreTrainedTokenizer]:
     Returns:
         A tuple containing the loaded model and tokenizer.
     """
+
+    # Determine torch dtype for model based on arguments
+    if args.fp16:
+        compute_dtype = torch.float16
+    elif args.bf16:
+        compute_dtype = torch.bfloat16
+    else:
+        compute_dtype = torch.float32
+
     device_map: Union[str, None] = 'auto'
     if args.q_lora:
         world_size = int(os.environ.get('WORLD_SIZE', 1))
@@ -123,10 +134,6 @@ def load_model_tokenizer(args) -> Tuple[PreTrainedModel, PreTrainedTokenizer]:
         if len(args.fsdp) > 0 or deepspeed.is_deepspeed_zero3_enabled():
             logging.warning(
                 'FSDP and ZeRO3 are both currently incompatible with QLoRA.')
-
-    # Determine the torch data type based on the input arguments
-    compute_dtype = torch.float16 if args.fp16 else (
-        torch.bfloat16 if args.bf16 else torch.float32)
 
     # Set configuration kwargs for tokenizer.
     config_kwargs = {
@@ -151,6 +158,8 @@ def load_model_tokenizer(args) -> Tuple[PreTrainedModel, PreTrainedTokenizer]:
         torch_dtype=compute_dtype,
         **config_kwargs,
     )
+
+    # Add LoRA sparsity if specified
     logging.warning('Adding LoRA modules...')
     lora_config = LoraConfig(
         r=args.lora_r,
@@ -171,6 +180,8 @@ def load_model_tokenizer(args) -> Tuple[PreTrainedModel, PreTrainedTokenizer]:
 
     logging.warning('Get the get peft model...')
     model = get_peft_model(model, lora_config)
+    if args.deepspeed is not None and args.local_rank == 0:
+        model.print_trainable_parameters()
 
     if args.gradient_checkpointing:
         logging.warning('Using gradient checkpointing...')
