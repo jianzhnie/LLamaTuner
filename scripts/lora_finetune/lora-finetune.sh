@@ -1,5 +1,5 @@
 python train_lora.py \
-    --model_name_or_path  decapoda-research/llama-7b-hf  \
+    --model_name_or_path facebook/opt-125m \
     --dataset_name 100PoisonMpts \
     --output_dir work_dir/lora-finetune \
     --num_train_epochs 3 \
@@ -15,7 +15,7 @@ python train_lora.py \
     --warmup_ratio 0.03 \
     --optim "adamw_torch" \
     --lr_scheduler_type "cosine" \
-    --model_max_length 2048 \
+    --model_max_length 1024 \
     --logging_steps 1 \
     --do_train \
     --do_eval \
