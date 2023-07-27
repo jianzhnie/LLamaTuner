@@ -43,7 +43,7 @@ class VicunaDataset(Dataset):
         self.roles = {'human': 'USER', 'gpt': 'ASSISTANT'}
 
         # Description of the conversation
-        self.system = 'A friendly conversation between a human and an artificial intelligence assistant.'
+        self.system = "A chat between a curious user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions."
 
         # Token to use at the start of each turn
         self.start_token = '\n'
