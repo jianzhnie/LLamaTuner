@@ -1,7 +1,7 @@
 
-## How to use the data
+# How to use the data
 
-### Datasets Supported by the Framework
+## Datasets Supported by the Framework
 
 We provide the following datasets for the experiments in this framework.
 
@@ -25,9 +25,9 @@ We provide the following datasets for the experiments in this framework.
 - [timdettmers/openassistant-guanaco](https://huggingface.co/datasets/timdettmers/openassistant-guanaco)
 - [Evol-Instruct](https://huggingface.co/datasets/victor123/evol_instruct_70k)
 
-### Dataset formation
+## Dataset formation
 
-The `dataset_info.yaml` file contains the information of the datasets. The format of the file is as follows.
+The `dataset_info.yaml` file contains the information of the datasets, main including the following fields.
 
 ```yaml
 dataset_name:
@@ -46,7 +46,7 @@ alpaca:
   dataset_format: alpaca
   multi_turn: False
 ```
-This will load the dataset from the HuggingFace hub. If you want to load the dataset from local files, please specify the `local_path` field.
+While training, the framework will load the dataset from the HuggingFace hub. If you want to load the dataset from local files, please specify the `local_path` field.
 
 ```yaml
 alpaca:
@@ -56,16 +56,17 @@ alpaca:
   multi_turn: False
 ```
 
-### Custom datasets
+## Custom datasets
 
 If you are using a custom dataset, please provide your dataset definition in  `dataset_info.yaml`.
 
-#### hf_hub_url and local_path
+### hf_hub_url and local_path
 
-By defaullt, the framework will load the datasets from the HuggingFace hub. If you want to use the datasets from local files, please specify the `local_path` in the `dataset_info.yaml` file.
+By defaullt, the framework will load the datasets from the HuggingFace hub. If you want to use the datasets from local files, please specify the `local_path`  field.
 
-#### dataset_format
-As for the dataset_format field, which is used to specify the format of the dataset, will good for the framework to process the dataset. Currently, we support the following dataset formats.
+### dataset_format
+
+As for the dataset_format field, which is used to specify the format of the dataset, will be used to determine the dataset processing method. Currently, we support the following dataset formats.
 
 - `alpaca`: Alpaca dataset
 - `dolly`: Dolly dataset
@@ -76,7 +77,9 @@ As for the dataset_format field, which is used to specify the format of the data
 
 If your dataset is not in the above format, there are two ways to use it.
 
-- The first way, Implement the `format_dataset` function in `./chatllms/data/data_utils.py` to formate your dataset. For example, the following is the `_format_dolly15k` function for the Dolly dataset.
+- The first way, implement the `format_dataset` function in [data_utils](./chatllms/data/data_utils.py).
+
+For example, the following is the `_format_dolly15k` function for the Dolly dataset.
 
 ```python
 def _format_dolly15k(dataset: Dataset) -> Dataset:
@@ -86,9 +89,9 @@ def _format_dolly15k(dataset: Dataset) -> Dataset:
     return dataset
 ```
 
-- The second way, convert your dataset to the above format and specify the `dataset_format` field in `dataset_info.yaml`.
+- The second way, convert your dataset to the above format.
 
-For example, if we want to convert the [databricks-dolly-15k](https://huggingface.co/datasets/databricks/databricks-dolly-15k) into  Alpaca formate, you can refer to the following code.
+For example, the flowing code is used to convert the [databricks-dolly-15k](https://huggingface.co/datasets/databricks/databricks-dolly-15k) to the Alpaca format.
 
 ```python
 import json
@@ -108,9 +111,11 @@ def convert_dolly_alpaca(in_file, out_file):
         json.dump(new_content, file, indent=2, ensure_ascii=False)
 ```
 
-#### multi_turn
+### multi_turn
 
-If your dataset is multi-turn, please specify the `multi_turn` field in `dataset_info.yaml`. The framework will automatically process the multi-turn dataset. Flowing is an example of the multi-turn dataset.
+If your dataset is multi-turn, pleas set the `multi_turn: True` in `dataset_info.yaml`. The framework will automatically process the multi-turn dataset.
+
+Flowing is an example to show the format of multi-turn dataset.
 
 ```json
 [
@@ -151,7 +156,7 @@ If your dataset is multi-turn, please specify the `multi_turn` field in `dataset
 ]
 ```
 
-For now, we only support the multi-turn dataset in the above format. If your dataset is not in the above format, please convert it. We also provide the following code to convert the Dolly dataset to the above format. You can find the code in `./chatllms/data/utils/convert_alpaca.py`.
+For now, we only support the multi-turn dataset in the above format. If your dataset is not in the above format, please convert it. We also provide the following code to convert the Dolly dataset to the above format. You can find the code in [convert_alpaca](`./chatllms/data/utils/convert_alpaca.py`).
 
 ```python
 import argparse
