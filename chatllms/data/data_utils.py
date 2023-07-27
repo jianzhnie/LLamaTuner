@@ -261,7 +261,7 @@ def load_data(
 def formate_instruction_dataset(
         dataset: Dataset,
         dataset_name: str,
-        dataset_formate: str,
+        dataset_format: str,
         instruction_template: str = 'default') -> Optional[Dict[str, Dataset]]:
     """
     Formats a given dataset based on its name and format.
@@ -275,7 +275,7 @@ def formate_instruction_dataset(
     Args:
         dataset: A dataset object to be formatted.
         dataset_name: A string representing the name of the dataset to be formatted.
-        dataset_formate: A string representing the name of the dataset format to be used.
+        dataset_format: A string representing the name of the dataset format to be used.
         instruction_template: A string representing the name of the prompt template to be used.
 
     Returns:
@@ -333,24 +333,24 @@ def formate_instruction_dataset(
         return dataset
 
     # Format dataset
-    print(f'The {dataset_name} using {dataset_formate} dataset format.')
-    if dataset_formate == 'alpaca':
+    print(f'The {dataset_name} using {dataset_format} dataset format.')
+    if dataset_format == 'alpaca':
         print('By default, We support the Alpaca dataset format.')
-    elif dataset_formate == 'dolly':
+    elif dataset_format == 'dolly':
         dataset = _format_dolly15k(dataset)
-    elif dataset_formate == 'chip2':
+    elif dataset_format == 'chip2':
         dataset = _format_chip2(dataset)
-    elif dataset_formate == 'self-instruct':
+    elif dataset_format == 'self-instruct':
         dataset = _format_self_instruct(dataset)
-    elif dataset_formate == 'hh-rlhf':
+    elif dataset_format == 'hh-rlhf':
         dataset = _format_hh_rlhf(dataset)
-    elif dataset_formate == 'oasst1':
+    elif dataset_format == 'oasst1':
         dataset = _format_oasst1(dataset)
-    elif dataset_formate == '100PoisonMpts':
+    elif dataset_format == '100PoisonMpts':
         dataset = _format_100Poison(dataset)
     else:
         raise NotImplementedError(
-            f'Unsupported dataset format: {dataset_formate},  Please add the formate function in data_utils.py'
+            f'Unsupported dataset format: {dataset_format},  Please add the formate function in data_utils.py'
         )
     # encode_instruction_example
     print(f'Applying instruction template: {instruction_template}')
@@ -485,7 +485,7 @@ def make_data_module(args):
             dataset = formate_instruction_dataset(
                 dataset,
                 dataset_name=dataset_attr.dataset_name,
-                dataset_formate=dataset_attr.dataset_formate,
+                dataset_format=dataset_attr.dataset_format,
                 instruction_template=args.instruction_template,
             )
 
