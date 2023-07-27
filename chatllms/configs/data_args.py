@@ -16,7 +16,8 @@ class DatasetAttr(object):
     multi_turn: Optional[bool] = False
 
     def __repr__(self) -> str:
-        return self.dataset_name
+        rep = f'#dataset_name: {self.dataset_name},  #hf_hub_url: {self.hf_hub_url}, #local_path: {self.local_path}, #load_from_local: {self.load_from_local}, #multi_turn: {self.multi_turn}'
+        return rep
 
     def __post_init__(self):
         self.prompt_column = 'instruction'

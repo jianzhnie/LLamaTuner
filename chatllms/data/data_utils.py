@@ -242,12 +242,16 @@ def load_data(
     """
     if not os.path.exists(dataset_path):
         # Download dataset from HuggingFace Datasets
+        print(
+            f'Lodding dataset from huggingface, please ref to https://huggingface.co/datasets/{dataset_path}'
+        )
         dataset = load_dataset(dataset_path,
                                cache_dir='~/.cache/huggingface/datasets')
         return dataset
     else:
         # Load dataset from local file
         try:
+            print(f'Lodding dataset from local path: {dataset_path}')
             dataset = local_dataset(dataset_path, eval_dataset_size)
             return dataset
         except:
@@ -346,16 +350,12 @@ def formate_instruction_dataset(
         pass
 
     # encode_instruction_example
-    print(
-        f'Encoding the instruction example refer to : {instruction_template}')
+    print(f'Applying instruction template: {instruction_template}')
     if instruction_template == 'alpaca':
-        print('Using alpaca prompt template: ', {instruction_template})
         dataset = dataset.map(extract_alpaca_prompt_dataset)
     elif instruction_template == 'random':
-        print('Using random prompt template: ', {instruction_template})
         dataset = dataset.map(extract_random_prompt_dataset)
     else:
-        print('Using default prompt template: ', {instruction_template})
         dataset = dataset.map(extract_default_prompt_dataset)
 
     # Remove unused columns.
@@ -461,12 +461,12 @@ def make_data_module(args):
     ), 'All datasets should be multi-turn or single-turn. As follwing we will concat all datasets, so they should be in the same format.'
 
     for dataset_attr in args.datasets_list:
-        print('Loading dataset {}...'.format(dataset_attr))
+        print('DatasetAttr:  {}...'.format(dataset_attr))
 
         if dataset_attr.load_from_local:
             dataset_path = dataset_attr.local_path
         elif dataset_attr.hf_hub_url:
-            dataset_path = dataset_attr.dataset_name
+            dataset_path = dataset_attr.hf_hub_url
 
         dataset = load_data(dataset_path,
                             eval_dataset_size=args.eval_dataset_size)
