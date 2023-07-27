@@ -11,12 +11,14 @@ class DatasetAttr(object):
     dataset_name: Optional[str] = None
     hf_hub_url: Optional[str] = None
     local_path: Optional[str] = None
+    dataset_format: Optional[str] = None
     dataset_sha1: Optional[str] = None
     load_from_local: bool = False
     multi_turn: Optional[bool] = False
 
     def __repr__(self) -> str:
-        return self.dataset_name
+        rep = f'dataset_name: {self.dataset_name},  hf_hub_url: {self.hf_hub_url}, local_path: {self.local_path}, data_formate:{self.dataset_format}   load_from_local: {self.load_from_local}, multi_turn: {self.multi_turn}'
+        return rep
 
     def __post_init__(self):
         self.prompt_column = 'instruction'
@@ -90,6 +92,8 @@ class DataArguments:
 
             dataset_attr = DatasetAttr()
             dataset_attr.dataset_name = name
+            dataset_attr.dataset_format = datasets_info[name].get(
+                'dataset_format', None)
             dataset_attr.hf_hub_url = datasets_info[name].get(
                 'hf_hub_url', None)
             dataset_attr.local_path = datasets_info[name].get(

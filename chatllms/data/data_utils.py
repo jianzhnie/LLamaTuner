@@ -242,12 +242,16 @@ def load_data(
     """
     if not os.path.exists(dataset_path):
         # Download dataset from HuggingFace Datasets
+        print(
+            f'Lodding dataset from huggingface, please ref to https://huggingface.co/datasets/{dataset_path}'
+        )
         dataset = load_dataset(dataset_path,
                                cache_dir='~/.cache/huggingface/datasets')
         return dataset
     else:
         # Load dataset from local file
         try:
+            print(f'Lodding dataset from local path: {dataset_path}')
             dataset = local_dataset(dataset_path, eval_dataset_size)
             return dataset
         except:
@@ -257,6 +261,7 @@ def load_data(
 def formate_instruction_dataset(
         dataset: Dataset,
         dataset_name: str,
+        dataset_format: str,
         instruction_template: str = 'default') -> Optional[Dict[str, Dataset]]:
     """
     Formats a given dataset based on its name and format.
@@ -270,6 +275,7 @@ def formate_instruction_dataset(
     Args:
         dataset: A dataset object to be formatted.
         dataset_name: A string representing the name of the dataset to be formatted.
+        dataset_format: A string representing the name of the dataset format to be used.
         instruction_template: A string representing the name of the prompt template to be used.
 
     Returns:
@@ -326,36 +332,33 @@ def formate_instruction_dataset(
         ])
         return dataset
 
-    print('formate the dataset to the format we need.')
-    if dataset_name == 'dolly-15k':
+    # Format dataset
+    print(f'The {dataset_name} using {dataset_format} dataset format.')
+    if dataset_format == 'alpaca':
+        print('By default, We support the Alpaca dataset format.')
+    elif dataset_format == 'dolly':
         dataset = _format_dolly15k(dataset)
-    elif dataset_name == 'chip2':
+    elif dataset_format == 'chip2':
         dataset = _format_chip2(dataset)
-    elif dataset_name == 'self-instruct':
+    elif dataset_format == 'self-instruct':
         dataset = _format_self_instruct(dataset)
-    elif dataset_name == 'hh-rlhf':
+    elif dataset_format == 'hh-rlhf':
         dataset = _format_hh_rlhf(dataset)
-    elif dataset_name == 'oasst1':
+    elif dataset_format == 'oasst1':
         dataset = _format_oasst1(dataset)
-    elif dataset_name == '100PoisonMpts':
+    elif dataset_format == '100PoisonMpts':
         dataset = _format_100Poison(dataset)
     else:
-        print(
-            f'For dataset {dataset_name} with alpaca dataset formation, we do not need additional processing'
+        raise NotImplementedError(
+            f'Unsupported dataset format: {dataset_format},  Please add the formate function in data_utils.py'
         )
-        pass
-
     # encode_instruction_example
-    print(
-        f'Encoding the instruction example refer to : {instruction_template}')
+    print(f'Applying instruction template: {instruction_template}')
     if instruction_template == 'alpaca':
-        print('Using alpaca prompt template: ', {instruction_template})
         dataset = dataset.map(extract_alpaca_prompt_dataset)
     elif instruction_template == 'random':
-        print('Using random prompt template: ', {instruction_template})
         dataset = dataset.map(extract_random_prompt_dataset)
     else:
-        print('Using default prompt template: ', {instruction_template})
         dataset = dataset.map(extract_default_prompt_dataset)
 
     # Remove unused columns.
@@ -402,13 +405,16 @@ def split_train_eval(
         else:
             # Split train dataset in train and validation according to `eval_dataset_size`
             print(
-                'Splitting train dataset in train and validation according to `eval_dataset_size`'
+                f'Splitting the dataset into train and validation according to `eval_dataset_size`:  {eval_dataset_size}'
             )
             dataset = dataset['train'].train_test_split(
                 test_size=eval_dataset_size, shuffle=True, seed=42)
             eval_dataset = dataset['test']
 
         # Reduce evaluation dataset size (if specified)
+        print(
+            f'You have set the max_eval_samples: {max_eval_samples}, will do sampling ...'
+        )
         if max_eval_samples is not None and len(
                 eval_dataset) > max_eval_samples:
             eval_dataset = eval_dataset.select(np.arange(max_eval_samples))
@@ -418,6 +424,9 @@ def split_train_eval(
         train_dataset = dataset['train']
 
         # Reduce training dataset size (if specified)
+        print(
+            f'You have set the max_train_samples: {max_train_samples}, will do sampling ...'
+        )
         if max_train_samples is not None and len(
                 train_dataset) > max_train_samples:
             train_dataset = train_dataset.select(np.arange(max_train_samples))
@@ -461,12 +470,13 @@ def make_data_module(args):
     ), 'All datasets should be multi-turn or single-turn. As follwing we will concat all datasets, so they should be in the same format.'
 
     for dataset_attr in args.datasets_list:
-        print('Loading dataset {}...'.format(dataset_attr))
+        print('=' * 80)
+        print('DatasetAttr:  {}...'.format(dataset_attr))
 
         if dataset_attr.load_from_local:
             dataset_path = dataset_attr.local_path
         elif dataset_attr.hf_hub_url:
-            dataset_path = dataset_attr.dataset_name
+            dataset_path = dataset_attr.hf_hub_url
 
         dataset = load_data(dataset_path,
                             eval_dataset_size=args.eval_dataset_size)
@@ -475,6 +485,7 @@ def make_data_module(args):
             dataset = formate_instruction_dataset(
                 dataset,
                 dataset_name=dataset_attr.dataset_name,
+                dataset_format=dataset_attr.dataset_format,
                 instruction_template=args.instruction_template,
             )
 

@@ -71,7 +71,7 @@ class TrainingArguments(TrainingArguments):
             'Group sequences into batches with same length. Saves memory and speeds up training considerably.'
         })
     model_max_length: int = field(
-        default=2048,
+        default=1024,
         metadata={
             'help':
             'Maximum sequence length. Sequences will be right padded (and possibly truncated).'
