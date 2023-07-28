@@ -74,8 +74,7 @@ def args_parser():
 def main(args):
     if args.lora_model_name_or_path is not None:
         model, tokenizer = apply_lora(args.model_name_or_path,
-                                      args.lora_model_name_or_path,
-                                      load_8bit=args.load_8bit)
+                                      args.lora_model_name_or_path)
     else:
         tokenizer = AutoTokenizer.from_pretrained(
             pretrained_model_name_or_path=args.model_name_or_path,
@@ -87,12 +86,7 @@ def main(args):
             device_map='auto',
             trust_remote_code=True)
 
-    if not args.load_8bit:
-        model.half()  # seems to fix bugs for some users.
     # unwind broken decapoda-research config
-    model.config.pad_token_id = tokenizer.pad_token_id = 0  # unk
-    model.config.bos_token_id = 1
-    model.config.eos_token_id = 2
     prompter = Prompter()
 
     def evaluate(
