@@ -4,7 +4,8 @@ import torch
 import transformers
 from transformers import (AutoModelForCausalLM, AutoTokenizer,
                           TextIteratorStreamer)
-
+import sys
+sys.path.append("../")
 from chatllms.configs import GenerationArguments, ModelInferenceArguments
 from chatllms.utils.model_utils import get_logits_processor
 

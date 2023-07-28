@@ -86,5 +86,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     apply_lora(base_model_path=args.base_model_path,
-               lora_path=args.lora_model_path,
-               target_model_path=args.target_model_path)
+               lora_model_path=args.lora_model_path,
+               target_model_path=args.target_model_path
+               )
