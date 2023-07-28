@@ -18,7 +18,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 
 def apply_lora(
     base_model_path: str,
-    lora_path: str,
+    lora_model_path: str,
     target_model_path: str = None,
     cache_dir: str = None,
     use_auth_token: str = True,
@@ -28,7 +28,7 @@ def apply_lora(
 
     Args:
         base_model_path (str): The path to the base model to which the LoRA adapter will be applied.
-        lora_path (str): The path to the LoRA adapter.
+        lora_model_path (str): The path to the LoRA adapter.
         target_model_path (str): The path where the target model will be saved (if `save_target_model=True`).
         cache_dir (str): The path to the cache directory.
         use_auth_token (bool): Whether to use an authentication token when downloading the model.
@@ -61,16 +61,12 @@ def apply_lora(
     tokenizer = AutoTokenizer.from_pretrained(
         base_model_path,
         use_fast=False,
-        tokenizer_type='llama' if 'llama' in base_model_path else None,
         **config_kwargs,
     )
 
     # Load the LoRA adapter
-    print(f'Loading the LoRA adapter from {lora_path}')
-    model = PeftModel.from_pretrained(
-        base_model,
-        lora_path,
-    )
+    print(f'Loading the LoRA adapter from {lora_model_path}')
+    model = PeftModel.from_pretrained(base_model, lora_model_path)
     print('Applying the LoRA')
     model = model.merge_and_unload()
 
@@ -86,12 +82,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--base-model-path', type=str, required=True)
     parser.add_argument('--target-model-path', type=str, default=None)
-    parser.add_argument('--lora-path', type=str, required=True)
+    parser.add_argument('--lora-model-path', type=str, required=True)
     args = parser.parse_args()
 
-    apply_lora(
-        base_model_path=args.base_model_path,
-        lora_path=args.lora_path,
-        target_model_path=args.target_model_path,
-        load_8bit=args.load_8bit,
-    )
+    apply_lora(base_model_path=args.base_model_path,
+               lora_path=args.lora_model_path,
+               target_model_path=args.target_model_path)
