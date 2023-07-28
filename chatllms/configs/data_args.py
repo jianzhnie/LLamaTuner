@@ -17,7 +17,12 @@ class DatasetAttr(object):
     multi_turn: Optional[bool] = False
 
     def __repr__(self) -> str:
-        rep = f'dataset_name: {self.dataset_name},  hf_hub_url: {self.hf_hub_url}, local_path: {self.local_path}, data_formate:{self.dataset_format}   load_from_local: {self.load_from_local}, multi_turn: {self.multi_turn}'
+        rep = (f'dataset_name: {self.dataset_name} || '
+               f'hf_hub_url: {self.hf_hub_url} || '
+               f'local_path: {self.local_path} \n'
+               f'data_formate: {self.dataset_format}  || '
+               f'load_from_local: {self.load_from_local} || '
+               f'multi_turn: {self.multi_turn}')
         return rep
 
     def __post_init__(self):
@@ -104,6 +109,11 @@ class DataArguments:
             if datasets_info[name]['local_path'] and os.path.exists(
                     datasets_info[name]['local_path']):
                 dataset_attr.load_from_local = True
+            else:
+                dataset_attr.load_from_local = False
+                raise Warning(
+                    'You have set local_path for {} but it does not exist! Will load the data from {}'
+                    .format(name, dataset_attr.hf_hub_url))
 
             if 'columns' in datasets_info[name]:
                 dataset_attr.prompt_column = datasets_info[name][

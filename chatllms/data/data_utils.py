@@ -471,12 +471,14 @@ def make_data_module(args):
 
     for dataset_attr in args.datasets_list:
         print('=' * 80)
-        print('DatasetAttr:  {}...'.format(dataset_attr))
+        print('DatasetAttr: {}'.format(dataset_attr))
 
         if dataset_attr.load_from_local:
             dataset_path = dataset_attr.local_path
         elif dataset_attr.hf_hub_url:
             dataset_path = dataset_attr.hf_hub_url
+        else:
+            raise ValueError('Please set the dataset path or hf_hub_url.')
 
         dataset = load_data(dataset_path,
                             eval_dataset_size=args.eval_dataset_size)
@@ -498,11 +500,11 @@ def make_data_module(args):
             max_train_samples=args.max_train_samples,
         )
         if train_dataset:
-            print('loaded dataset:', dataset_attr.dataset_name,
+            print('loaded dataset:', dataset_attr.dataset_name, ' ',
                   '#train data size:', len(train_dataset))
             train_datasets.append(train_dataset)
         if eval_dataset:
-            print('loaded dataset:', dataset_attr.dataset_name,
+            print('loaded dataset:', dataset_attr.dataset_name, ' '
                   '#eval data size:', len(eval_dataset))
             eval_datasets.append(eval_dataset)
 

@@ -34,8 +34,6 @@ def main():
     args = argparse.Namespace(**vars(model_args), **vars(data_args),
                               **vars(training_args), **vars(lora_args),
                               **vars(quant_args))
-
-    print(args.datasets_list)
     # init the logger before other steps
     timestamp = time.strftime('%Y%m%d_%H%M%S', time.localtime())
     if not os.path.exists(args.output_dir):
