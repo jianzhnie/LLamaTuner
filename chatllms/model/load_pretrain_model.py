@@ -60,6 +60,7 @@ def load_model_tokenizer(
     # Set configuration kwargs for tokenizer.
     config_kwargs = {
         'cache_dir': args.cache_dir,
+        'revision': args.model_revision,
         'use_auth_token': args.use_auth_token,
         'trust_remote_code': args.trust_remote_code,
     }

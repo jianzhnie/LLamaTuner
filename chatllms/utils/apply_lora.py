@@ -13,7 +13,7 @@ from typing import Tuple
 
 import torch
 from peft import PeftModel
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer, PreTrainedModel
 
 
 def apply_lora(
@@ -47,7 +47,7 @@ def apply_lora(
         'trust_remote_code': trust_remote_code,
     }
 
-    base_model = AutoModelForCausalLM.from_pretrained(
+    base_model: PreTrainedModel = AutoModelForCausalLM.from_pretrained(
         base_model_path,
         device_map='auto',
         torch_dtype=torch.float16,
@@ -66,8 +66,9 @@ def apply_lora(
 
     # Load the LoRA adapter
     print(f'Loading the LoRA adapter from {lora_model_path}')
-    model = PeftModel.from_pretrained(base_model, lora_model_path)
-    print('Applying the LoRA')
+    model: PreTrainedModel = PeftModel.from_pretrained(base_model,
+                                                       lora_model_path)
+    print('Applying the LoRA to  base model')
     model = model.merge_and_unload()
 
     if target_model_path is not None:
@@ -87,5 +88,4 @@ if __name__ == '__main__':
 
     apply_lora(base_model_path=args.base_model_path,
                lora_model_path=args.lora_model_path,
-               target_model_path=args.target_model_path
-               )
+               target_model_path=args.target_model_path)
