@@ -1,11 +1,12 @@
+import sys
 from threading import Thread
 
 import torch
 import transformers
 from transformers import (AutoModelForCausalLM, AutoTokenizer,
                           TextIteratorStreamer)
-import sys
-sys.path.append("../")
+
+sys.path.append('../')
 from chatllms.configs import GenerationArguments, ModelInferenceArguments
 from chatllms.utils.model_utils import get_logits_processor
 
@@ -29,7 +30,8 @@ def main(model_server_args, generation_args):
         use_fast=False,
     )
     input_pattern = '<s>{}</s>'
-    text = input('User：')
+    print('User: ', end='', flush=True)
+    text = input('')
     while True:
         text = text.strip()
         text = input_pattern.format(text)
@@ -60,7 +62,9 @@ def main(model_server_args, generation_args):
         for new_text in streamer:
             print(new_text, end='', flush=True)
             response += new_text
-        text = input('User：')
+        print('\n')
+        print('User: ', end='', flush=True)
+        text = input('')
 
 
 if __name__ == '__main__':

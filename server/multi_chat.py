@@ -38,6 +38,7 @@ def main(model_server_args, generation_args):
         inputs = tokenizer(historys,
                            return_tensors='pt',
                            add_special_tokens=False)
+        inputs = {k: v.to(model.device) for k, v in inputs.items()}
 
         # Create a TextIteratorStreamer object to stream the response from the model
         streamer = TextIteratorStreamer(tokenizer,
@@ -65,6 +66,7 @@ def main(model_server_args, generation_args):
             response += new_text
 
         historys = historys + response
+        print('\n')
         print('User: ', end='', flush=True)
         user_input = input('')
 
