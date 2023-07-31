@@ -13,7 +13,7 @@ from chatllms.data import make_supervised_data_module
 from chatllms.model import (MMLUEvalCallback, SampleGenerateCallback,
                             SavePeftModelCallback, load_model_tokenizer)
 from chatllms.train.training import train_and_evaluate
-from chatllms.utils.logging import get_root_logger
+from chatllms.utils.logger_utils import get_root_logger
 from chatllms.utils.model_utils import (get_last_checkpoint,
                                         print_trainable_parameters,
                                         verify_dtypes)
