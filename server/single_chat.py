@@ -102,9 +102,7 @@ def main():
     print('欢迎使用 CLI 对话系统，输入内容即可对话，clear 清空对话历史，stop 终止程序')
     input_pattern = '<s>{}</s>'
     while True:
-
-        print('User: ', end='', flush=True)
-        query = input('').strip()
+        query = input('\nUser: ')
         if query.strip() == 'stop':
             break
 
@@ -117,7 +115,6 @@ def main():
         query = input_pattern.format(query)
         # Perform prediction and printing
         generate_response(query, tokenizer, model, generation_args)
-        print('\n')
 
 
 if __name__ == '__main__':
