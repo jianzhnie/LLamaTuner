@@ -1,22 +1,19 @@
-import logging
 import os
 import platform
 from threading import Thread
 from typing import List, Tuple
 
+import torch
 import transformers
-from transformers import (PreTrainedModel, PreTrainedTokenizer,
-                          TextIteratorStreamer)
+from transformers import (AutoModelForCausalLM, AutoTokenizer, PreTrainedModel,
+                          PreTrainedTokenizer, TextIteratorStreamer)
 
 from chatllms.configs import GenerationArguments, ModelInferenceArguments
-from chatllms.model.load_pretrain_model import load_model_tokenizer
 from chatllms.utils.model_utils import get_logits_processor
 from chatllms.utils.template import PromptTemplate
 
-logger = logging.getLogger(__name__)
 
-
-def predict_and_print(
+def generate_response(
     query: str,
     history: List[Tuple[str, str]],
     source_prefix: str,
@@ -85,22 +82,30 @@ def main():
     parser = transformers.HfArgumentParser(
         (ModelInferenceArguments, GenerationArguments))
     model_server_args, generation_args = parser.parse_args_into_dataclasses()
+
     # Load the model and tokenizer
-    model, tokenizer = load_model_tokenizer(
-        args=model_server_args,
-        checkpoint_dir=model_server_args.checkpoint_dir,
-        is_trainable=False,
-        logger=logger,
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+    model = AutoModelForCausalLM.from_pretrained(
+        model_server_args.model_name_or_path,
+        trust_remote_code=True,
+        low_cpu_mem_usage=True,
+        torch_dtype=torch.float16,
+        device_map='auto').to(device).eval()
+
+    tokenizer = AutoTokenizer.from_pretrained(
+        model_server_args.model_name_or_path,
+        trust_remote_code=True,
+        use_fast=False,
     )
 
     prompt_template = PromptTemplate(model_server_args.prompt_template)
     source_prefix = model_server_args.source_prefix if model_server_args.source_prefix else ''
-    model_name = 'BLOOM' if 'bloom' in model_server_args.model_name_or_path else 'LLaMA'
     history: List[str] = []
-    print(f'欢迎使用 {model_name} 模型，输入内容即可对话，clear 清空对话历史，stop 终止程序')
+    print('欢迎使用 CLI 对话系统，输入内容即可对话，clear 清空对话历史，stop 终止程序')
     while True:
         try:
-            query = input('\nInput: ')
+            query = input('\nUser: ')
         except UnicodeDecodeError:
             print(
                 'Detected decoding error at the inputs, please set the terminal encoding to utf-8.'
@@ -113,12 +118,11 @@ def main():
             # Clear the conversation history
             history = []
             os.system(clear_command)
-            print('History has been removed.')
-            print(f'欢迎使用 {model_name} 模型，输入内容即可对话，clear 清空对话历史，stop 终止程序')
+            print('欢迎使用 CLI 对话系统，输入内容即可对话，clear 清空对话历史，stop 终止程序')
             continue
 
         # Perform prediction and printing
-        history = predict_and_print(query, history, source_prefix,
+        history = generate_response(query, history, source_prefix,
                                     prompt_template, tokenizer, model,
                                     generation_args)
 

@@ -15,3 +15,12 @@ class ModelInferenceArguments:
             'Maximum sequence length. Sequences will be right padded (and possibly truncated).'
         },
     )
+    prompt_template: str = field(
+        default='default',
+        metadata={
+            'help':
+            'Prompt template name. Such as vanilla, alpaca, llama2, vicuna..., etc.'
+        })
+    source_prefix: Optional[str] = field(
+        default=None,
+        metadata={'help': 'Prefix to prepend to every source text.'})
