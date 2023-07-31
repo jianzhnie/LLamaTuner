@@ -60,7 +60,6 @@ def main(model_server_args, generation_args):
         for new_text in streamer:
             print(new_text, end='', flush=True)
             response += new_text
-        print('Firefly：{}'.format(response))
         text = input('User：')
 
 
