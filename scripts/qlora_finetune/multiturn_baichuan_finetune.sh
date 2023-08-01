@@ -33,4 +33,4 @@ CUDA_VISIBLE_DEVICES=14 python train_qlora.py \
     --do_train \
     --do_eval \
     --data_seed 42 \
-    --seed 0 \
+    --seed 0
