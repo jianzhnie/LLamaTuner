@@ -20,6 +20,10 @@ class PromptTemplate(object):
     """
 
     name: str
+    prefix: str = ''
+    prompt: str = None
+    sep: str = None
+    use_history: bool = False
 
     def get_prompt(
         self,
@@ -88,12 +92,14 @@ class PromptTemplate(object):
                 convs.append(bot_resp)
         return convs[:-1]  # drop last
 
-    def register_template(self,
-                          name: str,
-                          prefix: str,
-                          prompt: str,
-                          sep: str,
-                          use_history: Optional[bool] = True) -> None:
+    def register_template(
+        self,
+        name: str,
+        prefix: str,
+        prompt: str,
+        sep: str,
+        use_history: Optional[bool] = True,
+    ) -> None:
         """
         Registers a new conversation template.
 

@@ -16,7 +16,7 @@ from chatllms.utils.template import PromptTemplate
 def generate_response(
     query: str,
     history: List[Tuple[str, str]],
-    source_prefix: str,
+    prefix: str,
     prompt_template: PromptTemplate,
     tokenizer: PreTrainedTokenizer,
     model: PreTrainedModel,
@@ -28,7 +28,7 @@ def generate_response(
     Args:
         query (str): The input query for which a response is to be generated.
         history (List[Tuple[str, str]]): A list of previous queries and their responses.
-        source_prefix (str): The prefix string added to the beginning of each input sequence.
+        prefix (str): The prefix string added to the beginning of each input sequence.
         prompt_template (PromptTemplate): The prompt template used to generate the input sequence to the model.
         tokenizer (PreTrainedTokenizer): The tokenizer used to convert the raw text into input tokens.
         model (PreTrainedModel): The GPT-3.5 model used to generate the response.
@@ -39,7 +39,7 @@ def generate_response(
     """
 
     # Convert the query and history into input IDs
-    input_text = prompt_template.get_prompt(query, history, source_prefix)
+    input_text = prompt_template.get_prompt(query, history, prefix)
     inputs = tokenizer(input_text, return_tensors='pt')
     inputs = {k: v.to(model.device) for k, v in inputs.items()}
 
@@ -100,7 +100,7 @@ def main():
     )
 
     prompt_template = PromptTemplate(model_server_args.prompt_template)
-    source_prefix = model_server_args.source_prefix if model_server_args.source_prefix else ''
+    prefix = model_server_args.source_prefix if model_server_args.source_prefix else ''
     history: List[str] = []
     print('欢迎使用 CLI 对话系统，输入内容即可对话，clear 清空对话历史，stop 终止程序')
     while True:
@@ -122,9 +122,8 @@ def main():
             continue
 
         # Perform prediction and printing
-        history = generate_response(query, history, source_prefix,
-                                    prompt_template, tokenizer, model,
-                                    generation_args)
+        history = generate_response(query, history, prefix, prompt_template,
+                                    tokenizer, model, generation_args)
 
 
 if __name__ == '__main__':
