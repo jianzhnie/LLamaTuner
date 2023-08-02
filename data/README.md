@@ -20,30 +20,29 @@ We provide the following datasets for the experiments in this framework.
 - [Evol-Instruct](https://huggingface.co/datasets/victor123/evol_instruct_70k)
 
 ### 中文指令数据集
+
 - [Stanford Alpaca (zh)](https://github.com/ymcui/Chinese-LLaMA-Alpaca)
 - [Alpaca-GPT-4 (zh)](https://github.com/Instruction-Tuning-with-GPT-4/GPT-4-LLM)
-- [ShareChat(倡议大家一起翻译高质量 ShareGPT 数据的项目)](https://paratranz.cn/projects/6725)
-- [InstructionWild (zh)](https://github.com/XueFuzhao/InstructionWild)
-- [SmileConv(通过ChatGPT改写真实的心理互助 QA为多轮的心理健康支持多轮对话)](https://github.com/qiuhuachuan/smile )
 - [BELLE 2M (zh)](https://huggingface.co/datasets/BelleGroup/train_2M_CN)
 - [BELLE 1M (zh)](https://huggingface.co/datasets/BelleGroup/train_1M_CN)
 - [BELLE 0.5M (zh)](https://huggingface.co/datasets/BelleGroup/train_0.5M_CN)
 - [BELLE Dialogue 0.4M (zh)](https://huggingface.co/datasets/BelleGroup/generated_chat_0.4M)
 - [BELLE School Math 0.25M (zh)](https://huggingface.co/datasets/BelleGroup/school_math_0.25M)
 - [BELLE Multiturn Chat 0.8M (zh)](https://huggingface.co/datasets/BelleGroup/multiturn_chat_0.8M)
-- [OL-CC(OpenLabel-Chinese Conversations Dataset)以众包方式、人工生成的开源中文对话指令集](https://data.baai.ac.cn/details/OL-CC)
-- [CValues-Comparison中文大模型价值观比较数据集](https://modelscope.cn/datasets/damo/CValues-Comparison/summary)
+- [InstructionWild (是一个从网络上收集自然指令)](https://github.com/XueFuzhao/InstructionWild)
+- [HuatuoGPT-sft-data-v1(中文医疗指令数据集-华陀)](https://huggingface.co/datasets/FreedomIntelligence/HuatuoGPT-sft-data-v1)
 - [100PoisonMpts(给AI的100瓶毒药): 中文大模型治理数据集](https://modelscope.cn/datasets/damo/100PoisonMpts/summary)
 - [COIG(Chinese Open Instruction Generalist project)](https://huggingface.co/datasets/BAAI/COIG)
 - [COIG-PC（Prompt Collection) COIG 数据集二期](https://huggingface.co/datasets/BAAI/COIG-PC)
-- [中文医疗指令数据集-华陀](https://huggingface.co/datasets/FreedomIntelligence/HuatuoGPT-sft-data-v1)
-
+- [ShareChat (倡议大家一起翻译高质量 ShareGPT 数据的项目)](https://paratranz.cn/projects/6725)
+- [SmileConv(通过ChatGPT改写真实的心理互助 QA为多轮的心理健康支持多轮对话)](https://github.com/qiuhuachuan/smile)
+- [OL-CC(OpenLabel-Chinese Conversations Dataset)以众包方式、人工生成的开源中文对话指令集](https://data.baai.ac.cn/details/OL-CC)
 
 ### RLHF Datasets
 
 - [CValues](https://github.com/X-PLUG/CValues)
   数据集说明：开源了数据规模为145k的价值对齐数据集，该数据集对于每个prompt包括了拒绝&正向建议,(safe and reponsibility) > 拒绝为主(safe) > 风险回复(unsafe)三种类型，可用于增强SFT模型的安全性或用于训练reward模型。
-
+- [CValues-Comparison中文大模型价值观比较数据集](https://modelscope.cn/datasets/damo/CValues-Comparison/summary)
 
 
 ## Dataset formation
