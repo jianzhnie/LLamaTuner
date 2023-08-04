@@ -51,13 +51,13 @@ The `dataset_info.yaml` file contains the information of the datasets, main incl
 
 ```yaml
 dataset_name:
-    hf_hub_url: # "the name of the dataset repository on the HuggingFace hub. (if specified, ignore below 3 arguments)",
-    local_path: # "the name of the dataset file in the this directory. (required if above are not specified)",
-    dataset_format: # "the format of the dataset. (required), e.g., alpaca, dolly, etc.",
-    multi_turn:  # "whether the dataset is multi-turn. (default: False)"
+  hf_hub_url: # "the name of the dataset repository on the HuggingFace hub. (if specified, ignore below 3 arguments)",
+  local_path: # "the name of the dataset file in the this directory. (required if above are not specified)",
+  dataset_format: # "the format of the dataset. (required), e.g., alpaca, dolly, etc.",
+  multi_turn:  # "whether the dataset is multi-turn. (default: False)"
 ```
 
-For example, the following is the dataset information of the Stanford Alpaca dataset.
+For example, the following is the dataset information of the Stanford Alpaca dataset. While training, the framework will load the dataset from the HuggingFace hub.
 
 ```yaml
 alpaca:
@@ -66,7 +66,8 @@ alpaca:
   dataset_format: alpaca
   multi_turn: False
 ```
-While training, the framework will load the dataset from the HuggingFace hub. If you want to load the dataset from local files, please specify the `local_path` field.
+
+If you want to load the dataset from local files, please specify the `local_path` field.
 
 ```yaml
 alpaca:
@@ -76,11 +77,42 @@ alpaca:
   multi_turn: False
 ```
 
+### How to use in training scripts
+
+After specifying the dataset information, you can run the following command to train the model. Just specify the `dataset_name` as one of the dataset name in `dataset_info.yaml`. If you want to use more than one dataset, please specify the `dataset_name` as str list with comma separated, e.g., `--dataset_name 'alpaca,dolly'.
+
+```shell
+python train.py \
+  --model_name_or_path  facebook/opt-125m \
+  --dataset_name alpaca \
+  --output_dir work_dir/full-finetune \
+  --num_train_epochs 3 \
+  --per_device_train_batch_size 4 \
+  --per_device_eval_batch_size 4 \
+  --gradient_accumulation_steps 8 \
+  --evaluation_strategy "steps" \
+  --save_strategy "steps" \
+  --eval_steps 1000 \
+  --save_steps 1000 \
+  --save_total_limit 5 \
+  --logging_steps 1 \
+  --learning_rate 2e-5 \
+  --weight_decay 0. \
+  --warmup_ratio 0.03 \
+  --optim "adamw_torch" \
+  --lr_scheduler_type "cosine" \
+  --gradient_checkpointing True \
+  --model_max_length 128 \
+  --do_train \
+  --do_eval
+```
+
+
 ## Custom datasets
 
 If you are using a custom dataset, please provide your dataset definition in  `dataset_info.yaml`.
 
-### hf_hub_url and local_path
+### hf_hub_ur/local_path
 
 By defaullt, the framework will load the datasets from the HuggingFace hub. If you want to use the datasets from local files, please specify the `local_path`  field.
 
