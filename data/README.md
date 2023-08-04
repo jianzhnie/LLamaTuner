@@ -20,30 +20,29 @@ We provide the following datasets for the experiments in this framework.
 - [Evol-Instruct](https://huggingface.co/datasets/victor123/evol_instruct_70k)
 
 ### 中文指令数据集
+
 - [Stanford Alpaca (zh)](https://github.com/ymcui/Chinese-LLaMA-Alpaca)
 - [Alpaca-GPT-4 (zh)](https://github.com/Instruction-Tuning-with-GPT-4/GPT-4-LLM)
-- [ShareChat(倡议大家一起翻译高质量 ShareGPT 数据的项目)](https://paratranz.cn/projects/6725)
-- [InstructionWild (zh)](https://github.com/XueFuzhao/InstructionWild)
-- [SmileConv(通过ChatGPT改写真实的心理互助 QA为多轮的心理健康支持多轮对话)](https://github.com/qiuhuachuan/smile )
 - [BELLE 2M (zh)](https://huggingface.co/datasets/BelleGroup/train_2M_CN)
 - [BELLE 1M (zh)](https://huggingface.co/datasets/BelleGroup/train_1M_CN)
 - [BELLE 0.5M (zh)](https://huggingface.co/datasets/BelleGroup/train_0.5M_CN)
 - [BELLE Dialogue 0.4M (zh)](https://huggingface.co/datasets/BelleGroup/generated_chat_0.4M)
 - [BELLE School Math 0.25M (zh)](https://huggingface.co/datasets/BelleGroup/school_math_0.25M)
 - [BELLE Multiturn Chat 0.8M (zh)](https://huggingface.co/datasets/BelleGroup/multiturn_chat_0.8M)
-- [OL-CC(OpenLabel-Chinese Conversations Dataset)以众包方式、人工生成的开源中文对话指令集](https://data.baai.ac.cn/details/OL-CC)
-- [CValues-Comparison中文大模型价值观比较数据集](https://modelscope.cn/datasets/damo/CValues-Comparison/summary)
+- [InstructionWild (是一个从网络上收集自然指令)](https://github.com/XueFuzhao/InstructionWild)
+- [HuatuoGPT-sft-data-v1(中文医疗指令数据集-华陀)](https://huggingface.co/datasets/FreedomIntelligence/HuatuoGPT-sft-data-v1)
 - [100PoisonMpts(给AI的100瓶毒药): 中文大模型治理数据集](https://modelscope.cn/datasets/damo/100PoisonMpts/summary)
 - [COIG(Chinese Open Instruction Generalist project)](https://huggingface.co/datasets/BAAI/COIG)
 - [COIG-PC（Prompt Collection) COIG 数据集二期](https://huggingface.co/datasets/BAAI/COIG-PC)
-- [中文医疗指令数据集-华陀](https://huggingface.co/datasets/FreedomIntelligence/HuatuoGPT-sft-data-v1)
-
+- [ShareChat (倡议大家一起翻译高质量 ShareGPT 数据的项目)](https://paratranz.cn/projects/6725)
+- [SmileConv(通过ChatGPT改写真实的心理互助 QA为多轮的心理健康支持多轮对话)](https://github.com/qiuhuachuan/smile)
+- [OL-CC(OpenLabel-Chinese Conversations Dataset)以众包方式、人工生成的开源中文对话指令集](https://data.baai.ac.cn/details/OL-CC)
 
 ### RLHF Datasets
 
 - [CValues](https://github.com/X-PLUG/CValues)
   数据集说明：开源了数据规模为145k的价值对齐数据集，该数据集对于每个prompt包括了拒绝&正向建议,(safe and reponsibility) > 拒绝为主(safe) > 风险回复(unsafe)三种类型，可用于增强SFT模型的安全性或用于训练reward模型。
-
+- [CValues-Comparison中文大模型价值观比较数据集](https://modelscope.cn/datasets/damo/CValues-Comparison/summary)
 
 
 ## Dataset formation
@@ -52,13 +51,13 @@ The `dataset_info.yaml` file contains the information of the datasets, main incl
 
 ```yaml
 dataset_name:
-    hf_hub_url: # "the name of the dataset repository on the HuggingFace hub. (if specified, ignore below 3 arguments)",
-    local_path: # "the name of the dataset file in the this directory. (required if above are not specified)",
-    dataset_format: # "the format of the dataset. (required), e.g., alpaca, dolly, etc.",
-    multi_turn:  # "whether the dataset is multi-turn. (default: False)"
+  hf_hub_url: # "the name of the dataset repository on the HuggingFace hub. (if specified, ignore below 3 arguments)",
+  local_path: # "the name of the dataset file in the this directory. (required if above are not specified)",
+  dataset_format: # "the format of the dataset. (required), e.g., alpaca, dolly, etc.",
+  multi_turn:  # "whether the dataset is multi-turn. (default: False)"
 ```
 
-For example, the following is the dataset information of the Stanford Alpaca dataset.
+For example, the following is the dataset information of the Stanford Alpaca dataset. While training, the framework will load the dataset from the HuggingFace hub.
 
 ```yaml
 alpaca:
@@ -67,7 +66,8 @@ alpaca:
   dataset_format: alpaca
   multi_turn: False
 ```
-While training, the framework will load the dataset from the HuggingFace hub. If you want to load the dataset from local files, please specify the `local_path` field.
+
+If you want to load the dataset from local files, please specify the `local_path` field.
 
 ```yaml
 alpaca:
@@ -77,11 +77,42 @@ alpaca:
   multi_turn: False
 ```
 
+### How to use in training scripts
+
+After specifying the dataset information, you can run the following command to train the model. Just specify the `dataset_name` as one of the dataset name in `dataset_info.yaml`. If you want to use more than one dataset, please specify the `dataset_name` as str list with comma separated, e.g., `--dataset_name 'alpaca,dolly'.
+
+```shell
+python train.py \
+  --model_name_or_path  facebook/opt-125m \
+  --dataset_name alpaca \
+  --output_dir work_dir/full-finetune \
+  --num_train_epochs 3 \
+  --per_device_train_batch_size 4 \
+  --per_device_eval_batch_size 4 \
+  --gradient_accumulation_steps 8 \
+  --evaluation_strategy "steps" \
+  --save_strategy "steps" \
+  --eval_steps 1000 \
+  --save_steps 1000 \
+  --save_total_limit 5 \
+  --logging_steps 1 \
+  --learning_rate 2e-5 \
+  --weight_decay 0. \
+  --warmup_ratio 0.03 \
+  --optim "adamw_torch" \
+  --lr_scheduler_type "cosine" \
+  --gradient_checkpointing True \
+  --model_max_length 128 \
+  --do_train \
+  --do_eval
+```
+
+
 ## Custom datasets
 
 If you are using a custom dataset, please provide your dataset definition in  `dataset_info.yaml`.
 
-### hf_hub_url and local_path
+### hf_hub_ur/local_path
 
 By defaullt, the framework will load the datasets from the HuggingFace hub. If you want to use the datasets from local files, please specify the `local_path`  field.
 
