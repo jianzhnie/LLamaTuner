@@ -13,8 +13,8 @@ DEFAULT_BOS_TOKEN = '<s>'
 DEFAULT_UNK_TOKEN = '<unk>'
 
 DEFAULT_PROMPT_DICT = {
-    'prompt_input': ('{instruction}\n\n{input}\n\n'),
-    'prompt_no_input': ('{instruction}\n\n'),
+    'prompt_input': ('{instruction}{input}'),
+    'prompt_no_input': ('{instruction}'),
 }
 
 ALPACA_PROMPT_DICT = {
