@@ -11,16 +11,28 @@ alpaca-clean:
   dataset_format: alpaca
   multi_turn: False
 
-chip2:
-  hf_hub_url: laion/OIG
-  local_path: ''
-  dataset_format: chip2
+coig:
+  hf_hub_url: BAAI/COIG
+  local_path: /home/robin/prompt_data//COIG/train_alpaca.json
+  dataset_format: alpaca
   multi_turn: False
 
-self-instruct:
-  hf_hub_url: yizhongw/self_instruct
-  local_path: ''
-  dataset_format: self-instruct
+dolly-15k:
+  hf_hub_url: databricks/databricks-dolly-15k
+  local_path: databricks/databricks-dolly-15k
+  dataset_format: dolly
+  multi_turn: False
+
+cvalues_comparison_train:
+  hf_hub_url: ''
+  local_path: /home/robin/prompt_data/CValues-Comparison/train_alpaca.json
+  dataset_format: alpaca
+  multi_turn: False
+
+cvalues_comparison_test:
+  hf_hub_url: ''
+  local_path: /home/robin/prompt_data/CValues-Comparison/test_alpaca.json
+  dataset_format: alpaca
   multi_turn: False
 
 guanaco:
@@ -35,22 +47,16 @@ hh-rlhf:
   dataset_format: hh-rlhf
   multi_turn: False
 
-longformer:
-  hf_hub_url: akoksal/LongForm
-  local_path: ''
-  dataset_format: longformer
+huatuogpt:
+  hf_hub_url: FreedomIntelligence/HuatuoGPT-sft-data-v1
+  local_path: /home/robin/prompt_data/HuatuoGPT-sft-data-v1/HuatuoGPT_alpaca.jsonl
+  dataset_format: alpaca
   multi_turn: False
 
 openassistant-guanaco:
   hf_hub_url: timdettmers/openassistant-guanaco
-  local_path: timdettmers/openassistant-guanaco
+  local_path: /home/robin/prompt_data/timdettmers/openassistant-guanaco
   dataset_format: alpaca
-  multi_turn: False
-
-dolly-15k:
-  hf_hub_url: databricks/databricks-dolly-15k
-  local_path: databricks/databricks-dolly-15k
-  dataset_format: dolly
   multi_turn: False
 
 olcc:
@@ -63,6 +69,18 @@ olcc:
   hf_hub_url: ''
   local_path: /home/robin/prompt_data/100PoisonMpts/train.jsonl
   dataset_format: 100PoisonMpts
+  multi_turn: False
+
+safety_prompt_part1:
+  hf_hub_url: ''
+  local_path: /home/robin/prompt_data/Safety-Prompts/attack_scenarios_alpaca.json
+  dataset_format: alpaca
+  multi_turn: False
+
+safety_prompt_part2:
+  hf_hub_url: ''
+  local_path: /home/robin/prompt_data/Safety-Prompts/safety_scenarios_alpaca.json
+  dataset_format: alpaca
   multi_turn: False
 
 # Belle Group
