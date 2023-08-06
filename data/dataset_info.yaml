@@ -13,7 +13,7 @@ alpaca-clean:
 
 coig:
   hf_hub_url: BAAI/COIG
-  local_path: COIG/train_alpaca.json
+  local_path: /home/robin/prompt_data//COIG/train_alpaca.json
   dataset_format: alpaca
   multi_turn: False
 
@@ -25,13 +25,13 @@ dolly-15k:
 
 cvalues_comparison_train:
   hf_hub_url: ''
-  local_path: CValues-Comparison/train_alpaca.jsonl
+  local_path: /home/robin/prompt_data/CValues-Comparison/train_alpaca.json
   dataset_format: alpaca
   multi_turn: False
 
 cvalues_comparison_test:
   hf_hub_url: ''
-  local_path: CValues-Comparison/test_alpaca.jsonl
+  local_path: /home/robin/prompt_data/CValues-Comparison/test_alpaca.json
   dataset_format: alpaca
   multi_turn: False
 
@@ -49,13 +49,13 @@ hh-rlhf:
 
 huatuogpt:
   hf_hub_url: FreedomIntelligence/HuatuoGPT-sft-data-v1
-  local_path: HuatuoGPT-sft-data-v1/HuatuoGPT_alpaca.jsonl
+  local_path: /home/robin/prompt_data/HuatuoGPT-sft-data-v1/HuatuoGPT_alpaca.jsonl
   dataset_format: alpaca
   multi_turn: False
 
 openassistant-guanaco:
   hf_hub_url: timdettmers/openassistant-guanaco
-  local_path: timdettmers/openassistant-guanaco
+  local_path: /home/robin/prompt_data/timdettmers/openassistant-guanaco
   dataset_format: alpaca
   multi_turn: False
 
@@ -73,14 +73,14 @@ olcc:
 
 safety_prompt_part1:
   hf_hub_url: ''
-  local_path: Safety-Prompts/attack_scenarios_alpaca.json
-  dataset_format: safety
+  local_path: /home/robin/prompt_data/Safety-Prompts/attack_scenarios_alpaca.json
+  dataset_format: alpaca
   multi_turn: False
 
 safety_prompt_part2:
   hf_hub_url: ''
-  local_path: Safety-Prompts/safety_scenarios_alpaca.json
-  dataset_format: safety
+  local_path: /home/robin/prompt_data/Safety-Prompts/safety_scenarios_alpaca.json
+  dataset_format: alpaca
   multi_turn: False
 
 # Belle Group

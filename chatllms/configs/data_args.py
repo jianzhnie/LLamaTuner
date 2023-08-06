@@ -112,8 +112,9 @@ class DataArguments:
             else:
                 dataset_attr.load_from_local = False
                 raise Warning(
-                    'You have set local_path for {} but it does not exist! Will load the data from {}'
-                    .format(name, dataset_attr.hf_hub_url))
+                    'You have set local_path: {} for {} but it does not exist! Will load the data from {}'
+                    .format(name, dataset_attr.local_path,
+                            dataset_attr.hf_hub_url))
 
             if 'columns' in datasets_info[name]:
                 dataset_attr.prompt_column = datasets_info[name][
