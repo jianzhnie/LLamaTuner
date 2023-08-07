@@ -189,10 +189,10 @@ python train_qlora.py –learning_rate 0.0001 --model_name_or_path <path_or_name
 
 我们还可以调整我们的超参数：
 
-```python
+```bash
 python train_qlora.py \
     --model_name_or_path ~/checkpoints/baichuan7b \
-    --dataset_name oasst1 \
+    --dataset_cfg ./data/alpaca_zh_pcyn.yaml \
     --data_dir ~/prompt_datasets \
     --load_from_local \
     --output_dir ./work_dir/oasst1-baichuan-7b \

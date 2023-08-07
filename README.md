@@ -181,7 +181,7 @@ We can also tweak our hyperparameters:
 ```bash
 python train_qlora.py \
     --model_name_or_path ~/checkpoints/baichuan7b \
-    --dataset_name oasst1 \
+    --dataset_cfg ./data/alpaca_zh_pcyn.yaml \
     --output_dir ./work_dir/oasst1-baichuan-7b \
     --num_train_epochs 4 \
     --per_device_train_batch_size 4 \
