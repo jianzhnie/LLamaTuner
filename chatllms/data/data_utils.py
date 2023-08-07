@@ -460,16 +460,16 @@ def make_data_module(args):
     """
     train_datasets: List[Dataset] = []
     eval_datasets: List[Dataset] = []
-    dataset_name_list = args.dataset_name.split(',')
+    dataset_name_list = args.dataset_names
     print(f'Loading datasets: {dataset_name_list}')
     mutliturn_lst = [
-        dataset_attr.multi_turn for dataset_attr in args.datasets_list
+        dataset_attr.multi_turn for dataset_attr in args.dataset_attr_list
     ]
     assert mutliturn_lst.count(mutliturn_lst[0]) == len(
         mutliturn_lst
     ), 'All datasets should be multi-turn or single-turn. As follwing we will concat all datasets, so they should be in the same format.'
 
-    for dataset_attr in args.datasets_list:
+    for dataset_attr in args.dataset_attr_list:
         print('=' * 80)
         print('DatasetAttr: {}'.format(dataset_attr))
 

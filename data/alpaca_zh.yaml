@@ -1,0 +1,42 @@
+# The dataset_info.yaml file contains the information of the datasets used in the experiments.
+coig:
+  hf_hub_url: BAAI/COIG
+  local_path: /home/robin/prompt_data/COIG/train_alpaca.json
+  dataset_format: alpaca
+  multi_turn: False
+
+cvalues_comparison_train:
+  hf_hub_url: ''
+  local_path: /home/robin/prompt_data/CValues-Comparison/train_alpaca.json
+  dataset_format: alpaca
+  multi_turn: False
+
+cvalues_comparison_test:
+  hf_hub_url: ''
+  local_path: /home/robin/prompt_data/CValues-Comparison/test_alpaca.json
+  dataset_format: alpaca
+  multi_turn: False
+
+olcc:
+  hf_hub_url: ''
+  local_path: /home/robin/prompt_data/olcc/olcc_alpaca.json
+  dataset_format: alpaca
+  multi_turn: False
+
+100PoisonMpts:
+  hf_hub_url: 'damo/100PoisonMpts'
+  local_path: /home/robin/prompt_data/100PoisonMpts/train_alpaca.json
+  dataset_format: alpaca
+  multi_turn: False
+
+safety_prompt_part1:
+  hf_hub_url: ''
+  local_path: /home/robin/prompt_data/Safety-Prompts/attack_scenarios_alpaca.json
+  dataset_format: alpaca
+  multi_turn: False
+
+safety_prompt_part2:
+  hf_hub_url: ''
+  local_path: /home/robin/prompt_data/Safety-Prompts/safety_scenarios_alpaca.json
+  dataset_format: alpaca
+  multi_turn: False

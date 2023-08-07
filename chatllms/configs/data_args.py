@@ -12,7 +12,6 @@ class DatasetAttr(object):
     hf_hub_url: Optional[str] = None
     local_path: Optional[str] = None
     dataset_format: Optional[str] = None
-    dataset_sha1: Optional[str] = None
     load_from_local: bool = False
     multi_turn: Optional[bool] = False
 
@@ -34,18 +33,11 @@ class DatasetAttr(object):
 
 @dataclass
 class DataArguments:
-    # 微调数据集是 alpaca
-    dataset_name: Optional[str] = field(
-        default='alpaca',
-        metadata={
-            'help': 'Which dataset to finetune on. See datamodule for options.'
-        })
-    # 数据集的本地路径，如果load_from_local为True，那么就从本地加载数据集
-    dataset_dir: str = field(
-        default=None,
+    dataset_cfg: Optional[str] = field(
+        default='./data/alpaca_zh.yaml',
         metadata={
             'help':
-            'where is dataset in local dir. See datamodule for options.'
+            'Path to dataset infos, please refer to `./data/README.md` to see how to prepare your datasets for training.'
         })
     instruction_template: str = field(
         default='default',
@@ -82,19 +74,13 @@ class DataArguments:
     )
 
     def init_for_training(self):  # support mixing multiple datasets
-        dataset_names = [ds.strip() for ds in self.dataset_name.split(',')]
-        this_dir = os.path.dirname(os.path.abspath(__file__))
-        datasets_info_path = os.path.join(this_dir, '../..', 'data',
-                                          'dataset_info.yaml')
-        with open(datasets_info_path, 'r') as f:
-            datasets_info = yaml.safe_load(f)
-
-        self.datasets_list: List[DatasetAttr] = []
-        for i, name in enumerate(dataset_names):
-            if name not in datasets_info:
-                raise ValueError('Undefined dataset {} in {}'.format(
-                    name, datasets_info_path))
-
+        assert self.dataset_cfg is not None and os.path.exists(
+            self.dataset_cfg
+        ), f'{self.dataset_cfg} does not exist!, please check the path.'
+        datasets_info = yaml.safe_load(open(self.dataset_cfg, 'r'))
+        self.dataset_names = list(datasets_info.keys())
+        self.dataset_attr_list: List[DatasetAttr] = []
+        for i, name in enumerate(self.dataset_names):
             dataset_attr = DatasetAttr()
             dataset_attr.dataset_name = name
             dataset_attr.dataset_format = datasets_info[name].get(
@@ -126,4 +112,4 @@ class DataArguments:
                 dataset_attr.history_column = datasets_info[name][
                     'columns'].get('history', None)
 
-            self.datasets_list.append(dataset_attr)
+            self.dataset_attr_list.append(dataset_attr)

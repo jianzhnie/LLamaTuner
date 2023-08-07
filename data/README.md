@@ -47,7 +47,7 @@ We provide the following datasets for the experiments in this framework.
 
 ## Dataset formation
 
-The `dataset_info.yaml` file contains the information of the datasets, main including the following fields.
+The `dataset_info.yaml` file contains all the datasets can be used in the experiments. The following is the format of the datasets, main including the following fields.
 
 ```yaml
 dataset_name:
@@ -76,37 +76,6 @@ alpaca:
   dataset_format: alpaca
   multi_turn: False
 ```
-
-### How to use in training scripts
-
-After specifying the dataset information, you can run the following command to train the model. Just specify the `dataset_name` as one of the dataset name in `dataset_info.yaml`. If you want to use more than one dataset, please specify the `dataset_name` as str list with comma separated, e.g., `--dataset_name 'alpaca,dolly'.
-
-```shell
-python train.py \
-  --model_name_or_path  facebook/opt-125m \
-  --dataset_name alpaca \
-  --output_dir work_dir/full-finetune \
-  --num_train_epochs 3 \
-  --per_device_train_batch_size 4 \
-  --per_device_eval_batch_size 4 \
-  --gradient_accumulation_steps 8 \
-  --evaluation_strategy "steps" \
-  --save_strategy "steps" \
-  --eval_steps 1000 \
-  --save_steps 1000 \
-  --save_total_limit 5 \
-  --logging_steps 1 \
-  --learning_rate 2e-5 \
-  --weight_decay 0. \
-  --warmup_ratio 0.03 \
-  --optim "adamw_torch" \
-  --lr_scheduler_type "cosine" \
-  --gradient_checkpointing True \
-  --model_max_length 128 \
-  --do_train \
-  --do_eval
-```
-
 
 ## Custom datasets
 
@@ -257,3 +226,35 @@ def main():
 if __name__ == '__main__':
     main()
 ```
+
+### How to use in training scripts
+
+In the `data/` directory, we provide some dataset info dict used in the experiments. The following script shows how to use the `alpaca_zh.yaml` dataset info dict.
+
+```shell
+python train.py \
+  --model_name_or_path  facebook/opt-125m \
+  --dataset_cfg alpaca_zh.yaml \
+  --output_dir work_dir/full-finetune \
+  --num_train_epochs 3 \
+  --per_device_train_batch_size 4 \
+  --per_device_eval_batch_size 4 \
+  --gradient_accumulation_steps 8 \
+  --evaluation_strategy "steps" \
+  --save_strategy "steps" \
+  --eval_steps 1000 \
+  --save_steps 1000 \
+  --save_total_limit 5 \
+  --logging_steps 1 \
+  --learning_rate 2e-5 \
+  --weight_decay 0. \
+  --warmup_ratio 0.03 \
+  --optim "adamw_torch" \
+  --lr_scheduler_type "cosine" \
+  --gradient_checkpointing True \
+  --model_max_length 128 \
+  --do_train \
+  --do_eval
+```
+
+You can use the `alpaca_zh.yaml` directly or create a custom dataset config and then set the `dataset_cfg` argument to `your_dataset_info.yaml`.

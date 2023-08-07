@@ -1,0 +1,40 @@
+belle_0.5m:
+  hf_hub_url: BelleGroup/train_0.5M_CN
+  local_path: ''
+  dataset_format: alpaca
+  multi_turn: False
+
+belle_1m:
+  hf_hub_url: BelleGroup/train_1M_CN
+  local_path: ''
+  dataset_format: alpaca
+  multi_turn: False
+
+belle_2m:
+  hf_hub_url: BelleGroup/train_2M_CN
+  local_path: ''
+  dataset_format: alpaca
+  multi_turn: False
+
+belle_dialog:
+  hf_hub_url: BelleGroup/generated_chat_0.4M
+  local_path: ''
+  dataset_format: belle_dialog
+  multi_turn: False
+
+belle_math:
+  hf_hub_url: BelleGroup/school_math_0.25M
+  local_path: ''
+  dataset_format: alpaca
+  multi_turn: False
+
+belle_multiturn:
+  hf_hub_url: BelleGroup/multi_turn_0.5M
+  local_path: ''
+  dataset_format: belle_multiturn
+  multi_turn: True
+  columns:
+    prompt: instruction
+    query: ''
+    response: output
+    history: history
