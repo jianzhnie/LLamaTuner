@@ -1,16 +1,16 @@
-CUDA_VISIBLE_DEVICES=14 python train_qlora.py \
-    --model_name_or_path  ~/checkpoints/baichuan7b  \
-    --dataset_name vicuna_merge \
-    --output_dir ./work_dir/vicuna_merge_vicuna-baichuan-7b-1gpu \
+CUDA_VISIBLE_DEVICES=1 python train_qlora.py \
+    --model_name_or_path ~/checkpoints/baichuan7b \
+    --dataset_cfg ./data/vicuna_zh_pcyn.yaml \
+    --output_dir ./work_dir/vicuna_zh-baichuan-7b \
     --num_train_epochs 3 \
-    --per_device_train_batch_size 8 \
-    --per_device_eval_batch_size 8 \
-    --gradient_accumulation_steps 4 \
+    --per_device_train_batch_size 2 \
+    --per_device_eval_batch_size 2 \
+    --gradient_accumulation_steps 16 \
     --evaluation_strategy steps \
     --eval_steps 1000 \
     --save_strategy steps \
     --save_total_limit 10 \
-    --save_steps 500 \
+    --save_steps 1000 \
     --logging_strategy steps \
     --logging_steps 5 \
     --learning_rate 0.0002 \

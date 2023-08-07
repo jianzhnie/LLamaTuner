@@ -1,11 +1,11 @@
-CUDA_VISIBLE_DEVICES=6  python train_qlora.py \
-    --model_name_or_path ~/checkpoints/baichuan7b  \
-    --dataset_name 'dolly-15k,olcc,alpaca_data_zh_51k,instinwild_ch'\
-    --output_dir ./work_dir/zh-baichuan-7b \
+python train_qlora.py \
+    --model_name_or_path meta-llama/Llama-2-7b-hf \
+    --dataset_cfg ./data/alpaca_zh_pcyn.yaml \
+    --output_dir ./work_dir/alpaca_zh_llama2-7b \
     --num_train_epochs 3 \
-    --per_device_train_batch_size 8 \
-    --per_device_eval_batch_size 8 \
-    --gradient_accumulation_steps 4 \
+    --per_device_train_batch_size 4 \
+    --per_device_eval_batch_size 4 \
+    --gradient_accumulation_steps 8 \
     --evaluation_strategy steps \
     --eval_steps 1000 \
     --save_strategy steps \
@@ -32,5 +32,6 @@ CUDA_VISIBLE_DEVICES=6  python train_qlora.py \
     --use_auth_token True \
     --do_train \
     --do_eval \
+    --sample_generate \
     --data_seed 42 \
     --seed 0
