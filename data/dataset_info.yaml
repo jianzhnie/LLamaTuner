@@ -66,7 +66,7 @@ olcc:
   multi_turn: False
 
 100PoisonMpts:
-  hf_hub_url: ''
+  hf_hub_url: 'damo/100PoisonMpts'
   local_path: /home/robin/prompt_data/100PoisonMpts/train.jsonl
   dataset_format: 100PoisonMpts
   multi_turn: False
