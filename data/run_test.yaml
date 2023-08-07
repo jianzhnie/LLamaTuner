@@ -1,0 +1,5 @@
+100PoisonMpts:
+  hf_hub_url: 'damo/100PoisonMpts'
+  local_path: /home/robin/prompt_data/100PoisonMpts/train_alpaca.json
+  dataset_format: alpaca
+  multi_turn: False
