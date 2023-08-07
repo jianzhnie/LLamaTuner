@@ -11,7 +11,7 @@ class LoraArguments:
     lora_dropout: float = field(default=0.0,
                                 metadata={'help': 'Lora dropout.'})
     # 每个GPU上可使用的显存大小，以MB为单位。默认是A100高端版本的80GB
-    max_memory_MB: int = field(default=8000,
+    max_memory_MB: int = field(default=80000,
                                metadata={'help': 'Free memory per gpu.'})
     lora_weight_path: str = ''
     bias: str = 'none'

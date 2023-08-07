@@ -1,42 +1,42 @@
 # The dataset_info.yaml file contains the information of the datasets used in the experiments.
 coig:
   hf_hub_url: BAAI/COIG
-  local_path: /home/robin/prompt_data/COIG/train_vicuna.json
+  local_path: /userhome/jianzhnie/prompt_data/COIG/train_vicuna.json
   dataset_format: sharegpt
   multi_turn: True
 
 cvalues_comparison_train:
   hf_hub_url: ''
-  local_path: /home/robin/prompt_data/CValues-Comparison/train_vicuna.json
+  local_path: /userhome/jianzhnie/prompt_data/CValues-Comparison/train_vicuna.json
   dataset_format: sharegpt
   multi_turn: True
 
 cvalues_comparison_test:
   hf_hub_url: ''
-  local_path: /home/robin/prompt_data/CValues-Comparison/test_vicuna.json
+  local_path: /userhome/jianzhnie/prompt_data/CValues-Comparison/test_vicuna.json
   dataset_format: sharegpt
   multi_turn: True
 
 olcc:
   hf_hub_url: ''
-  local_path: /home/robin/prompt_data/olcc/olcc_vicuna.json
+  local_path: /userhome/jianzhnie/prompt_data/olcc/olcc_vicuna.json
   dataset_format: sharegpt
   multi_turn: True
 
 100PoisonMpts:
   hf_hub_url: ''
-  local_path: /home/robin/prompt_data/100PoisonMpts/train_vicuna.json
+  local_path: /userhome/jianzhnie/prompt_data/100PoisonMpts/train_vicuna.json
   dataset_format: sharegpt
   multi_turn: True
 
 safety_prompt_part1:
   hf_hub_url: ''
-  local_path: /home/robin/prompt_data/Safety-Prompts/attack_scenarios_vicuna.json
+  local_path: /userhome/jianzhnie/prompt_data/Safety-Prompts/attack_scenarios_vicuna.json
   dataset_format: sharegpt
   multi_turn: True
 
 safety_prompt_part2:
   hf_hub_url: ''
-  local_path: /home/robin/prompt_data/Safety-Prompts/safety_scenarios_vicuna.json
+  local_path: /userhome/jianzhnie/prompt_data/Safety-Prompts/safety_scenarios_vicuna.json
   dataset_format: sharegpt
   multi_turn: True
