@@ -14,7 +14,7 @@ from chatllms.model import (MMLUEvalCallback, SampleGenerateCallback,
                             SavePeftModelCallback, load_model_tokenizer)
 from chatllms.train.training import train_and_evaluate
 from chatllms.utils.logger_utils import get_root_logger
-from chatllms.utils.model_utils import (get_last_checkpoint,
+from chatllms.utils.model_utils import (check_training_finished,
                                         print_trainable_parameters,
                                         verify_dtypes)
 
@@ -41,12 +41,15 @@ def main():
     log_file = os.path.join(args.output_dir, f'{timestamp}.log')
     logger = get_root_logger(log_file=log_file, log_level='INFO')
 
+    # Log on each process the small summary:
+    logger.info(
+        f'Process rank: {training_args.local_rank}, device: {training_args.device}, n_gpu: {training_args.n_gpu}'
+        +
+        f'distributed training: {bool(training_args.local_rank != -1)}, 16-bits training: {training_args.fp16}'
+    )
     logger.info('Training/evaluation parameters %s', args)
     # Check if training was already completed.
-    checkpoint_dir, completed_training = get_last_checkpoint(args.output_dir)
-    args.checkpoint_dir = checkpoint_dir
-    if completed_training:
-        logger.warning('Detected that training was already completed!')
+    checkpoint_dir, completed_training = check_training_finished(args, logger)
 
     # load model and tokenizer
     model, tokenizer = load_model_tokenizer(

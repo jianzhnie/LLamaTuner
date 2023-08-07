@@ -27,8 +27,7 @@ def train_and_evaluate(trainer: transformers.Trainer, args: argparse.Namespace,
         logger.info('=' * 80)
         logger.info('*** Train ***')
         logger.info('=' * 80)
-        train_result = trainer.train(
-            resume_from_checkpoint=args.checkpoint_dir)
+        train_result = trainer.train()
         metrics = train_result.metrics
 
         # Log and save training metrics
