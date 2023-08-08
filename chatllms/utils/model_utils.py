@@ -238,7 +238,7 @@ def check_training_finished(args: argparse.Namespace,
         last_checkpoint = get_last_checkpoint(args.output_dir)
         if last_checkpoint:
             logger.info(
-                f'Find lasest checkpoint:{last_checkpoint} in {args.output_dir}'
+                f'Find lasest checkpoint: ({last_checkpoint}) in ({args.output_dir})'
             )
         # Check if 'completed' file exists in the directory - indicates training has completed
         is_completed = exists(join(args.output_dir, 'completed'))
@@ -256,7 +256,7 @@ def check_training_finished(args: argparse.Namespace,
             return last_checkpoint, is_completed
     # The directory does not exist, meaning this is the first time the training is being run
     logger.info(
-        f'Dete{args.output_dir} do not exists or emppty or you have set {args.overwrite_output_dir}, will train from scratch'
+        f'The output directory: ({args.output_dir}) do not exists or emppty or you have set --overwrite_output_dir... will train from scratch'
     )
     return None, False  # first training
 

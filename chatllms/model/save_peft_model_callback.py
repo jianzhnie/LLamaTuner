@@ -14,7 +14,7 @@ class SavePeftModelCallback(TrainerCallback):
     within the checkpoint directory.
     """
     def save_model(self, args: Any, state: TrainingArguments,
-                   model: PreTrainedModel, **kwargs: Dict[str, Any]) -> None:
+                   kwargs: Dict[str, Any]) -> None:
         """
         Saves the PEFT model checkpoint.
 
@@ -26,7 +26,7 @@ class SavePeftModelCallback(TrainerCallback):
         Raises:
             TypeError: If `state` is not an instance of `TrainingArguments`.
         """
-        print('+++++++++++ Saving PEFT Model Checkpoint CallBack ++++++++++')
+        print('+' * 20, 'Saving PEFT Model Checkpoint CallBack', '+' * 20)
 
         # Get the checkpoint directory for saving models.
         if state.best_model_checkpoint is not None:
@@ -41,6 +41,7 @@ class SavePeftModelCallback(TrainerCallback):
 
         # Create path for the PEFT model
         peft_model_path = os.path.join(checkpoint_dir, 'adapter_model')
+        model: PreTrainedModel = kwargs['model']
         model.save_pretrained(peft_model_path)
 
         # Create path for the PyTorch model binary file and remove it if it already exists
