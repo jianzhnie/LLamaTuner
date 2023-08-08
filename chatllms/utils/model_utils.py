@@ -236,7 +236,10 @@ def check_training_finished(args: argparse.Namespace,
     # Check if provided directory exists
     if isdir(args.output_dir) and not args.overwrite_output_dir:
         last_checkpoint = get_last_checkpoint(args.output_dir)
-        print('=' * 100, last_checkpoint)
+        if last_checkpoint:
+            logger.info(
+                f'Find lasest checkpoint:{last_checkpoint} in {args.output_dir}'
+            )
         # Check if 'completed' file exists in the directory - indicates training has completed
         is_completed = exists(join(args.output_dir, 'completed'))
         if last_checkpoint and is_completed:
