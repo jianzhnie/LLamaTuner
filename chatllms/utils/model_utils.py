@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Tuple
 import bitsandbytes as bnb
 import torch
 from transformers import PreTrainedModel, PreTrainedTokenizer, Trainer
+from transformers.trainer_utils import get_last_checkpoint
 
 from chatllms.data.data_utils import (DEFAULT_BOS_TOKEN, DEFAULT_EOS_TOKEN,
                                       DEFAULT_PAD_TOKEN, DEFAULT_UNK_TOKEN)
@@ -234,11 +235,12 @@ def check_training_finished(args: argparse.Namespace,
     """
     # Check if provided directory exists
     if isdir(args.output_dir) and not args.overwrite_output_dir:
-        last_checkpoint = find_last_checkpoint(args.output_dir)
+        last_checkpoint = get_last_checkpoint(args.output_dir)
+        print('=' * 100, last_checkpoint)
         # Check if 'completed' file exists in the directory - indicates training has completed
         is_completed = exists(join(args.output_dir, 'completed'))
         if last_checkpoint and is_completed:
-            raise ValueError(
+            raise AssertionError(
                 f'Detected that training was already completed! Output directory ({args.output_dir}) already exists and is not empty. '
                 'Use --overwrite_output_dir to overcome.')
 

@@ -50,6 +50,7 @@ def main():
     logger.info('Training/evaluation parameters %s', args)
     # Check if training was already completed.
     checkpoint_dir, completed_training = check_training_finished(args, logger)
+    args.resume_checkpoint = checkpoint_dir
 
     # load model and tokenizer
     model, tokenizer = load_model_tokenizer(
