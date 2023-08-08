@@ -6,8 +6,7 @@ from typing import Any, Dict, List, Tuple
 import bitsandbytes as bnb
 import torch
 from transformers import PreTrainedModel, PreTrainedTokenizer, Trainer
-from transformers.generation.logits_process import LogitsProcessor
-from transformers.generation.utils import LogitsProcessorList
+from transformers.trainer_utils import get_last_checkpoint
 
 from chatllms.data.data_utils import (DEFAULT_BOS_TOKEN, DEFAULT_EOS_TOKEN,
                                       DEFAULT_PAD_TOKEN, DEFAULT_UNK_TOKEN)
@@ -221,7 +220,8 @@ def verify_dtypes(model: torch.nn.Module) -> None:
     return None
 
 
-def get_last_checkpoint(checkpoint_dir: str) -> Tuple[str, bool]:
+def check_training_finished(args: argparse.Namespace,
+                            logger=None) -> Tuple[str, bool]:
     """
     Given a directory containing previous saved checkpoints, returns the path to the last checkpoint
     if available along with a boolean flag indicating whether training has already been completed.
@@ -234,30 +234,44 @@ def get_last_checkpoint(checkpoint_dir: str) -> Tuple[str, bool]:
         whether training has already been completed.
     """
     # Check if provided directory exists
-    if isdir(checkpoint_dir):
-
+    if isdir(args.output_dir) and not args.overwrite_output_dir:
+        last_checkpoint = get_last_checkpoint(args.output_dir)
+        if last_checkpoint:
+            logger.info(
+                f'Find lasest checkpoint: ({last_checkpoint}) in ({args.output_dir})'
+            )
         # Check if 'completed' file exists in the directory - indicates training has completed
-        is_completed = exists(join(checkpoint_dir, 'completed'))
-        if is_completed:
-            return None, True  # Already finished
+        is_completed = exists(join(args.output_dir, 'completed'))
+        if last_checkpoint and is_completed:
+            raise AssertionError(
+                f'Detected that training was already completed! Output directory ({args.output_dir}) already exists and is not empty. '
+                'Use --overwrite_output_dir to overcome.')
 
-        # Find the latest checkpoint by checking all subdirectories named 'checkpoint-*'
-        max_step = 0
-        for filename in os.listdir(checkpoint_dir):
-            if isdir(join(checkpoint_dir,
-                          filename)) and filename.startswith('checkpoint'):
-                max_step = max(max_step,
-                               int(filename.replace('checkpoint-', '')))
-        if max_step == 0:
-            return None, is_completed  # Training started, but no checkpoint found
-
-        # Return path to the latest checkpoint directory
-        checkpoint_dir = join(checkpoint_dir, f'checkpoint-{max_step}')
-        print(f'Found a previous checkpoint at: {checkpoint_dir}')
-        return checkpoint_dir, is_completed
-
+        elif last_checkpoint:
+            # Return path to the latest checkpoint directory
+            logger.info(
+                f'Checkpoint detected, resuming training at ({last_checkpoint}). To avoid this behavior, change '
+                'the `--output_dir` or add `--overwrite_output_dir` to train from scratch.'
+            )
+            return last_checkpoint, is_completed
     # The directory does not exist, meaning this is the first time the training is being run
-    return None, False
+    logger.info(
+        f'The output directory: ({args.output_dir}) do not exists or emppty or you have set --overwrite_output_dir... will train from scratch'
+    )
+    return None, False  # first training
+
+
+def find_last_checkpoint(checkpoint_dir):
+    # Find the latest checkpoint by checking all subdirectories named 'checkpoint-*'
+    max_step = 0
+    last_checkpoint = None
+    for filename in os.listdir(checkpoint_dir):
+        if isdir(join(checkpoint_dir,
+                      filename)) and filename.startswith('checkpoint'):
+            max_step = max(max_step, int(filename.replace('checkpoint-', '')))
+    if max_step > 0:
+        last_checkpoint = join(checkpoint_dir, f'checkpoint-{max_step}')
+    return last_checkpoint
 
 
 def safe_save_model_for_hf_trainer(trainer: Trainer, output_dir: str):
@@ -270,19 +284,3 @@ def safe_save_model_for_hf_trainer(trainer: Trainer, output_dir: str):
         }
         del state_dict
         trainer._save(output_dir, state_dict=cpu_state_dict)  # noqa
-
-
-# Avoid runtime error in model.generate(do_sample=True).
-class InvalidScoreLogitsProcessor(LogitsProcessor):
-    def __call__(self, input_ids: torch.LongTensor,
-                 scores: torch.FloatTensor) -> torch.FloatTensor:
-        if torch.isnan(scores).any() or torch.isinf(scores).any():
-            scores.zero_()
-            scores[..., 0] = 1.0
-        return scores
-
-
-def get_logits_processor() -> LogitsProcessorList:
-    logits_processor = LogitsProcessorList()
-    logits_processor.append(InvalidScoreLogitsProcessor())
-    return logits_processor

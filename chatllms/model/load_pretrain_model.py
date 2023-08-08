@@ -147,7 +147,7 @@ def load_model_tokenizer(
     if not args.full_finetune:
         if checkpoint_dir is not None:
             # Load pre-trained adapters from checkpoint directory.
-            logger.info('Loading adapters from checkpoint... ')
+            logger.info(f'Loading adapters from {checkpoint_dir}... ')
             adapter_model_path = join(checkpoint_dir, 'adapter_model')
             assert exists(join(adapter_model_path, CONFIG_NAME)) and exists(
                 join(adapter_model_path, WEIGHTS_NAME)), ValueError(
@@ -162,9 +162,11 @@ def load_model_tokenizer(
 
         else:
             # Add LoRA modules to the model.
-            logger.info('No checkpoint_dir founded, will init adapters...')
-            logger.info('Adding LoRA modules...')
+            logger.info(
+                'No pretrained adapters checkpoints founded, will init adapters...'
+            )
             modules = find_all_linear_names(args, model)
+            logger.info(f'Adding LoRA modules: ({modules}) ...')
             config = LoraConfig(
                 r=args.lora_r,  # lora层A矩阵的列大小和B矩阵的行大小
                 lora_alpha=args.lora_alpha,  # 缩放因子

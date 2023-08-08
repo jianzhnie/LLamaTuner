@@ -1,5 +1,6 @@
 import argparse
 import json
+import math
 import os
 from typing import Any, Dict
 
@@ -28,8 +29,10 @@ def train_and_evaluate(trainer: transformers.Trainer, args: argparse.Namespace,
         logger.info('*** Train ***')
         logger.info('=' * 80)
         train_result = trainer.train(
-            resume_from_checkpoint=args.checkpoint_dir)
+            resume_from_checkpoint=args.resume_checkpoint)
         metrics = train_result.metrics
+
+        metrics['train_samples'] = len(trainer.train_dataset)
 
         # Log and save training metrics
         trainer.log_metrics('train', metrics)
@@ -48,6 +51,13 @@ def train_and_evaluate(trainer: transformers.Trainer, args: argparse.Namespace,
         # Evaluate the trained model and obtain evaluation metrics
         metrics = trainer.evaluate(metric_key_prefix='eval')
 
+        try:
+            perplexity = math.exp(metrics['eval_loss'])
+        except OverflowError:
+            perplexity = float('inf')
+
+        metrics['perplexity'] = perplexity
+        metrics['eval_samples'] = len(trainer.eval_dataset)
         # Log and save evaluation metrics
         trainer.log_metrics('eval', metrics)
         trainer.save_metrics('eval', metrics)
