@@ -6,6 +6,8 @@ from typing import Any, Dict, List, Tuple
 import bitsandbytes as bnb
 import torch
 from transformers import PreTrainedModel, PreTrainedTokenizer, Trainer
+from transformers.generation.logits_process import LogitsProcessor
+from transformers.generation.utils import LogitsProcessorList
 from transformers.trainer_utils import get_last_checkpoint
 
 from chatllms.data.data_utils import (DEFAULT_BOS_TOKEN, DEFAULT_EOS_TOKEN,
@@ -272,6 +274,22 @@ def find_last_checkpoint(checkpoint_dir):
     if max_step > 0:
         last_checkpoint = join(checkpoint_dir, f'checkpoint-{max_step}')
     return last_checkpoint
+
+
+# Avoid runtime error in model.generate(do_sample=True).
+class InvalidScoreLogitsProcessor(LogitsProcessor):
+    def __call__(self, input_ids: torch.LongTensor,
+                 scores: torch.FloatTensor) -> torch.FloatTensor:
+        if torch.isnan(scores).any() or torch.isinf(scores).any():
+            scores.zero_()
+            scores[..., 0] = 1.0
+        return scores
+
+
+def get_logits_processor() -> LogitsProcessorList:
+    logits_processor = LogitsProcessorList()
+    logits_processor.append(InvalidScoreLogitsProcessor())
+    return logits_processor
 
 
 def safe_save_model_for_hf_trainer(trainer: Trainer, output_dir: str):
