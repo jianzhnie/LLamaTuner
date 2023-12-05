@@ -11,6 +11,7 @@ from transformers.generation.utils import LogitsProcessorList
 from transformers.trainer_utils import get_last_checkpoint
 from transformers.generation.logits_process import LogitsProcessor
 from transformers.generation.utils import LogitsProcessorList
+from transformers.deepspeed import is_deepspeed_zero3_enabled
 from chatllms.data.data_utils import (DEFAULT_BOS_TOKEN, DEFAULT_EOS_TOKEN,
                                       DEFAULT_PAD_TOKEN, DEFAULT_UNK_TOKEN)
 
@@ -311,10 +312,14 @@ def get_logits_processor() -> LogitsProcessorList:
 def safe_save_model_for_hf_trainer(trainer: Trainer, output_dir: str):
     """Collects the state dict and dump to disk."""
     state_dict = trainer.model.state_dict()
-    if trainer.args.should_save:
+    if not is_deepspeed_zero3_enabled() and trainer.args.should_save:
         cpu_state_dict = {
             key: value.cpu()
             for key, value in state_dict.items()
         }
         del state_dict
         trainer._save(output_dir, state_dict=cpu_state_dict)  # noqa
+    elif is_deepspeed_zero3_enabled():
+        # save for deepspeed ZeRO3 checkpoint
+        if not trainer.wrapped_model.save_16bit_model(output_dir):
+            trainer.wrapped_model.save_checkpoint(output_dir, save_latest=True)
