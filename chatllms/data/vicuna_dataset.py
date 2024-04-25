@@ -49,8 +49,7 @@ def tokenize_conversations(
     conversations: List[str],
     tokenizer: PreTrainedTokenizer,
 ) -> torch.Tensor:
-    """Tokenize conversations
-    """
+    """Tokenize conversations."""
 
     input_ids = tokenizer(
         conversations,
@@ -70,7 +69,9 @@ def mask_targets(
     tokenizer: PreTrainedTokenizer,
     conv: Conversation,
 ) -> None:
-    """Mask targets. Only compute loss on the assistant outputs.
+    """Mask targets.
+
+    Only compute loss on the assistant outputs.
     """
 
     # Mask targets
@@ -108,8 +109,7 @@ def mask_targets(
 
 def preprocess(sources: Sequence[Dict[str, str]],
                tokenizer: PreTrainedTokenizer) -> Dict[str, List[int]]:
-    """
-    Preprocesses the data by tokenizing it.
+    """Preprocesses the data by tokenizing it.
 
     Args:
         sources (Sequence[Dict[str, str]]): List of conversation sources.
@@ -131,13 +131,13 @@ def preprocess(sources: Sequence[Dict[str, str]],
 
 
 class SupervisedDataset(Dataset):
-    """
-    Dataset for supervised fine-tuning.
+    """Dataset for supervised fine-tuning.
 
     Args:
         raw_data (List[Dict]): Raw input data.
         tokenizer (PreTrainedTokenizer): Tokenizer for preprocessing the data.
     """
+
     def __init__(self, raw_data: List[Dict[str, List[str]]],
                  tokenizer: PreTrainedTokenizer) -> None:
         super().__init__()
@@ -160,8 +160,7 @@ class SupervisedDataset(Dataset):
         return len(self.input_ids)
 
     def __getitem__(self, index: int) -> Dict[str, torch.Tensor]:
-        """
-        Get an example from the dataset at the specified index.
+        """Get an example from the dataset at the specified index.
 
         Args:
             index (int): Index of the example to retrieve.
@@ -177,16 +176,14 @@ class SupervisedDataset(Dataset):
 
 
 class LazySupervisedDataset(Dataset):
-    """
-    Dataset for supervised fine-tuning.
-    """
+    """Dataset for supervised fine-tuning."""
+
     def __init__(
         self,
         raw_data: List[Dict[str, str]],
         tokenizer: PreTrainedTokenizer,
     ):
-        """
-        Initialize the LazySupervisedDataset.
+        """Initialize the LazySupervisedDataset.
 
         Args:
             raw_data (List[Dict[str, str]]): The raw input data for the dataset.
@@ -198,8 +195,7 @@ class LazySupervisedDataset(Dataset):
         self.cached_data_dict: Dict[int, Dict[str, torch.Tensor]] = {}
 
     def __len__(self) -> int:
-        """
-        Get the length of the dataset.
+        """Get the length of the dataset.
 
         Returns:
             int: The length of the dataset.
@@ -207,8 +203,7 @@ class LazySupervisedDataset(Dataset):
         return len(self.raw_data)
 
     def __getitem__(self, i: int) -> Dict[str, torch.Tensor]:
-        """
-        Get an item from the dataset at the given index.
+        """Get an item from the dataset at the given index.
 
         Args:
             i (int): The index of the item to retrieve.
@@ -240,8 +235,7 @@ def make_conversation_data_module(
     lazy_preprocess: bool,
     data_path: str,
 ) -> Dict[str, Dataset]:
-    """
-    Make dataset and collator for supervised fine-tuning.
+    """Make dataset and collator for supervised fine-tuning.
 
     Args:
         tokenizer (PreTrainedTokenizer): The tokenizer object.
@@ -250,7 +244,6 @@ def make_conversation_data_module(
 
     Returns:
         dict: A dictionary containing the train_dataset and eval_dataset.
-
     """
     # Determine the appropriate dataset class based on lazy_preprocess flag
 

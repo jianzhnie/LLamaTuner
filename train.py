@@ -15,8 +15,8 @@ from chatllms.utils.model_utils import (add_special_tokens_if_missing,
 
 
 def load_model_tokenizer(args) -> Tuple[PreTrainedModel, PreTrainedTokenizer]:
-    """
-    Load a pre-trained model and tokenizer for natural language processing tasks.
+    """Load a pre-trained model and tokenizer for natural language processing
+    tasks.
 
     Args:
         args: An object containing the input arguments.
@@ -66,8 +66,7 @@ def load_model_tokenizer(args) -> Tuple[PreTrainedModel, PreTrainedTokenizer]:
 
 
 def train() -> None:
-    """
-    Trains a language model using Hugging Face's Transformers library.
+    """Trains a language model using Hugging Face's Transformers library.
 
     Args:
         model_args (ModelArguments): The arguments for the model configuration.
@@ -76,7 +75,6 @@ def train() -> None:
 
     Returns:
         None
-
     """
     parser = HfArgumentParser(
         (ModelArguments, DataArguments, TrainingArguments))

@@ -167,9 +167,9 @@ def test_add_open_assistant(fixup_personality,
                             only_personality,
                             deberta_grading,
                             save_json=True):
-    """
-    Flatten tree structure into one row per path from root to leaf
-    Also turn into human_bot prompting format:
+    """Flatten tree structure into one row per path from root to leaf Also turn
+    into human_bot prompting format:
+
         <human>: question\n<bot>: answer <human>: question2\n<bot>: answer2 Etc.
     Also saves a .json locally as side-effect
     returns list of dicts, containing intput, prompt_type and source

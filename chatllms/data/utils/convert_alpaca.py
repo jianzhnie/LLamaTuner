@@ -1,5 +1,4 @@
-"""
-Convert alpaca dataset into sharegpt format.
+"""Convert alpaca dataset into sharegpt format.
 
 Usage: python3 -m chatllms.data.convert_alpaca --in alpaca_data.json
 """

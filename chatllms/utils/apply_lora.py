@@ -1,5 +1,4 @@
-"""
-Apply the LoRA weights on top of a base model.
+"""Apply the LoRA weights on top of a base model.
 
 Usage:
 python3 apply_lora.py --base_model_path ~/model_weights/llama-7b --target_model_path ~/model_weights/baize-7b \
@@ -24,7 +23,8 @@ def apply_lora(
     use_auth_token: str = True,
     trust_remote_code: bool = True,
 ) -> Tuple[AutoModelForCausalLM, AutoTokenizer]:
-    """Applies the LoRA adapter to a base model and saves the resulting target model (optional).
+    """Applies the LoRA adapter to a base model and saves the resulting target
+    model (optional).
 
     Args:
         base_model_path (str): The path to the base model to which the LoRA adapter will be applied.
@@ -36,7 +36,6 @@ def apply_lora(
 
     Returns:
         Tuple[AutoModelForCausalLM, AutoTokenizer]: A tuple containing the target model and its tokenizer.
-
     """
     # Load the base model and tokenizer
     print(f'Loading the base model from {base_model_path}')

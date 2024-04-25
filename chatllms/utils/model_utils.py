@@ -9,19 +9,18 @@ from transformers import PreTrainedModel, PreTrainedTokenizer, Trainer
 from transformers.generation.logits_process import LogitsProcessor
 from transformers.generation.utils import LogitsProcessorList
 from transformers.trainer_utils import get_last_checkpoint
-from transformers.generation.logits_process import LogitsProcessor
-from transformers.generation.utils import LogitsProcessorList
+
 from chatllms.data.data_utils import (DEFAULT_BOS_TOKEN, DEFAULT_EOS_TOKEN,
                                       DEFAULT_PAD_TOKEN, DEFAULT_UNK_TOKEN)
 
 
 def add_special_tokens_if_missing(tokenizer: PreTrainedTokenizer,
                                   model: PreTrainedModel) -> None:
-    """
-    If 'llama' or 'baichuan' is in the model name or path, check if the special tokens are set correctly.
-    Add any missing special tokens to prevent them from being parsed into different tokens.
-    Note that these special tokens are present in the vocabulary.
-    Note also that `model.config.pad_token_id` is 0 which corresponds to `<unk>` token.
+    """If 'llama' or 'baichuan' is in the model name or path, check if the
+    special tokens are set correctly. Add any missing special tokens to prevent
+    them from being parsed into different tokens. Note that these special
+    tokens are present in the vocabulary. Note also that
+    `model.config.pad_token_id` is 0 which corresponds to `<unk>` token.
 
     Args:
         tokenizer: The pre-trained tokenizer.
@@ -54,8 +53,7 @@ def smart_tokenizer_and_embedding_resize(special_tokens_dict: Dict[str, str],
                                          tokenizer: PreTrainedTokenizer,
                                          model: PreTrainedModel) -> None:
     """Resize tokenizer and embedding to accommodate new special tokens.
-    改变tokenizer和embedding的尺寸。
-    一般需要将tokenizer和embedding的尺寸设置为64的倍数，方便GPU加速。
+    改变tokenizer和embedding的尺寸。 一般需要将tokenizer和embedding的尺寸设置为64的倍数，方便GPU加速。
 
     Args:
         special_tokens_dict (Dict[str, str]): A dictionary of special tokens to be added to the tokenizer.
@@ -99,11 +97,9 @@ def smart_tokenizer_and_embedding_resize(special_tokens_dict: Dict[str, str],
 
 def find_all_linear_names(args: argparse.Namespace,
                           model: torch.nn.Module) -> List[str]:
-    """
-    Returns a list of names of all linear layers present in the given model.
+    """Returns a list of names of all linear layers present in the given model.
     如果args.bits是4，使用bitsandbytes库中的bnb.nn.Linear4bit层；
-    如果args.bits是8，使用bitsandbytes库中的bnb.nn.Linear8bitLt层；
-    否则，使用torch.nn.Linear层；
+    如果args.bits是8，使用bitsandbytes库中的bnb.nn.Linear8bitLt层； 否则，使用torch.nn.Linear层；
     并记录下这些层的名称，保存在lora_module_names集合中。
 
     Args:
@@ -154,8 +150,7 @@ def find_all_linear_names(args: argparse.Namespace,
 
 def print_trainable_parameters(args: argparse.Namespace,
                                model: torch.nn.Module) -> None:
-    """
-    Prints the number of trainable parameters in the given model.
+    """Prints the number of trainable parameters in the given model.
 
     Args:
         args (argparse.Namespace): A namespace containing arguments of the script. Must contain the 'bits' argument.
@@ -198,8 +193,7 @@ def print_trainable_parameters(args: argparse.Namespace,
 
 
 def verify_dtypes(model: torch.nn.Module) -> None:
-    """
-    检查模型参数的数据类型，并输出各个数据类型在这些张量中所占的比例.
+    """检查模型参数的数据类型，并输出各个数据类型在这些张量中所占的比例.
 
     :param model: 待检查的模型.
     :return: 无返回值.
@@ -225,9 +219,9 @@ def verify_dtypes(model: torch.nn.Module) -> None:
 
 def check_training_finished(args: argparse.Namespace,
                             logger=None) -> Tuple[str, bool]:
-    """
-    Given a directory containing previous saved checkpoints, returns the path to the last checkpoint
-    if available along with a boolean flag indicating whether training has already been completed.
+    """Given a directory containing previous saved checkpoints, returns the
+    path to the last checkpoint if available along with a boolean flag
+    indicating whether training has already been completed.
 
     Args:
         checkpoint_dir (str): Path to the directory containing the saved checkpoints.
@@ -276,24 +270,10 @@ def find_last_checkpoint(checkpoint_dir):
         last_checkpoint = join(checkpoint_dir, f'checkpoint-{max_step}')
     return last_checkpoint
 
-# Avoid runtime error in model.generate(do_sample=True).
-class InvalidScoreLogitsProcessor(LogitsProcessor):
-    def __call__(self, input_ids: torch.LongTensor,
-                 scores: torch.FloatTensor) -> torch.FloatTensor:
-        if torch.isnan(scores).any() or torch.isinf(scores).any():
-            scores.zero_()
-            scores[..., 0] = 1.0
-        return scores
-
-
-def get_logits_processor() -> LogitsProcessorList:
-    logits_processor = LogitsProcessorList()
-    logits_processor.append(InvalidScoreLogitsProcessor())
-    return logits_processor
-
 
 # Avoid runtime error in model.generate(do_sample=True).
 class InvalidScoreLogitsProcessor(LogitsProcessor):
+
     def __call__(self, input_ids: torch.LongTensor,
                  scores: torch.FloatTensor) -> torch.FloatTensor:
         if torch.isnan(scores).any() or torch.isinf(scores).any():

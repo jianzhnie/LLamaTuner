@@ -16,8 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 class SFTInstructionDataset(Dataset):
-    """
-    Dataset for supervised fine-tuning of instruction following models.
+    """Dataset for supervised fine-tuning of instruction following models.
 
     Converts raw dataset containing source/target instructions
     into tokenized input/target pairs with truncation and padding.
@@ -26,14 +25,13 @@ class SFTInstructionDataset(Dataset):
         dataset: The raw dataset containing source/target examples
         tokenizer: Tokenizer to use for encoding text
         max_seq_len: Maximum sequence length for truncation
-
     """
+
     def __init__(self,
                  raw_data: DatasetDict,
                  tokenizer: PreTrainedTokenizer,
                  max_seq_len: int = 1024):
-        """
-        Initialize the dataset with the raw data and tokenizer.
+        """Initialize the dataset with the raw data and tokenizer.
 
         Args:
             raw_data: Raw dataset containing source/target examples
@@ -45,12 +43,11 @@ class SFTInstructionDataset(Dataset):
         self.max_seq_len = max_seq_len
 
     def __len__(self) -> int:
-        """Return number of examples in dataset"""
+        """Return number of examples in dataset."""
         return len(self.dataset)
 
     def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
-        """
-        Convert an raw example into tokenized input/target pair.
+        """Convert an raw example into tokenized input/target pair.
 
         Args:
             idx: Index of the example in the dataset
@@ -107,14 +104,15 @@ class SFTInstructionDataset(Dataset):
 class SupervisedDataset(Dataset):
     """Dataset for supervised fine-tuning.
 
-        Args:
-            hf_dataset (dataset): The preprocesed dataset to load.
-            tokenizer (PreTrainedTokenizer): The tokenizer to use when tokenizing the data.
-            source_max_len (int): The maximum length allowed for the source text.
-            target_max_len (int): The maximum length allowed for the target text.
-            train_on_source (bool): If True, the model will be trained on the source text as well as the target text.
-            predict_with_generate (bool): If True, the model will generate predictions instead of training.
+    Args:
+        hf_dataset (dataset): The preprocesed dataset to load.
+        tokenizer (PreTrainedTokenizer): The tokenizer to use when tokenizing the data.
+        source_max_len (int): The maximum length allowed for the source text.
+        target_max_len (int): The maximum length allowed for the target text.
+        train_on_source (bool): If True, the model will be trained on the source text as well as the target text.
+        predict_with_generate (bool): If True, the model will generate predictions instead of training.
     """
+
     def __init__(
         self,
         hf_dataset: datasets.DatasetDict,
@@ -185,9 +183,7 @@ class SupervisedDataset(Dataset):
 
 @dataclass
 class DataCollatorForSupervisedDataset:
-    """
-    Collate and pad examples for supervised training.
-    """
+    """Collate and pad examples for supervised training."""
 
     tokenizer: PreTrainedTokenizer
     predict_with_generate: bool = False
@@ -196,8 +192,7 @@ class DataCollatorForSupervisedDataset:
             self,
             examples: List[Dict[str,
                                 torch.Tensor]]) -> Dict[str, torch.Tensor]:
-        """
-        Collate examples into dictionary for supervised training.
+        """Collate examples into dictionary for supervised training.
 
         Args:
             examples: List of examples, each containing 'input_ids' and 'labels'

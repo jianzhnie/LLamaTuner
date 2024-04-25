@@ -11,6 +11,7 @@ from chatllms.utils.stream_server import Iteratorize, Stream
 
 
 class Prompter(object):
+
     def __init__(self) -> None:
         self.PROMPT_DICT = {
             'prompt_input':

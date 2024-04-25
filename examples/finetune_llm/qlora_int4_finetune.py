@@ -284,6 +284,7 @@ def find_all_linear_names(args, model):
 
 
 class SavePeftModelCallback(transformers.TrainerCallback):
+
     def save_model(self, args, state, kwargs):
         logger.info('Saving PEFT checkpoint...')
         if state.best_model_checkpoint is not None:
@@ -307,6 +308,7 @@ class SavePeftModelCallback(transformers.TrainerCallback):
         return control
 
     def on_train_end(self, args, state, control, **kwargs):
+
         def touch(fname, times=None):
             with open(fname, 'a'):
                 os.utime(fname, times)
@@ -408,9 +410,7 @@ def get_accelerate_model(args, checkpoint_dir):
 
 
 def print_trainable_parameters(args, model):
-    """
-    Prints the number of trainable parameters in the model.
-    """
+    """Prints the number of trainable parameters in the model."""
     trainable_params = 0
     all_param = 0
     for _, param in model.named_parameters():
@@ -576,9 +576,8 @@ def local_dataset(dataset_name):
 
 def make_data_module(tokenizer: transformers.PreTrainedTokenizer,
                      args) -> Dict:
-    """
-    Make dataset and collator for supervised fine-tuning.
-    Datasets are expected to have the following columns: { `input`, `output` }
+    """Make dataset and collator for supervised fine-tuning. Datasets are
+    expected to have the following columns: { `input`, `output` }
 
     Available datasets to be selected with `dataset` argument:
         - alpaca, 52002 examples
@@ -597,8 +596,8 @@ def make_data_module(tokenizer: transformers.PreTrainedTokenizer,
         - supernatural-instructions, 69624 examples (same as paper with 100 ex/task more can be used)
         - flan (FLAN v2), up to 20M examples available
         - vicuna
-
     """
+
     def load_data(dataset_name):
         if dataset_name == 'alpaca':
             return load_dataset('tatsu-lab/alpaca')
@@ -832,6 +831,7 @@ def train():
         accuracy = evaluate.load('accuracy')
 
         class MMLUEvalCallback(transformers.TrainerCallback):
+
             def on_evaluate(self, args, state, control, model, **kwargs):
                 data_loader = trainer.get_eval_dataloader(mmlu_dataset)
                 source_max_len = trainer.data_collator.source_max_len

@@ -17,8 +17,8 @@ from chatllms.utils.model_utils import get_logits_processor
 def generate_response(query: str, tokenizer: PreTrainedTokenizer,
                       model: PreTrainedModel,
                       generation_args: dict) -> List[str]:
-    """
-    Generates a response to the given query using GPT-3.5 model and prints it to the console.
+    """Generates a response to the given query using GPT-3.5 model and prints
+    it to the console.
 
     Args:
         query (str): The input query for which a response is to be generated.
@@ -63,9 +63,7 @@ def generate_response(query: str, tokenizer: PreTrainedTokenizer,
 
 
 def main():
-    """
-    单轮对话，不具有对话历史的记忆功能
-    Run conversational agent loop with input/output.
+    """单轮对话，不具有对话历史的记忆功能 Run conversational agent loop with input/output.
 
     Args:
         model_args: Arguments for loading model

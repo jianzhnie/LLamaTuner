@@ -7,16 +7,15 @@ from transformers.trainer_utils import PREFIX_CHECKPOINT_DIR
 
 
 class SavePeftModelCallback(TrainerCallback):
-    """
-    Callback to save PEFT model checkpoints during training.
+    """Callback to save PEFT model checkpoints during training.
 
     Saves both the full model and the adapter model to separate directories
     within the checkpoint directory.
     """
+
     def save_model(self, args: Any, state: TrainingArguments,
                    kwargs: Dict[str, Any]) -> None:
-        """
-        Saves the PEFT model checkpoint.
+        """Saves the PEFT model checkpoint.
 
         Args:
             args (Any): The command line arguments passed to the script.
@@ -52,8 +51,8 @@ class SavePeftModelCallback(TrainerCallback):
     def on_save(self, args: Any, state: TrainingArguments,
                 control: TrainerControl,
                 **kwargs: Dict[str, Any]) -> TrainerControl:
-        """
-        Callback method that calls save_model() and returns `control` argument.
+        """Callback method that calls save_model() and returns `control`
+        argument.
 
         Args:
             args (Any): The command line arguments passed to the script.
@@ -74,8 +73,8 @@ class SavePeftModelCallback(TrainerCallback):
     def on_train_end(self, args: Any, state: TrainingArguments,
                      control: TrainerControl, **kwargs: Dict[str,
                                                              Any]) -> None:
-        """
-        Callback method that saves the model checkpoint and creates a 'completed' file in the output directory.
+        """Callback method that saves the model checkpoint and creates a
+        'completed' file in the output directory.
 
         Args:
             args (Any): The command line arguments passed to the script.

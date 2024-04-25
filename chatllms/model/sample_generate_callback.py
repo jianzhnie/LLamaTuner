@@ -7,13 +7,14 @@ from transformers import PreTrainedTokenizer, TrainerCallback
 
 @dataclass
 class SampleGenerateCallback(TrainerCallback):
-    """
-    A callback that generates text samples from a pre-trained language model during training.
+    """A callback that generates text samples from a pre-trained language model
+    during training.
 
     Args:
         tokenizer (PreTrainedTokenizer): The tokenizer used to preprocess inputs.
         max_new_tokens (int): The maximum number of tokens to generate in response to each input.
     """
+
     def __init__(self, tokenizer: PreTrainedTokenizer,
                  generation_config: argparse.Namespace, logger: None):
         self.tokenizer = tokenizer
@@ -49,8 +50,7 @@ class SampleGenerateCallback(TrainerCallback):
 
     def on_evaluate(self, args: Any, state: Dict[str, Any], control: Any,
                     **kwargs: Any) -> None:
-        """
-        Generates text samples from the language model during evaluation.
+        """Generates text samples from the language model during evaluation.
 
         Args:
             args (Any): Trainer arguments, not used in this method.

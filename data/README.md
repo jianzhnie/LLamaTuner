@@ -1,4 +1,3 @@
-
 # How to use the data
 
 ## Datasets Supported by the Framework
@@ -43,7 +42,6 @@ We provide the following datasets for the experiments in this framework.
 - [CValues](https://github.com/X-PLUG/CValues)
   数据集说明：开源了数据规模为145k的价值对齐数据集，该数据集对于每个prompt包括了拒绝&正向建议,(safe and reponsibility) > 拒绝为主(safe) > 风险回复(unsafe)三种类型，可用于增强SFT模型的安全性或用于训练reward模型。
 - [CValues-Comparison中文大模型价值观比较数据集](https://modelscope.cn/datasets/damo/CValues-Comparison/summary)
-
 
 ## Dataset formation
 

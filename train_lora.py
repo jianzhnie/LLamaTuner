@@ -32,9 +32,9 @@ class LoraArguments:
 
 
 def maybe_zero_3(param: Union[torch.Tensor, object]) -> torch.Tensor:
-    """
-    Applies zero.GatheredParameters to gather the parameter if it has ds_id attribute,
-    and clones and detaches the tensor data if ds_status is ZeroParamStatus.NOT_AVAILABLE.
+    """Applies zero.GatheredParameters to gather the parameter if it has ds_id
+    attribute, and clones and detaches the tensor data if ds_status is
+    ZeroParamStatus.NOT_AVAILABLE.
 
     Args:
         param: The parameter to be processed.
@@ -58,8 +58,7 @@ def maybe_zero_3(param: Union[torch.Tensor, object]) -> torch.Tensor:
 # Borrowed from peft.utils.get_peft_model_state_dict
 def get_peft_state_maybe_zero_3(named_params: List[Tuple[str, torch.Tensor]],
                                 bias: str) -> Dict[str, torch.Tensor]:
-    """
-    Filters and processes named parameters based on the specified bias.
+    """Filters and processes named parameters based on the specified bias.
 
     Args:
         named_params: An iterable containing tuples of parameter names and their corresponding values.
@@ -107,8 +106,8 @@ def get_peft_state_maybe_zero_3(named_params: List[Tuple[str, torch.Tensor]],
 def load_model_tokenizer(
         args: argparse.Namespace
 ) -> Tuple[PreTrainedModel, PreTrainedTokenizer]:
-    """
-    Load a pre-trained model and tokenizer for natural language processing tasks.
+    """Load a pre-trained model and tokenizer for natural language processing
+    tasks.
 
     Args:
         args: An object containing the input arguments.

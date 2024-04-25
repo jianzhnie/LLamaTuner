@@ -1,5 +1,5 @@
-"""
-Helpers to support streaming generate output.
+"""Helpers to support streaming generate output.
+
 Borrowed from https://github.com/oobabooga/text-generation-webui/blob/ad37f396fc8bcbab90e11ecf17c56c97bfbd4a9c/modules/callbacks.py
 """
 import traceback
@@ -10,6 +10,7 @@ import transformers
 
 
 class Stream(transformers.StoppingCriteria):
+
     def __init__(self, callback_func=None):
         self.callback_func = callback_func
 
@@ -20,10 +21,9 @@ class Stream(transformers.StoppingCriteria):
 
 
 class Iteratorize:
-    """
-    Transforms a function that takes a callback
-    into a lazy iterator (generator).
-    """
+    """Transforms a function that takes a callback into a lazy iterator
+    (generator)."""
+
     def __init__(self, func, kwargs={}, callback=None):
         self.mfunc = func
         self.c_callback = callback

@@ -95,8 +95,7 @@ class CEval(object):
         data_path: str = 'ceval/ceval-exam',
         output_dir: str = 'ceval_output',
     ) -> None:
-        """
-        Initialize the CEval object.
+        """Initialize the CEval object.
 
         Args:
             model (PreTrainedModel): Pre-trained model for question answering.
@@ -112,8 +111,7 @@ class CEval(object):
         self.output_dir = output_dir
 
     def run(self, shot: int, split: str) -> None:
-        """
-        Run the evaluation for all tasks.
+        """Run the evaluation for all tasks.
 
         Args:
             shot (int): Number of additional examples to include in the prompt.
@@ -144,8 +142,7 @@ class CEval(object):
 
     def run_single_task(self, task_name: str, shot: int,
                         split: str) -> Tuple[List[Dict[str, str]], float]:
-        """
-        Run the evaluation for a single task.
+        """Run the evaluation for a single task.
 
         Args:
             task_name (str): Name of the task.
@@ -198,8 +195,7 @@ class CEval(object):
     def build_example(self,
                       data: Dict[str, str],
                       with_answer: bool = True) -> str:
-        """
-        Builds an example string based on the given data.
+        """Builds an example string based on the given data.
 
         Args:
             data (Dict[str, str]): A dictionary containing the question, choices, and answer.

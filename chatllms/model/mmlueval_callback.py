@@ -17,10 +17,9 @@ from chatllms.data.sft_dataset import SupervisedDataset
 
 @dataclass
 class MMLUEvalCallback(TrainerCallback):
-    """
-    A callback function called after each evaluation step during training to evaluate \
-        the performance of a model on an
-    MMLU (Mean Length of Utterance) dataset.
+    """A callback function called after each evaluation step during training to
+    evaluate the performance of a model on an MMLU (Mean Length of Utterance)
+    dataset.
 
     Args:
         trainer (Trainer): The trainer instance to be used.
@@ -28,6 +27,7 @@ class MMLUEvalCallback(TrainerCallback):
         data_dir (str): The directory where the MMLU dataset is stored.
         args (argparse.Namespace): The command line arguments for the current run.
     """
+
     def __init__(
         self,
         trainer: 'Trainer',
@@ -98,8 +98,8 @@ class MMLUEvalCallback(TrainerCallback):
         model: PreTrainedModel,
         **kwargs: Any,
     ) -> None:
-        """
-        Iterate over the batches of the evaluation dataset and make predictions for MMLU.
+        """Iterate over the batches of the evaluation dataset and make
+        predictions for MMLU.
 
         Args:
             args (Dict[str, Any]): Dictionary containing the evaluation arguments.

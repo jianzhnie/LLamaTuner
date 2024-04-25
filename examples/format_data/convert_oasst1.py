@@ -16,12 +16,14 @@ def json_load(in_file):
 
 
 def convert_oasst1_data(data_dir, output_dir):
-    '''
-    For OASST1, because it's in a tree structure, where every user input might get multiple replies,
-    we have to save every path from the root node to the assistant reply (including both leaf node and intemediate node).
-    This results in some of the messages being duplicated among different paths (instances).
-    Be careful when using this dataset for training. Ideally, you should only minimize the loss of the last message in each path.
-    '''
+    """For OASST1, because it's in a tree structure, where every user input
+    might get multiple replies, we have to save every path from the root node
+    to the assistant reply (including both leaf node and intemediate node).
+
+    This results in some of the messages being duplicated among different paths
+    (instances). Be careful when using this dataset for training. Ideally, you
+    should only minimize the loss of the last message in each path.
+    """
     conversations = []
     with open(os.path.join(data_dir, '2023-04-12_oasst_ready.trees.jsonl'),
               'r') as fin:

@@ -87,8 +87,7 @@ def extract_default_prompt_dataset(example: Dict[str, Any]) -> Dict[str, str]:
 
 
 def extract_alpaca_prompt_dataset(example: Dict[str, Any]) -> Dict[str, str]:
-    """
-    Extracts input from an example in the Alpaca dataset.
+    """Extracts input from an example in the Alpaca dataset.
 
     Args:
         example: A dictionary containing a single example from the Alpaca dataset.
@@ -100,7 +99,6 @@ def extract_alpaca_prompt_dataset(example: Dict[str, Any]) -> Dict[str, str]:
         >>> example = {'input': 'example input', 'output': 'example output'}
         >>> extract_alpaca_dataset(example)
         {'input': 'example input'}
-
     """
     if example.get('input', '') != '':
         prompt_format = ALPACA_PROMPT_DICT['prompt_input']
@@ -110,8 +108,8 @@ def extract_alpaca_prompt_dataset(example: Dict[str, Any]) -> Dict[str, str]:
 
 
 def extract_vicuna_prompt_dataset(example: Dict[str, Any]) -> Dict[str, str]:
-    """
-    Extracts the input and output portions of a single conversation example from the Vicuña format.
+    """Extracts the input and output portions of a single conversation example
+    from the Vicuña format.
 
     Args:
         example (Dict[str, Any]): A single conversation example in the Vicuña format.
@@ -184,8 +182,8 @@ def extract_random_prompt_dataset(example: Dict[str, Any]) -> Dict[str, str]:
 
 def local_dataset(dataset_path: str,
                   eval_dataset_size: float = 0.1) -> Tuple[Dataset, Dataset]:
-    """
-    Reads in a dataset from a file and returns it as a split train-test dataset.
+    """Reads in a dataset from a file and returns it as a split train-test
+    dataset.
 
     Args:
         dataset_path (str): The name of the dataset file to read in. \
@@ -195,7 +193,6 @@ def local_dataset(dataset_path: str,
         A tuple containing two datasets - the training subset and the testing subset.
     Raises:
         ValueError: If the specified file format is unsupported.
-
     """
 
     # Read in the full dataset from file based on the file format
@@ -221,8 +218,7 @@ def local_dataset(dataset_path: str,
 def load_data(
         dataset_path: str,
         eval_dataset_size: float = 0.1) -> Union[Dict[str, Dataset], None]:
-    """
-    Load a dataset based on its name.
+    """Load a dataset based on its name.
 
     Args:
         dataset_path: A string representing the path to the dataset to be loaded.
@@ -238,7 +234,6 @@ def load_data(
     Examples:
         >>> load_data('alpaca')
         {'train': Dataset(...), 'validation': Dataset(...), 'test': Dataset(...)}
-
     """
     if not os.path.exists(dataset_path):
         # Download dataset from HuggingFace Datasets
@@ -263,9 +258,7 @@ def formate_instruction_dataset(
         dataset_name: str,
         dataset_format: str,
         instruction_template: str = 'default') -> Optional[Dict[str, Dataset]]:
-    """
-    Formats a given dataset based on its name and format.
-
+    """Formats a given dataset based on its name and format.
 
     Removes unused columns, renames columns to 'input' and 'output',
     and applies dataset-specific formatting based on the dataset_name.
@@ -283,6 +276,7 @@ def formate_instruction_dataset(
         specified format.
         None if the dataset does not exist or if the format is not recognized.
     """
+
     def _format_dolly15k(dataset: Dataset) -> Dataset:
         """Format Dolly-15k dataset."""
         dataset = dataset.rename_column('context', 'input')
@@ -376,8 +370,8 @@ def split_train_eval(
     do_train: bool = True,
     max_train_samples: int = None,
 ) -> Dict[str, Dataset]:
-    """
-    Prepare the training and evaluation datasets for a machine learning model.
+    """Prepare the training and evaluation datasets for a machine learning
+    model.
 
     Args:
         dataset (DatasetDict): The complete dataset containing train, validation, and test splits.
@@ -435,9 +429,8 @@ def split_train_eval(
 
 
 def make_data_module(args):
-    """
-    Make dataset and collator for supervised fine-tuning.
-    Datasets are expected to have the following columns: { `input`, `output` }
+    """Make dataset and collator for supervised fine-tuning. Datasets are
+    expected to have the following columns: { `input`, `output` }
 
     Available datasets to be selected with `dataset` argument:
         - alpaca, 52002 examples
@@ -456,7 +449,6 @@ def make_data_module(args):
         - supernatural-instructions, 69624 examples (same as paper with 100 ex/task more can be used)
         - flan (FLAN v2), up to 20M examples available
         - vicuna
-
     """
     train_datasets: List[Dataset] = []
     eval_datasets: List[Dataset] = []

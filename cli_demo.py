@@ -22,8 +22,8 @@ def generate_response(
     model: PreTrainedModel,
     generation_args: dict,
 ) -> List[str]:
-    """
-    Generates a response to the given query using GPT-3.5 model and prints it to the console.
+    """Generates a response to the given query using GPT-3.5 model and prints
+    it to the console.
 
     Args:
         query (str): The input query for which a response is to be generated.
