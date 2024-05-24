@@ -86,6 +86,9 @@ As of now, we support the following datasets, most of which are all available in
   - [BIAI/OL-CC](https://data.baai.ac.cn/details/OL-CC)
   - [timdettmers/openassistant-guanaco](https://huggingface.co/datasets/timdettmers/openassistant-guanaco)
   - [Evol-Instruct](https://huggingface.co/datasets/victor123/evol_instruct_70k)
+  - [OpenOrca](https://huggingface.co/datasets/Open-Orca/OpenOrca)
+  - [Platypus](https://huggingface.co/datasets/garage-bAInd/Open-Platypus)
+  - [OpenHermes](https://huggingface.co/datasets/teknium/openhermes)
 
 - For reward model training:
 
@@ -343,13 +346,19 @@ We thank the Huggingface team, in particular Younes Belkada, for their support i
 
 We appreciate the work by many open-source contributors, especially:
 
-- [Alpaca-LoRA](https://github.com/tloen/alpaca-lora/)
-- [LoRA](https://github.com/microsoft/LoRA/)
-- [Stanford Alpaca](https://github.com/tatsu-lab/stanford_alpaca/)
-- [Hugging Face](https://huggingface.co/)
+- [axolotl](https://github.com/OpenAccess-AI-Collective/axolotl)
 - [LLaMa](https://github.com/facebookresearch/llama/)
 - [Vicuna](https://github.com/lm-sys/FastChat/)
 - [xTuring](https://github.com/stochasticai/xTuring)
+- [Hugging Face](https://huggingface.co/)
+- [Alpaca-LoRA](https://github.com/tloen/alpaca-lora/)
+- [Stanford Alpaca](https://github.com/tatsu-lab/stanford_alpaca/)
+- [Peft](https://github.com/huggingface/peft.git)
+- [bitsandbytes](https://github.com/TimDettmers/bitsandbytes)
+- [qlora](https://github.com/artidoro/qlora)
+- [deepspeed](https://www.deepspeed.ai/)
+- [Unsloth](https://github.com/unslothai/unsloth)
+
 
 ## Citation
 
