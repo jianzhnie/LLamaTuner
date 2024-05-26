@@ -288,13 +288,21 @@ def get_logits_processor() -> LogitsProcessorList:
     return logits_processor
 
 
+def trainer_save_model_safe(trainer: Trainer, output_dir: str = None):
+    from torch.distributed.fsdp import FullStateDictConfig
+    from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
+    from torch.distributed.fsdp import StateDictType
+
+    save_policy = FullStateDictConfig(offload_to_cpu=True, rank0_only=True)
+    with FSDP.state_dict_type(trainer.model, StateDictType.FULL_STATE_DICT,
+                              save_policy):
+        trainer.save_model(output_dir)
+
+
 def safe_save_model_for_hf_trainer(trainer: Trainer, output_dir: str):
     """Collects the state dict and dump to disk."""
-    state_dict = trainer.model.state_dict()
-    if trainer.args.should_save:
-        cpu_state_dict = {
-            key: value.cpu()
-            for key, value in state_dict.items()
-        }
-        del state_dict
-        trainer._save(output_dir, state_dict=cpu_state_dict)  # noqa
+    trainer.save_state()
+    if trainer.is_deepspeed_enabled:
+        trainer.save_model(output_dir)
+    else:
+        trainer_save_model_safe(trainer)
