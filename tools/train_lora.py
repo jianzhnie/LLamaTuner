@@ -16,7 +16,6 @@ from transformers import (AutoModelForCausalLM, AutoTokenizer,
 
 from chatllms.configs import DataArguments, ModelArguments, TrainingArguments
 from chatllms.data import make_supervised_data_module
-from chatllms.utils.model_utils import add_special_tokens_if_missing
 
 
 @dataclass
@@ -172,6 +171,7 @@ def load_model_tokenizer(
         logging.warning('Preparemodel for kbit training!!!')
         model = prepare_model_for_kbit_training(
             model, use_gradient_checkpointing=args.gradient_checkpointing)
+
         if torch.cuda.device_count() > 1:
             # Keeps Trainer from trying its own DataParallelism when more than 1 GPU is available
             setattr(model, 'model_parallel', True)
@@ -179,6 +179,7 @@ def load_model_tokenizer(
 
     logging.warning('Get the get peft model...')
     model = get_peft_model(model, lora_config)
+
     if args.deepspeed is not None and args.local_rank == 0:
         model.print_trainable_parameters()
 
@@ -194,9 +195,9 @@ def load_model_tokenizer(
         padding_side='right',
         use_fast=False,
         model_max_length=args.model_max_length,
-        tokenizer_type='llama' if 'llama' in args.model_name_or_path else None,
         **config_kwargs,
     )
+    tokenizer.pad_token = tokenizer.unk_token
 
     return model, tokenizer
 
@@ -226,11 +227,6 @@ def train() -> None:
     # load model and tokenizer
     model, tokenizer = load_model_tokenizer(args=args)
     logging.warning('Successfully loaded model and tokenizer.')
-
-    if 'llama' in args.model_name_or_path or 'baichuan' in args.model_name_or_path:
-        logging.warning(
-            f'Adding special tokens for {args.model_name_or_path}.')
-        add_special_tokens_if_missing(tokenizer, model)
 
     # Create a supervised dataset and Trainer, then train the model
     logging.warning('Creating a supervised dataset and DataCollator...')
