@@ -1,10 +1,12 @@
 import argparse
 import os
 from os.path import exists, isdir, join
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Union
 
 import bitsandbytes as bnb
 import torch
+from deepspeed import zero
+from deepspeed.runtime.zero.partition_parameters import ZeroParamStatus
 from transformers import PreTrainedModel, PreTrainedTokenizer, Trainer
 from transformers.generation.logits_process import LogitsProcessor
 from transformers.generation.utils import LogitsProcessorList
@@ -306,3 +308,74 @@ def safe_save_model_for_hf_trainer(trainer: Trainer, output_dir: str):
         trainer.save_model(output_dir)
     else:
         trainer_save_model_safe(trainer)
+
+
+def maybe_zero_3(param: Union[torch.Tensor, object]) -> torch.Tensor:
+    """Applies zero.GatheredParameters to gather the parameter if it has ds_id
+    attribute, and clones and detaches the tensor data if ds_status is
+    ZeroParamStatus.NOT_AVAILABLE.
+
+    Args:
+        param: The parameter to be processed.
+
+    Returns:
+        The modified parameter.
+
+    Raises:
+        AssertionError: If `param` has ds_id attribute but ds_status is not ZeroParamStatus.NOT_AVAILABLE.
+    """
+    if hasattr(param, 'ds_id'):
+        assert param.ds_status == ZeroParamStatus.NOT_AVAILABLE, 'Invalid ds_status'
+
+        with zero.GatheredParameters([param]):
+            param = param.data.detach().cpu().clone()
+    else:
+        param = param.detach().cpu().clone()
+    return param
+
+
+def get_peft_state_maybe_zero_3(named_params: List[Tuple[str, torch.Tensor]],
+                                bias: str) -> Dict[str, torch.Tensor]:
+    """Filters and processes named parameters based on the specified bias.
+
+    Args:
+        named_params: An iterable containing tuples of parameter names and their corresponding values.
+        bias: The bias type.
+
+    Returns:
+        A dictionary containing the filtered and possibly modified named parameters.
+
+    Raises:
+        NotImplementedError: If an unsupported bias type is provided.
+    """
+    to_return: Dict[str, torch.Tensor] = {}
+
+    if bias == 'none':
+        to_return = {k: t for k, t in named_params if 'lora_' in k}
+    elif bias == 'all':
+        to_return = {
+            k: t
+            for k, t in named_params if 'lora_' in k or 'bias' in k
+        }
+    elif bias == 'lora_only':
+        maybe_lora_bias: Dict[str, torch.Tensor] = {}
+        lora_bias_names: set() = set()
+
+        for k, t in named_params:
+            if 'lora_' in k:
+                to_return[k] = t
+                bias_name = k.split('lora_')[0] + 'bias'
+                lora_bias_names.add(bias_name)
+            elif 'bias' in k:
+                maybe_lora_bias[k] = t
+
+        for k, t in maybe_lora_bias.items():
+            bias_name = k.split('bias')[0] + 'bias'
+            if bias_name in lora_bias_names:
+                to_return[bias_name] = t
+    else:
+        raise NotImplementedError('Unsupported bias type')
+
+    to_return = {k: maybe_zero_3(v) for k, v in to_return.items()}
+
+    return to_return

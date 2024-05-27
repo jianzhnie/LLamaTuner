@@ -3,12 +3,12 @@ import logging
 import os
 import pathlib
 import sys
+import time
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple, Union
+from typing import List, Tuple, Union
 
 import torch
-from deepspeed import zero
-from deepspeed.runtime.zero.partition_parameters import ZeroParamStatus
+import wandb
 from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
 from transformers import (AutoModelForCausalLM, AutoTokenizer,
                           BitsAndBytesConfig, HfArgumentParser,
@@ -18,6 +18,10 @@ from transformers import (AutoModelForCausalLM, AutoTokenizer,
 sys.path.append(os.getcwd())
 from chatllms.configs import DataArguments, ModelArguments, TrainingArguments
 from chatllms.data import make_supervised_data_module
+from chatllms.utils.logger_utils import get_outdir, get_root_logger
+from chatllms.utils.model_utils import get_peft_state_maybe_zero_3
+
+os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
 
 
 @dataclass
@@ -32,80 +36,9 @@ class LoraArguments:
     q_lora: bool = False
 
 
-def maybe_zero_3(param: Union[torch.Tensor, object]) -> torch.Tensor:
-    """Applies zero.GatheredParameters to gather the parameter if it has ds_id
-    attribute, and clones and detaches the tensor data if ds_status is
-    ZeroParamStatus.NOT_AVAILABLE.
-
-    Args:
-        param: The parameter to be processed.
-
-    Returns:
-        The modified parameter.
-
-    Raises:
-        AssertionError: If `param` has ds_id attribute but ds_status is not ZeroParamStatus.NOT_AVAILABLE.
-    """
-    if hasattr(param, 'ds_id'):
-        assert param.ds_status == ZeroParamStatus.NOT_AVAILABLE, 'Invalid ds_status'
-
-        with zero.GatheredParameters([param]):
-            param = param.data.detach().cpu().clone()
-    else:
-        param = param.detach().cpu().clone()
-    return param
-
-
 # Borrowed from peft.utils.get_peft_model_state_dict
-def get_peft_state_maybe_zero_3(named_params: List[Tuple[str, torch.Tensor]],
-                                bias: str) -> Dict[str, torch.Tensor]:
-    """Filters and processes named parameters based on the specified bias.
-
-    Args:
-        named_params: An iterable containing tuples of parameter names and their corresponding values.
-        bias: The bias type.
-
-    Returns:
-        A dictionary containing the filtered and possibly modified named parameters.
-
-    Raises:
-        NotImplementedError: If an unsupported bias type is provided.
-    """
-    to_return: Dict[str, torch.Tensor] = {}
-
-    if bias == 'none':
-        to_return = {k: t for k, t in named_params if 'lora_' in k}
-    elif bias == 'all':
-        to_return = {
-            k: t
-            for k, t in named_params if 'lora_' in k or 'bias' in k
-        }
-    elif bias == 'lora_only':
-        maybe_lora_bias: Dict[str, torch.Tensor] = {}
-        lora_bias_names: set() = set()
-
-        for k, t in named_params:
-            if 'lora_' in k:
-                to_return[k] = t
-                bias_name = k.split('lora_')[0] + 'bias'
-                lora_bias_names.add(bias_name)
-            elif 'bias' in k:
-                maybe_lora_bias[k] = t
-
-        for k, t in maybe_lora_bias.items():
-            bias_name = k.split('bias')[0] + 'bias'
-            if bias_name in lora_bias_names:
-                to_return[bias_name] = t
-    else:
-        raise NotImplementedError('Unsupported bias type')
-
-    to_return = {k: maybe_zero_3(v) for k, v in to_return.items()}
-
-    return to_return
-
-
 def load_model_tokenizer(
-        args: argparse.Namespace
+    args: argparse.Namespace, text_logger: logging.Logger
 ) -> Tuple[PreTrainedModel, PreTrainedTokenizer]:
     """Load a pre-trained model and tokenizer for natural language processing
     tasks.
@@ -132,7 +65,7 @@ def load_model_tokenizer(
             '': int(os.environ.get('LOCAL_RANK') or 0)
         } if world_size != 1 else None)
         if len(args.fsdp) > 0 or deepspeed.is_deepspeed_zero3_enabled():
-            logging.warning(
+            text_logger.info(
                 'FSDP and ZeRO3 are both currently incompatible with QLoRA.')
 
     # Set configuration kwargs for tokenizer.
@@ -142,7 +75,7 @@ def load_model_tokenizer(
     }
 
     # Load the pre-trained model
-    print(f'Loading Model from {args.model_name_or_path}...')
+    text_logger.info(f'Loading Model from {args.model_name_or_path}...')
     model = AutoModelForCausalLM.from_pretrained(
         args.model_name_or_path,
         device_map=device_map,
@@ -159,7 +92,7 @@ def load_model_tokenizer(
     )
 
     # Add LoRA sparsity if specified
-    logging.warning('Adding LoRA modules...')
+    text_logger.info('Adding LoRA modules...')
     lora_config = LoraConfig(
         r=args.lora_r,
         lora_alpha=args.lora_alpha,
@@ -169,7 +102,7 @@ def load_model_tokenizer(
         task_type='CAUSAL_LM',
     )
     if args.q_lora:
-        logging.warning('Preparemodel for kbit training!!!')
+        text_logger.info('Preparemodel for kbit training!!!')
         model = prepare_model_for_kbit_training(
             model, use_gradient_checkpointing=args.gradient_checkpointing)
 
@@ -178,19 +111,19 @@ def load_model_tokenizer(
             setattr(model, 'model_parallel', True)
             setattr(model, 'is_parallelizable', True)
 
-    logging.warning('Get the get peft model...')
+    text_logger.info('Get the get peft model...')
     model = get_peft_model(model, lora_config)
 
     if args.deepspeed is not None and args.local_rank == 0:
         model.print_trainable_parameters()
 
     if args.gradient_checkpointing:
-        logging.warning('Using gradient checkpointing...')
+        text_logger.info('Using gradient checkpointing...')
         model.enable_input_require_grads()
         model.config.use_cache = False  # Turn off when gradient checkpointing is enabled
 
     # Load the tokenizer
-    print(f'Loading tokenizer from {args.model_name_or_path}...')
+    text_logger.info(f'Loading tokenizer from {args.model_name_or_path}...')
     tokenizer = AutoTokenizer.from_pretrained(
         args.model_name_or_path,
         padding_side='right',
@@ -206,6 +139,12 @@ def load_model_tokenizer(
 def train() -> None:
     """Trains a language model using Hugging Face's Transformers library.
 
+    Args:
+        model_args (ModelArguments): The arguments for the model configuration.
+        data_args (DataArguments): The arguments for the data configuration.
+        training_args (TrainingArguments): The arguments for the training configuration.
+        lora_args (LoraArguments): The arguments for the LoRA configuration.
+
     Returns:
         None
     """
@@ -216,34 +155,58 @@ def train() -> None:
     data_args.init_for_training()
     args = argparse.Namespace(**vars(model_args), **vars(data_args),
                               **vars(training_args), **vars(lora_args))
+
+    # init the logger before other steps
+    timestamp = time.strftime('%Y%m%d_%H%M%S', time.localtime())
+    # log
+    output_dir = get_outdir(args.output_dir, args.wandb_run_name)
+    training_args.output_dir = get_outdir(output_dir, 'checkpoints')
+    wandb_dir = get_outdir(output_dir, 'wandb')
+    log_name = os.path.join(args.wandb_run_name,
+                            timestamp).replace(os.path.sep, '_')
+    log_file = os.path.join(output_dir, log_name + '.log')
+    text_logger = get_root_logger(log_file=log_file, log_level='INFO')
+
     # Log on each process the small summary:
-    logging.warning(
+    text_logger.info(
         f'Process rank: {training_args.local_rank}, device: {training_args.device}, n_gpu: {training_args.n_gpu}'
     )
-    logging.warning(
+    text_logger.info(
         f'distributed training: {bool(training_args.local_rank != -1)}, 16-bits training: {training_args.fp16}'
     )
-    logging.warning(f'Training parameters {training_args}')
+    text_logger.info(f'Training parameters {training_args}')
 
     # load model and tokenizer
-    model, tokenizer = load_model_tokenizer(args=args)
-    logging.warning('Successfully loaded model and tokenizer.')
+    model, tokenizer = load_model_tokenizer(args=args, text_logger=text_logger)
+    text_logger.info('Successfully loaded model and tokenizer.')
 
     # Create a supervised dataset and Trainer, then train the model
-    logging.warning('Creating a supervised dataset and DataCollator...')
-    data_module = make_supervised_data_module(tokenizer=tokenizer, args=args)
+    text_logger.info('Creating a supervised dataset and DataCollator...')
+    data_module = make_supervised_data_module(tokenizer=tokenizer,
+                                              text_logger=text_logger,
+                                              args=args)
+
+    # Init the wandb
+    wandb.init(
+        dir=wandb_dir,
+        project=args.wandb_project,
+        name=args.wandb_run_name,
+        tags=['full-finetune', 'sft'],
+        group='full-finetune',
+        config=args,
+    )
 
     # Create a Trainer object and start training
-    logging.warning('Creating a Trainer...')
+    text_logger.info('Creating a Trainer...')
     trainer = Trainer(model=model,
                       tokenizer=tokenizer,
                       args=training_args,
                       **data_module)
 
-    logging.warning('Starting training...')
+    text_logger.info('Starting training...')
     if training_args.resume_from_checkpoint and list(
             pathlib.Path(training_args.output_dir).glob('checkpoint-*')):
-        logging.warning('Resuming from checkpoint...')
+        text_logger.info('Resuming from checkpoint...')
         trainer.train(resume_from_checkpoint=True)
     else:
         trainer.train()
