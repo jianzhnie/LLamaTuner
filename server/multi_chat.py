@@ -12,9 +12,7 @@ from chatllms.utils.model_utils import get_logits_processor
 
 
 def main(model_server_args, generation_args):
-    """
-    多轮对话，不具有对话历史的记忆功能
-    """
+    """多轮对话，不具有对话历史的记忆功能."""
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     model = AutoModelForCausalLM.from_pretrained(
         model_server_args.model_name_or_path,

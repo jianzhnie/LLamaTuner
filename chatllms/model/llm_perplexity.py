@@ -18,8 +18,7 @@ from chatllms.utils.model_utils import add_special_tokens_if_missing
 
 
 class LLMPerplexity:
-    """
-    Language model to compute perplexity.
+    """Language model to compute perplexity.
 
     Args:
         cache_dir (str): Directory to cache models.
@@ -31,6 +30,7 @@ class LLMPerplexity:
         fp16 (bool): Whether to use 16-bit precision.
         device (str): Device to load model to.
     """
+
     def __init__(
         self,
         cache_dir: str = None,
@@ -93,8 +93,7 @@ class LLMPerplexity:
     def get_perplexity(self,
                        input_texts: Union[str, List[str]],
                        batch_size: int = None) -> Union[float, List[float]]:
-        """
-        Compute perplexity on input text(s).
+        """Compute perplexity on input text(s).
 
         Args:
             input_texts (Union[str, List[str]]): Input text(s) to compute perplexity for.

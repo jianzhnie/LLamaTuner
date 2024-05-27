@@ -19,5 +19,5 @@ def main(load_in_8bit=True, model_path=''):
 
 if __name__ == '__main__':
     load_in_8bit = True
-    model_path = '/home/robin/work_dir/llm/llm_pretrain_model/baichuan'
+    model_path = 'baichuan'
     main(load_in_8bit, model_path)

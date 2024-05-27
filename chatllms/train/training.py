@@ -11,8 +11,7 @@ from torch.utils.data import Dataset
 
 def train_and_evaluate(trainer: transformers.Trainer, args: argparse.Namespace,
                        logger: None) -> None:
-    """
-    Trains and evaluates a machine learning model.
+    """Trains and evaluates a machine learning model.
 
     Args:
         trainer (Trainer): The training object to use for training and evaluation.
@@ -75,10 +74,8 @@ def predict_and_save(trainer: transformers.Trainer,
                      tokenizer: transformers.PreTrainedTokenizer,
                      predict_dataset: Dataset, args: argparse.Namespace,
                      logger: None) -> None:
-    """
-    Make predictions on new data, save them to a file along with input examples,
-    and update the overall metrics.
-    """
+    """Make predictions on new data, save them to a file along with input
+    examples, and update the overall metrics."""
     logger.info('=' * 80)
     logger.info('*** Predict ***')
     logger.info('=' * 80)

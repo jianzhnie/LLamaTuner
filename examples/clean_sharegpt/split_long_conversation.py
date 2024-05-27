@@ -1,5 +1,4 @@
-"""
-Split long conversations based on certain max length.
+"""Split long conversations based on certain max length.
 
 Usage: python3 -m split_long_conversation.py \
     --in sharegpt_clean.json \
@@ -23,8 +22,8 @@ from tqdm import tqdm
 
 def make_sample(sample: Dict[str, any], start_idx: int,
                 end_idx: int) -> Dict[str, any]:
-    """
-    Create a new sample dictionary by selecting conversations from the given sample.
+    """Create a new sample dictionary by selecting conversations from the given
+    sample.
 
     Args:
         sample (Dict[str, any]): The original sample dictionary.
@@ -43,8 +42,8 @@ def make_sample(sample: Dict[str, any], start_idx: int,
 
 
 def split_one_sample(sample: Dict[str, any]) -> List[Dict[str, any]]:
-    """
-    Split a single sample into multiple samples based on conversation lengths.
+    """Split a single sample into multiple samples based on conversation
+    lengths.
 
     Args:
         sample (Dict[str, any]): The original sample dictionary.
@@ -94,8 +93,8 @@ def worker(input_data: List[Dict[str, Any]]):
 def split_all(raw_data: List[Dict[str, Any]],
               tokenizer_: transformers.PreTrainedTokenizer,
               max_length_: int) -> List[Dict[str, Any]]:
-    """
-    Split the content into smaller parts based on the max token length constraint.
+    """Split the content into smaller parts based on the max token length
+    constraint.
 
     Args:
         raw_data (List[Dict[str, Any]]): The list of samples to split.

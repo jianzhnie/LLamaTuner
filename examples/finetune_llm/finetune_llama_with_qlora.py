@@ -15,9 +15,7 @@ DEFAULT_UNK_TOKEN = '<unk>'
 
 
 def print_trainable_parameters(model: AutoModelForCausalLM) -> None:
-    """
-    Prints the number of trainable parameters in the model.
-    """
+    """Prints the number of trainable parameters in the model."""
     trainable_params, all_param = 0, 0
     for _, param in model.named_parameters():
         all_param += param.numel()

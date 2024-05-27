@@ -4,9 +4,7 @@ from typing import Any, Dict, Optional
 
 @dataclass
 class GenerationArguments:
-    """
-    Arguments pertaining to specify the model generation parameters.
-    """
+    """Arguments pertaining to specify the model generation parameters."""
     # generation parameters
     # 是否使用cache
     use_cache: Optional[bool] = field(default=True)

@@ -27,9 +27,8 @@ def load_model_tokenizer(
     is_trainable: Optional[bool] = True,
     logger=None,
 ) -> Tuple[PreTrainedModel, PreTrainedTokenizer]:
-    """
-    Returns a language model and tokenizer for text generation that can be trained with mixed precision.
-    Support both training and inference.
+    """Returns a language model and tokenizer for text generation that can be
+    trained with mixed precision. Support both training and inference.
 
     Args:
         args: A dictionary containing various hyperparameters.

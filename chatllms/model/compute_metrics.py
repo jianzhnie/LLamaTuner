@@ -10,14 +10,14 @@ from transformers import PreTrainedTokenizer
 
 @dataclass
 class ComputeMetrics:
-    """
-    Wraps the tokenizer into metric functions, used in Seq2SeqPeftTrainer.
-    Borrowed from: https://github.com/THUDM/ChatGLM-6B/blob/0c2806fea82683349194e21996dd6b3acc3c265b/ptuning/main.py#L307
+    """Wraps the tokenizer into metric functions, used in Seq2SeqPeftTrainer.
 
+    Borrowed from: https://github.com/THUDM/ChatGLM-6B/blob/0c2806fea82683349194e21996dd6b3acc3c265b/ptuning/main.py#L307
     """
+
     def __init__(self, tokenizer: PreTrainedTokenizer) -> None:
-        """
-        Initialize the ComputeMetrics class with a pre-trained tokenizer object.
+        """Initialize the ComputeMetrics class with a pre-trained tokenizer
+        object.
 
         Args:
             tokenizer (PreTrainedTokenizer): A pre-trained tokenizer object to be used for decoding tokenized sequences.
@@ -27,8 +27,7 @@ class ComputeMetrics:
     def __call__(
         self, eval_preds: List[Union[np.ndarray, Tuple[np.ndarray]]]
     ) -> Dict[str, float]:
-        """
-        Computes evaluation metrics for model predictions.
+        """Computes evaluation metrics for model predictions.
 
         Args:
             eval_preds (List[Union[np.ndarray, Tuple[np.ndarray]]]): List of tuples containing prediction and label arrays.

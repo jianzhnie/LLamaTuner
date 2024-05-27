@@ -10,13 +10,12 @@ from transformers import (AutoModelForCausalLM, AutoTokenizer,
 
 from chatllms.configs import DataArguments, ModelArguments, TrainingArguments
 from chatllms.data import make_supervised_data_module
-from chatllms.utils.model_utils import (add_special_tokens_if_missing,
-                                        safe_save_model_for_hf_trainer)
+from chatllms.utils.model_utils import safe_save_model_for_hf_trainer
 
 
 def load_model_tokenizer(args) -> Tuple[PreTrainedModel, PreTrainedTokenizer]:
-    """
-    Load a pre-trained model and tokenizer for natural language processing tasks.
+    """Load a pre-trained model and tokenizer for natural language processing
+    tasks.
 
     Args:
         args: An object containing the input arguments.
@@ -55,7 +54,7 @@ def load_model_tokenizer(args) -> Tuple[PreTrainedModel, PreTrainedTokenizer]:
     print(f'Loading tokenizer from {args.model_name_or_path}...')
     tokenizer = AutoTokenizer.from_pretrained(
         args.model_name_or_path,
-        padding_side='right',
+        padding_side=args.padding_side,
         model_max_length=args.model_max_length,
         use_fast=False,
         tokenizer_type='llama' if 'llama' in args.model_name_or_path else None,
@@ -66,8 +65,7 @@ def load_model_tokenizer(args) -> Tuple[PreTrainedModel, PreTrainedTokenizer]:
 
 
 def train() -> None:
-    """
-    Trains a language model using Hugging Face's Transformers library.
+    """Trains a language model using Hugging Face's Transformers library.
 
     Args:
         model_args (ModelArguments): The arguments for the model configuration.
@@ -76,7 +74,6 @@ def train() -> None:
 
     Returns:
         None
-
     """
     parser = HfArgumentParser(
         (ModelArguments, DataArguments, TrainingArguments))
@@ -90,14 +87,9 @@ def train() -> None:
     model, tokenizer = load_model_tokenizer(args=args)
     logging.warning('Successfully loaded model and tokenizer.')
 
-    if 'llama' in args.model_name_or_path or 'baichuan' in args.model_name_or_path:
-        logging.warning(
-            f'Adding special tokens for {args.model_name_or_path}.')
-        add_special_tokens_if_missing(tokenizer, model)
-
-    if 'baichuan' in args.model_name_or_path:
-        # Tie the weights
-        model.tie_weights()
+    # Add special tokens if they are missing
+    if tokenizer.pad_token != tokenizer.unk_token:
+        tokenizer.pad_token = tokenizer.unk_token
 
     # Create a supervised dataset and Trainer, then train the model
     logging.warning('Creating a supervised dataset and DataCollator...')

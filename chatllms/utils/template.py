@@ -7,8 +7,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class PromptTemplate(object):
-    """
-    A template for formatting a conversation prompt.
+    """A template for formatting a conversation prompt.
 
     Args:
         name: Name of template
@@ -16,7 +15,6 @@ class PromptTemplate(object):
         prompt: Prompt text
         sep: Separator between prompts
         use_history: Whether to use conversation history
-
     """
 
     name: str
@@ -31,8 +29,7 @@ class PromptTemplate(object):
         history: Optional[List[Tuple[str, str]]] = None,
         prefix: Optional[str] = None,
     ) -> str:
-        """
-        Returns a string containing prompt without response.
+        """Returns a string containing prompt without response.
 
         Args:
             query (str): The input query text.
@@ -67,8 +64,7 @@ class PromptTemplate(object):
                        query: str,
                        history: Optional[List[Tuple[str, str]]] = None,
                        prefix: Optional[str] = None) -> List[str]:
-        """
-        Formats the conversation example.
+        """Formats the conversation example.
 
         Args:
             query (str): The input query text.
@@ -100,8 +96,7 @@ class PromptTemplate(object):
         sep: str,
         use_history: Optional[bool] = True,
     ) -> None:
-        """
-        Registers a new conversation template.
+        """Registers a new conversation template.
 
         Args:
             prefix (str): The prefix text for the prompt.
@@ -116,13 +111,9 @@ class PromptTemplate(object):
         self.use_history = use_history
 
     def __post_init__(self):
-        """
-        Initializes the instance of the class.
-        """
+        """Initializes the instance of the class."""
         if self.name == 'default':
-            """
-            Supports language model inference without histories.
-            """
+            """Supports language model inference without histories."""
             self.register_template(name='vanilla',
                                    prefix='',
                                    prompt='<s>{query}</s>',

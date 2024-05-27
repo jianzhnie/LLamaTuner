@@ -99,8 +99,8 @@ def format_roles(
 def filter_invalid_roles(
         raw_data: List[Dict[str,
                             any]]) -> List[Dict[str, List[Dict[str, any]]]]:
-    """
-    Filter out invalid contents based on the roles assigned to each conversation.
+    """Filter out invalid contents based on the roles assigned to each
+    conversation.
 
     Args:
         raw_data: A list of dictionaries containing conversation data.

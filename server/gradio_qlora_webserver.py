@@ -32,12 +32,11 @@ logger = logging.getLogger(__name__)
 
 
 class Prompter:
-    """
-    A class for generating prompts and extracting responses from generated text.
-    """
+    """A class for generating prompts and extracting responses from generated
+    text."""
+
     def __init__(self, prompt_template: str = None):
-        """
-        Initializes a new instance of the Prompter class.
+        """Initializes a new instance of the Prompter class.
 
         Args:
             prompt_template (str): The name of the prompt template to use. Default is None.
@@ -50,8 +49,7 @@ class Prompter:
                         instruction: str,
                         input: Union[str, None] = None,
                         response: Union[str, None] = None) -> str:
-        """
-        Generates a prompt based on the specified inputs.
+        """Generates a prompt based on the specified inputs.
 
         Args:
             instruction (str): The instruction to include in the prompt.
@@ -76,8 +74,7 @@ class Prompter:
         return prompt_text
 
     def get_response(self, output: str) -> str:
-        """
-        Extracts the response from the generated text.
+        """Extracts the response from the generated text.
 
         Args:
             output (str): The generated text to extract the response from.

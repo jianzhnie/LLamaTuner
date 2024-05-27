@@ -1,6 +1,4 @@
-"""
-Conversation prompt templates.
-"""
+"""Conversation prompt templates."""
 
 import dataclasses
 from enum import Enum, auto
@@ -25,7 +23,8 @@ class SeparatorStyle(Enum):
 
 @dataclasses.dataclass
 class Conversation:
-    """A class that manages prompt templates and keeps all conversation history."""
+    """A class that manages prompt templates and keeps all conversation
+    history."""
 
     # The name of this template
     name: str
@@ -163,8 +162,9 @@ class Conversation:
     def update_last_message(self, message: str):
         """Update the last output.
 
-        The last message is typically set to be None when constructing the prompt,
-        so we need to update it in-place after getting the response from a model.
+        The last message is typically set to be None when constructing the
+        prompt, so we need to update it in-place after getting the response
+        from a model.
         """
         self.messages[-1][1] = message
 

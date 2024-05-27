@@ -13,22 +13,22 @@
 <div align="center">
 
 👋🤗🤗👋 加入我们 [WeChat](assets/wechat.jpg).
+
 </div>
 
-
 # Efficient Finetuning of Quantized LLMs --- 低资源的大语言模型量化训练/部署方案
-
 
 <div align="center">
 
 [English](README.md) | 中文
+
 </div>
 
 这里是`Efficient Finetuning of Quantized LLMs`项目的存储库，旨在构建和开源 遵循指令的`baichuan/LLaMA/Pythia/GLM`中文大模型微调训练方法，该方法可以在**单个 Nvidia RTX-2080TI**上进行训练，多轮聊天机器人可以在**单个 Nvidia RTX-3090**上进行上下文长度 2048的模型训练。
 
 我们使用[bitsandbytes](https://github.com/TimDettmers/bitsandbytes)进行量化，并与Huggingface的[PEFT](https://github.com/huggingface/peft)和 [transformers](https://github.com/huggingface/transformers/)库集成。
 
- 本项目主要内容如下：
+本项目主要内容如下：
 
 - 📗 支持全量参数指令微调、LoRA指令微调(后续将会提供支持)， QLoRA低成本高效指令微调。
 - 📗 支持绝大部分主流的开源大模型，如百川 baichuan、Ziya、Bloom、LLaMA、Pythia、OPT等。
@@ -88,6 +88,7 @@ QLora 引入了多种创新，旨在在不牺牲性能的情况下减少内存�
 截至目前，我们支持以下数据集，这些数据集都可以在 [Hugging Face Datasets](https://huggingface.co/datasets) 上找到。我们将在未来添加更多数据集。
 
 - For supervised fine-tuning:
+
   - [Stanford Alpaca](https://github.com/tatsu-lab/stanford_alpaca)
   - [Stanford Alpaca (Chinese)](https://github.com/ymcui/Chinese-LLaMA-Alpaca)
   - [Hello-SimpleAI/HC3](https://huggingface.co/datasets/Hello-SimpleAI/HC3)
@@ -103,16 +104,16 @@ QLora 引入了多种创新，旨在在不牺牲性能的情况下减少内存�
   - [Evol-Instruct](https://huggingface.co/datasets/victor123/evol_instruct_70k)
 
 - For reward model training:
+
   - [HH-RLHF](https://huggingface.co/datasets/Anthropic/hh-rlhf)
   - [Open Assistant](https://huggingface.co/datasets/OpenAssistant/oasst1)
   - [GPT-4 Generated Data](https://github.com/Instruction-Tuning-with-GPT-4/GPT-4-LLM)
   - [GPT-4 Generated Data (Chinese)](https://github.com/Instruction-Tuning-with-GPT-4/GPT-4-LLM)
 
-
 请参考 [data/README.md](data/README.md) 了解如何使用这些数据集训练自己的 ChatGPT。如果您想探索更多数据集，请参考 [awesome-instruction-datasets](https://github.com/jianzhnie/awesome-instruction-datasets). 默认情况下，我们使用 [Stanford Alpaca](https://github.com/tatsu-lab/stanford_alpaca) 数据集进行训练和微调。
 
-
 部分数据集需要 huggingface 的账号认证确认才能使用，我们建议使用以下命令登录您的 Hugging Face 账户。
+
 ```bash
 pip install --upgrade huggingface_hub
 huggingface-cli login
@@ -125,7 +126,6 @@ huggingface-cli login
 - data_utils.py：数据预处理和格式化
 - sft_dataset.py：有监督的对话数据集类
 - conv_dataset.py：多轮对话数据集类
-
 
 ## 模型仓库
 

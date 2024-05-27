@@ -13,22 +13,22 @@ from chatllms.data.sft_dataset import DataCollatorForSupervisedDataset
 
 @dataclass
 class VicunaDataset(Dataset):
-    """
-    Dataset for multi-turn conversations using a Transformer model.
+    """Dataset for multi-turn conversations using a Transformer model.
 
     Attributes:
         raw_data: The preprocessed dataset dict to load
         tokenizer: Pretrained tokenizer to encode text
         max_seq_length: Maximum sequence length for model inputs
     """
+
     def __init__(
         self,
         raw_data: datasets.DatasetDict,
         tokenizer: PreTrainedTokenizer,
         max_seq_length: int = 1024,
     ):
-        """
-        Initialize the dataset with conversations, tokenizer, and max sequence length.
+        """Initialize the dataset with conversations, tokenizer, and max
+        sequence length.
 
         Args:
             raw_data: The preprocessed dataset dict to load
@@ -51,8 +51,7 @@ class VicunaDataset(Dataset):
     def tokenize_conversation(
             self,
             conversation: List[Dict]) -> Tuple[torch.Tensor, torch.Tensor]:
-        """
-        Tokenize a single conversation into input IDs and labels.
+        """Tokenize a single conversation into input IDs and labels.
 
         Args:
             conversation: List of turns in the conversation
@@ -105,8 +104,7 @@ class VicunaDataset(Dataset):
         return torch.tensor(input_ids), torch.tensor(labels)
 
     def _get_human_prefix(self, turn_id: int, role: str) -> str:
-        """
-        Get the prefix for a human turn.
+        """Get the prefix for a human turn.
 
         Args:
             turn_id: Index of the current turn
@@ -126,8 +124,7 @@ class VicunaDataset(Dataset):
         return len(self.raw_data)
 
     def __getitem__(self, index: int) -> Dict:
-        """
-        Get the input IDs and labels for a specific conversation.
+        """Get the input IDs and labels for a specific conversation.
 
         Args:
             index: Index of the conversation
@@ -147,23 +144,22 @@ class VicunaDataset(Dataset):
 
 @dataclass
 class ConversationDataset(Dataset):
-    """
-    Dataset for multi-turn conversations using Transformer model.
+    """Dataset for multi-turn conversations using Transformer model.
 
     Attributes:
         raw_data: The preprocessed dataset dict to load
         tokenizer: Pretrained tokenizer
         max_seq_length: Maximum length of sequence
     """
+
     def __init__(
         self,
         raw_data: datasets.DatasetDict,
         tokenizer: PreTrainedTokenizer,
         max_seq_length: int = 1024,
     ):
-        """
-        Initialize the dataset with conversations, tokenizer and max sequence length.
-        """
+        """Initialize the dataset with conversations, tokenizer and max
+        sequence length."""
         self.raw_data = raw_data
         self.tokenizer = tokenizer
         self.max_seq_length = max_seq_length
@@ -174,8 +170,7 @@ class ConversationDataset(Dataset):
         self,
         conversation: List[Dict],
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        """
-        Tokenize a single conversation into input IDs and labels.
+        """Tokenize a single conversation into input IDs and labels.
 
         Args:
             conversation: List of turns in the conversation
@@ -218,8 +213,7 @@ class ConversationDataset(Dataset):
         return len(self.raw_data)
 
     def __getitem__(self, index: int) -> Dict[str, torch.Tensor]:
-        """
-        Get the input IDs and labels for a specific conversation.
+        """Get the input IDs and labels for a specific conversation.
 
         Args:
             index: Index of the conversation
@@ -248,9 +242,9 @@ class ConversationDataset(Dataset):
 
 @dataclass
 class ConversationDataCollator(object):
-    """
-    Collate and pad a batch of conversation examples to prepare for training.
-    """
+    """Collate and pad a batch of conversation examples to prepare for
+    training."""
+
     def __init__(
         self,
         tokenizer: PreTrainedTokenizer,
@@ -300,8 +294,7 @@ class ConversationDataCollator(object):
 
 def make_conversation_data_module(tokenizer: PreTrainedTokenizer,
                                   args) -> Dict[str, Dataset]:
-    """
-    Create dataset and collator for conversation modeling.
+    """Create dataset and collator for conversation modeling.
 
     Args:
         tokenizer (PreTrainedTokenizer): The tokenizer object.
@@ -310,7 +303,6 @@ def make_conversation_data_module(tokenizer: PreTrainedTokenizer,
 
     Returns:
         dict: A dictionary containing the train_dataset and eval_dataset.
-
     """
     # Determine the appropriate dataset class based on dataset_type flag
     dataset_cls = (VicunaDataset if args.conversation_template == 'vicuna' else

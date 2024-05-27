@@ -16,7 +16,6 @@ from transformers import (AutoModelForCausalLM, AutoTokenizer,
 
 from chatllms.configs import DataArguments, ModelArguments, TrainingArguments
 from chatllms.data import make_supervised_data_module
-from chatllms.utils.model_utils import add_special_tokens_if_missing
 
 
 @dataclass
@@ -32,9 +31,9 @@ class LoraArguments:
 
 
 def maybe_zero_3(param: Union[torch.Tensor, object]) -> torch.Tensor:
-    """
-    Applies zero.GatheredParameters to gather the parameter if it has ds_id attribute,
-    and clones and detaches the tensor data if ds_status is ZeroParamStatus.NOT_AVAILABLE.
+    """Applies zero.GatheredParameters to gather the parameter if it has ds_id
+    attribute, and clones and detaches the tensor data if ds_status is
+    ZeroParamStatus.NOT_AVAILABLE.
 
     Args:
         param: The parameter to be processed.
@@ -58,8 +57,7 @@ def maybe_zero_3(param: Union[torch.Tensor, object]) -> torch.Tensor:
 # Borrowed from peft.utils.get_peft_model_state_dict
 def get_peft_state_maybe_zero_3(named_params: List[Tuple[str, torch.Tensor]],
                                 bias: str) -> Dict[str, torch.Tensor]:
-    """
-    Filters and processes named parameters based on the specified bias.
+    """Filters and processes named parameters based on the specified bias.
 
     Args:
         named_params: An iterable containing tuples of parameter names and their corresponding values.
@@ -107,8 +105,8 @@ def get_peft_state_maybe_zero_3(named_params: List[Tuple[str, torch.Tensor]],
 def load_model_tokenizer(
         args: argparse.Namespace
 ) -> Tuple[PreTrainedModel, PreTrainedTokenizer]:
-    """
-    Load a pre-trained model and tokenizer for natural language processing tasks.
+    """Load a pre-trained model and tokenizer for natural language processing
+    tasks.
 
     Args:
         args: An object containing the input arguments.
@@ -173,6 +171,7 @@ def load_model_tokenizer(
         logging.warning('Preparemodel for kbit training!!!')
         model = prepare_model_for_kbit_training(
             model, use_gradient_checkpointing=args.gradient_checkpointing)
+
         if torch.cuda.device_count() > 1:
             # Keeps Trainer from trying its own DataParallelism when more than 1 GPU is available
             setattr(model, 'model_parallel', True)
@@ -180,6 +179,7 @@ def load_model_tokenizer(
 
     logging.warning('Get the get peft model...')
     model = get_peft_model(model, lora_config)
+
     if args.deepspeed is not None and args.local_rank == 0:
         model.print_trainable_parameters()
 
@@ -195,9 +195,9 @@ def load_model_tokenizer(
         padding_side='right',
         use_fast=False,
         model_max_length=args.model_max_length,
-        tokenizer_type='llama' if 'llama' in args.model_name_or_path else None,
         **config_kwargs,
     )
+    tokenizer.pad_token = tokenizer.unk_token
 
     return model, tokenizer
 
@@ -227,11 +227,6 @@ def train() -> None:
     # load model and tokenizer
     model, tokenizer = load_model_tokenizer(args=args)
     logging.warning('Successfully loaded model and tokenizer.')
-
-    if 'llama' in args.model_name_or_path or 'baichuan' in args.model_name_or_path:
-        logging.warning(
-            f'Adding special tokens for {args.model_name_or_path}.')
-        add_special_tokens_if_missing(tokenizer, model)
 
     # Create a supervised dataset and Trainer, then train the model
     logging.warning('Creating a supervised dataset and DataCollator...')

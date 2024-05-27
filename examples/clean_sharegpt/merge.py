@@ -1,5 +1,4 @@
-"""
-Merge two conversation files into one
+"""Merge two conversation files into one.
 
 Usage: python3 -m fastchat.data.merge --in file1.json file2.json --out merged.json
 """

@@ -2,9 +2,9 @@ from os.path import join
 
 
 def get_dataset_info(dataset_dir):
-    """
-    Returns the datasets info to a dataset based on a pre-defined map of dataset names to their corresponding URLs on the internet
-    or local file paths.
+    """Returns the datasets info to a dataset based on a pre-defined map of
+    dataset names to their corresponding URLs on the internet or local file
+    paths.
 
     Args:
         dataset_dir (str): The local directory where the dataset is stored; this is used for datasets that are stored locally.
