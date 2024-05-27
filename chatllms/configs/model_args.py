@@ -31,9 +31,5 @@ class ModelArguments:
             'help':
             'Enable unpickling of arbitrary code in AutoModelForCausalLM#from_pretrained.'
         })
-    use_auth_token: Optional[bool] = field(
-        default=False,
-        metadata={
-            'help':
-            'Enables using Huggingface auth token from Git Credentials.'
-        })
+    padding_side: str = field(
+        default='right', metadata={'help': 'The padding side in tokenizer'})

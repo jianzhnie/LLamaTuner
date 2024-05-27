@@ -20,7 +20,6 @@ def apply_lora(
     lora_model_path: str,
     target_model_path: str = None,
     cache_dir: str = None,
-    use_auth_token: str = True,
     trust_remote_code: bool = True,
 ) -> Tuple[AutoModelForCausalLM, AutoTokenizer]:
     """Applies the LoRA adapter to a base model and saves the resulting target
@@ -31,7 +30,6 @@ def apply_lora(
         lora_model_path (str): The path to the LoRA adapter.
         target_model_path (str): The path where the target model will be saved (if `save_target_model=True`).
         cache_dir (str): The path to the cache directory.
-        use_auth_token (bool): Whether to use an authentication token when downloading the model.
         trust_remote_code (bool): Whether to trust remote code when downloading the model.
 
     Returns:
@@ -42,7 +40,6 @@ def apply_lora(
     # Set configuration kwargs for tokenizer.
     config_kwargs = {
         'cache_dir': cache_dir,
-        'use_auth_token': use_auth_token,
         'trust_remote_code': trust_remote_code,
     }
 

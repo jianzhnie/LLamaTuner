@@ -23,7 +23,6 @@ class LLMPerplexity:
     Args:
         cache_dir (str): Directory to cache models.
         model_name_or_path (str): Model name or path to load from Hub.
-        use_auth_token (bool): Whether to use auth token for loading model.
         trust_remote_code (bool): Whether to trust remote code.
         low_cpu_mem_usage (bool): Whether to use low CPU memory usage.
         max_length (int, optional): Max sequence length. Defaults to None.
@@ -35,7 +34,6 @@ class LLMPerplexity:
         self,
         cache_dir: str = None,
         model_name_or_path: str = 'facebook/opt-125m',
-        use_auth_token: bool = False,
         trust_remote_code: bool = False,
         low_cpu_mem_usage: bool = False,
         max_length: int = None,
@@ -47,7 +45,6 @@ class LLMPerplexity:
 
         config_kwargs = {
             'cache_dir': cache_dir,
-            'use_auth_token': use_auth_token,
             'trust_remote_code': trust_remote_code,
         }
         device_map = 'auto'
@@ -169,7 +166,6 @@ if __name__ == '__main__':
     scorer = LLMPerplexity(
         cache_dir=model_args.cache_dir,
         model_name_or_path=model_args.model_name_or_path,
-        use_auth_token=model_args.use_auth_token,
         trust_remote_code=model_args.trust_remote_code,
         low_cpu_mem_usage=model_args.low_cpu_mem_usage,
         max_length=model_args.model_max_length,
