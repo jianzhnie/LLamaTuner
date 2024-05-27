@@ -2,8 +2,7 @@ from transformers.tokenization_utils import PreTrainedTokenizer
 
 from .conv_dataset import ConversationDataset, VicunaDataset
 from .data_utils import make_data_module
-from .sft_dataset import (DataCollatorForSupervisedDataset,
-                          SFTInstructionDataset)
+from .sft_dataset import DataCollatorForSupervisedDataset, SupervisedDataset
 
 
 def make_supervised_data_module(tokenizer: PreTrainedTokenizer, args):
@@ -13,17 +12,17 @@ def make_supervised_data_module(tokenizer: PreTrainedTokenizer, args):
                    ConversationDataset)
 
     if not multi_turn:
-        train_dataset = SFTInstructionDataset(
+        train_dataset = (SupervisedDataset(
             train_dataset,
             tokenizer=tokenizer,
             max_seq_len=max_seq_length,
-        ) if args.do_train else None
+        ) if args.do_train else None)
 
-        eval_dataset = SFTInstructionDataset(
+        eval_dataset = (SupervisedDataset(
             eval_dataset,
             tokenizer=tokenizer,
             max_seq_len=max_seq_length,
-        ) if args.do_eval else None
+        ) if args.do_eval else None)
 
     else:
         train_dataset = dataset_cls(

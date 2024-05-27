@@ -2,6 +2,7 @@ import argparse
 import logging
 import os
 import pathlib
+import sys
 from dataclasses import dataclass, field
 from typing import Dict, List, Tuple, Union
 
@@ -14,6 +15,7 @@ from transformers import (AutoModelForCausalLM, AutoTokenizer,
                           PreTrainedModel, PreTrainedTokenizer, Trainer,
                           deepspeed)
 
+sys.path.append(os.getcwd())
 from chatllms.configs import DataArguments, ModelArguments, TrainingArguments
 from chatllms.data import make_supervised_data_module
 
@@ -136,7 +138,6 @@ def load_model_tokenizer(
     # Set configuration kwargs for tokenizer.
     config_kwargs = {
         'cache_dir': args.cache_dir,
-        'use_auth_token': args.use_auth_token,
         'trust_remote_code': args.trust_remote_code,
     }
 

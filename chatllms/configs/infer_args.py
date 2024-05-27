@@ -20,13 +20,8 @@ class ModelInferenceArguments:
         metadata={
             'help':
             'Enable unpickling of arbitrary code in AutoModelForCausalLM#from_pretrained.'
-        })
-    use_auth_token: Optional[bool] = field(
-        default=False,
-        metadata={
-            'help':
-            'Enables using Huggingface auth token from Git Credentials.'
-        })
+        },
+    )
     model_max_length: int = field(
         default=2048,
         metadata={

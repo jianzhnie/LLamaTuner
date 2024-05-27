@@ -1,11 +1,13 @@
 import argparse
 import os
+import sys
 import time
 
 import torch
 import transformers
 from transformers import GenerationConfig, Trainer, set_seed
 
+sys.path.append(os.getcwd())
 from chatllms.configs import (DataArguments, GenerationArguments,
                               LoraArguments, ModelArguments, QuantArguments,
                               TrainingArguments)

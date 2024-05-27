@@ -80,7 +80,8 @@ class DataArguments:
         datasets_info = yaml.safe_load(open(self.dataset_cfg, 'r'))
         self.dataset_names = list(datasets_info.keys())
         self.dataset_attr_list: List[DatasetAttr] = []
-        for i, name in enumerate(self.dataset_names):
+        for idx, name in enumerate(self.dataset_names):
+            print(f'Loading the {idx} dataset {name}...')
             dataset_attr = DatasetAttr()
             dataset_attr.dataset_name = name
             dataset_attr.dataset_format = datasets_info[name].get(
@@ -97,10 +98,6 @@ class DataArguments:
                 dataset_attr.load_from_local = True
             else:
                 dataset_attr.load_from_local = False
-                raise Warning(
-                    'You have set local_path: {} for {} but it does not exist! Will load the data from {}'
-                    .format(name, dataset_attr.local_path,
-                            dataset_attr.hf_hub_url))
 
             if 'columns' in datasets_info[name]:
                 dataset_attr.prompt_column = datasets_info[name][
@@ -111,5 +108,7 @@ class DataArguments:
                     'columns'].get('response', None)
                 dataset_attr.history_column = datasets_info[name][
                     'columns'].get('history', None)
-
+            print(f'Parser dataset cfg: {name} with the following attributes:'
+                  f'\n{dataset_attr}')
+            print('===' * 20)
             self.dataset_attr_list.append(dataset_attr)

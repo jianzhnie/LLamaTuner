@@ -1,16 +1,21 @@
 import argparse
 import logging
+import math
+import os
 import pathlib
+import sys
 from typing import Tuple
 
 import torch
-from transformers import (AutoModelForCausalLM, AutoTokenizer,
+from transformers import (AutoConfig, AutoModelForCausalLM, AutoTokenizer,
                           HfArgumentParser, PreTrainedModel,
                           PreTrainedTokenizer, Trainer)
 
+sys.path.append(os.getcwd())
 from chatllms.configs import DataArguments, ModelArguments, TrainingArguments
 from chatllms.data import make_supervised_data_module
-from chatllms.utils.model_utils import safe_save_model_for_hf_trainer
+
+os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
 
 
 def load_model_tokenizer(args) -> Tuple[PreTrainedModel, PreTrainedTokenizer]:
@@ -24,19 +29,29 @@ def load_model_tokenizer(args) -> Tuple[PreTrainedModel, PreTrainedTokenizer]:
         A tuple containing the loaded model and tokenizer.
     """
     # Determine the torch data type based on the input arguments
-    torch_dtype = torch.float16 if args.fp16 else (
-        torch.bfloat16 if args.bf16 else torch.float32)
+    torch_dtype = (torch.float16 if args.fp16 else
+                   (torch.bfloat16 if args.bf16 else torch.float32))
 
     config_kwargs = {
         'cache_dir': args.cache_dir,
-        'use_auth_token': args.use_auth_token,
         'trust_remote_code': args.trust_remote_code,
     }
+
+    # Set RoPE scaling factor
+    config = AutoConfig.from_pretrained(args.model_name_or_path,
+                                        **config_kwargs)
+
+    orig_ctx_len = getattr(config, 'max_position_embeddings', None)
+    if orig_ctx_len and args.model_max_length > orig_ctx_len:
+        scaling_factor = float(math.ceil(args.model_max_length / orig_ctx_len))
+        config.rope_scaling = {'type': 'linear', 'factor': scaling_factor}
+    config.use_cache = False
 
     # Load the pre-trained model
     print(f'Loading Model from {args.model_name_or_path}...')
     model = AutoModelForCausalLM.from_pretrained(
         args.model_name_or_path,
+        config=config,
         torch_dtype=torch_dtype,
         **config_kwargs,
     )
@@ -48,7 +63,9 @@ def load_model_tokenizer(args) -> Tuple[PreTrainedModel, PreTrainedTokenizer]:
     if args.gradient_checkpointing:
         logging.warning('Using gradient checkpointing...')
         model.enable_input_require_grads()
-        model.config.use_cache = False  # Turn off when gradient checkpointing is enabled
+        model.config.use_cache = (
+            False  # Turn off when gradient checkpointing is enabled
+        )
 
     # Load the tokenizer
     print(f'Loading tokenizer from {args.model_name_or_path}...')
@@ -57,9 +74,11 @@ def load_model_tokenizer(args) -> Tuple[PreTrainedModel, PreTrainedTokenizer]:
         padding_side=args.padding_side,
         model_max_length=args.model_max_length,
         use_fast=False,
-        tokenizer_type='llama' if 'llama' in args.model_name_or_path else None,
         **config_kwargs,
     )
+    # Add special tokens if they are missing
+    if tokenizer.pad_token != tokenizer.unk_token:
+        tokenizer.pad_token = tokenizer.unk_token
 
     return model, tokenizer
 
@@ -87,16 +106,13 @@ def train() -> None:
     model, tokenizer = load_model_tokenizer(args=args)
     logging.warning('Successfully loaded model and tokenizer.')
 
-    # Add special tokens if they are missing
-    if tokenizer.pad_token != tokenizer.unk_token:
-        tokenizer.pad_token = tokenizer.unk_token
-
     # Create a supervised dataset and Trainer, then train the model
     logging.warning('Creating a supervised dataset and DataCollator...')
     data_module = make_supervised_data_module(tokenizer=tokenizer, args=args)
 
     # Initialize the Trainer object and start training
     logging.warning('Initializing Trainer object.')
+    # Start trainner
     trainer = Trainer(
         model=model,
         tokenizer=tokenizer,
@@ -104,17 +120,31 @@ def train() -> None:
         **data_module,
     )
 
-    logging.warning('Start Training...')
-    if list(pathlib.Path(training_args.output_dir).glob('checkpoint-*')):
-        trainer.train(resume_from_checkpoint=True)
-    else:
-        trainer.train()
+    # Training
+    if args.do_train:
+        if (list(pathlib.Path(args.output_dir).glob('checkpoint-*'))
+                and args.resume_from_checkpoint):
+            train_result = trainer.train(
+                resume_from_checkpoint=args.resume_from_checkpoint)
+        else:
+            train_result = trainer.train()
 
-    logging.warning(f'Saving Model to {training_args.output_dir}')
-    trainer.save_state()
-    # Save the trained model
-    safe_save_model_for_hf_trainer(trainer=trainer,
-                                   output_dir=training_args.output_dir)
+        trainer.log_metrics('train', train_result.metrics)
+        trainer.save_metrics('train', train_result.metrics)
+        trainer.save_state()
+        trainer.save_model(args.output_dir)
+
+    # Evaluation
+    if args.do_eval:
+        metrics = trainer.evaluate(metric_key_prefix='eval')
+        try:
+            perplexity = math.exp(metrics['eval_loss'])
+        except OverflowError:
+            perplexity = float('inf')
+
+        metrics['perplexity'] = perplexity
+        trainer.log_metrics('eval', metrics)
+        trainer.save_metrics('eval', metrics)
 
     logging.warning('Done.')
 
