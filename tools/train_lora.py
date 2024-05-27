@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Tuple, Union
 
 import torch
+import wandb
 from deepspeed import zero
 from deepspeed.runtime.zero.partition_parameters import ZeroParamStatus
 from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
@@ -18,6 +19,8 @@ from transformers import (AutoModelForCausalLM, AutoTokenizer,
 sys.path.append(os.getcwd())
 from chatllms.configs import DataArguments, ModelArguments, TrainingArguments
 from chatllms.data import make_supervised_data_module
+
+os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
 
 
 @dataclass
@@ -232,6 +235,14 @@ def train() -> None:
     # Create a supervised dataset and Trainer, then train the model
     logging.warning('Creating a supervised dataset and DataCollator...')
     data_module = make_supervised_data_module(tokenizer=tokenizer, args=args)
+
+    # Init the wandb
+    wandb.init(
+        project=args.wandb_project,
+        name=args.wandb_run_name,
+        tags=['lora-finetune', 'lora'],
+        group='lora-finetune',
+    )
 
     # Create a Trainer object and start training
     logging.warning('Creating a Trainer...')

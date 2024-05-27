@@ -1,3 +1,4 @@
+import logging
 import os
 import random
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -180,14 +181,16 @@ def extract_random_prompt_dataset(example: Dict[str, Any]) -> Dict[str, str]:
     return {'input': formated_prompt}
 
 
-def local_dataset(dataset_path: str,
-                  eval_dataset_size: float = 0.1) -> Tuple[Dataset, Dataset]:
+def load_local_dataset(
+        dataset_path: str,
+        eval_dataset_size: float = 0.1) -> Tuple[Dataset, Dataset]:
     """Reads in a dataset from a file and returns it as a split train-test
     dataset.
 
     Args:
         dataset_path (str): The name of the dataset file to read in. \
             The format is inferred based on the file extension.
+        eval_dataset_size (float, optional): The fraction of the dataset to use for evaluation. Defaults to 0.1.
 
     Returns:
         A tuple containing two datasets - the training subset and the testing subset.
@@ -216,12 +219,16 @@ def local_dataset(dataset_path: str,
 
 
 def load_data(
-        dataset_path: str,
-        eval_dataset_size: float = 0.1) -> Union[Dict[str, Dataset], None]:
+    dataset_path: str,
+    eval_dataset_size: float = 0.1,
+    text_logger: logging.Logger = None,
+) -> Union[Dict[str, Dataset], None]:
     """Load a dataset based on its name.
 
     Args:
         dataset_path: A string representing the path to the dataset to be loaded.
+        eval_dataset_size: A float representing the size of the evaluation dataset.
+        text_logger: A logger object to log messages.
 
     Returns:
         A dictionary containing the loaded dataset if the dataset exists.
@@ -237,7 +244,7 @@ def load_data(
     """
     if not os.path.exists(dataset_path):
         # Download dataset from HuggingFace Datasets
-        print(
+        text_logger.info(
             f'Lodding dataset from huggingface, please ref to https://huggingface.co/datasets/{dataset_path}'
         )
         dataset = load_dataset(dataset_path,
@@ -246,18 +253,21 @@ def load_data(
     else:
         # Load dataset from local file
         try:
-            print(f'Lodding dataset from local path: {dataset_path}')
-            dataset = local_dataset(dataset_path, eval_dataset_size)
+            text_logger.info(
+                f'Lodding dataset from local path: {dataset_path}')
+            dataset = load_local_dataset(dataset_path, eval_dataset_size)
             return dataset
         except:
             raise ValueError(f'Error loading dataset from {dataset_path}')
 
 
 def formate_instruction_dataset(
-        dataset: Dataset,
-        dataset_name: str,
-        dataset_format: str,
-        instruction_template: str = 'default') -> Optional[Dict[str, Dataset]]:
+    dataset: Dataset,
+    dataset_name: str,
+    dataset_format: str,
+    instruction_template: str = 'default',
+    text_logger: logging.Logger = None,
+) -> Optional[Dict[str, Dataset]]:
     """Formats a given dataset based on its name and format.
 
     Removes unused columns, renames columns to 'input' and 'output',
@@ -270,6 +280,7 @@ def formate_instruction_dataset(
         dataset_name: A string representing the name of the dataset to be formatted.
         dataset_format: A string representing the name of the dataset format to be used.
         instruction_template: A string representing the name of the prompt template to be used.
+        text_logger: A logger object to log messages.
 
     Returns:
         A dictionary containing the formatted dataset if the dataset exists in the
@@ -327,9 +338,12 @@ def formate_instruction_dataset(
         return dataset
 
     # Format dataset
-    print(f'The {dataset_name} using {dataset_format} dataset format.')
+    text_logger.info(
+        f'Original {dataset_name} using {dataset_format} dataset format.')
+    text_logger.info(
+        f'Formatting the dataset {dataset_name} to alpaca dataset format.')
     if dataset_format == 'alpaca':
-        print('By default, We support the Alpaca dataset format.')
+        text_logger.info('By default, We support the Alpaca dataset format.')
     elif dataset_format == 'dolly':
         dataset = _format_dolly15k(dataset)
     elif dataset_format == 'chip2':
@@ -347,7 +361,7 @@ def formate_instruction_dataset(
             f'Unsupported dataset format: {dataset_format},  Please add the formate function in data_utils.py'
         )
     # encode_instruction_example
-    print(f'Applying instruction template: {instruction_template}')
+    text_logger.info(f'Applying instruction template: {instruction_template}')
     if instruction_template == 'alpaca':
         dataset = dataset.map(extract_alpaca_prompt_dataset)
     elif instruction_template == 'random':
@@ -356,7 +370,8 @@ def formate_instruction_dataset(
         dataset = dataset.map(extract_default_prompt_dataset)
 
     # Remove unused columns.
-    print("Removing the unused columns, keep only 'input' and 'output'")
+    text_logger.info(
+        "Removing the unused columns, keep only 'input' and 'output'")
     dataset = _remove_unused_columns(dataset)
 
     return dataset
@@ -369,6 +384,7 @@ def split_train_eval(
     max_eval_samples: int = None,
     do_train: bool = True,
     max_train_samples: int = None,
+    text_logger: logging.Logger = None,
 ) -> Dict[str, Dataset]:
     """Prepare the training and evaluation datasets for a machine learning
     model.
@@ -383,6 +399,7 @@ def split_train_eval(
         do_train (bool, optional): Whether to use a training dataset or not. Defaults to True.
         max_train_samples (int, optional): The maximum number of samples to keep in the training dataset.
             Ignored if `do_train` is False or `None`. Defaults to None.
+        text_logger (logging.Logger, optional): A logger object to log messages. Defaults to None.
 
     Returns:
         Dict[str, Dataset]: A dictionary containing the prepared training and evaluation datasets
@@ -398,7 +415,7 @@ def split_train_eval(
             eval_dataset = dataset['eval']
         else:
             # Split train dataset in train and validation according to `eval_dataset_size`
-            print(
+            text_logger.info(
                 f'Splitting the dataset into train and validation according to `eval_dataset_size`:  {eval_dataset_size}'
             )
             dataset = dataset['train'].train_test_split(
@@ -406,7 +423,7 @@ def split_train_eval(
             eval_dataset = dataset['test']
 
         # Reduce evaluation dataset size (if specified)
-        print(
+        text_logger.info(
             f'You have set the max_eval_samples: {max_eval_samples}, will do sampling ...'
         )
         if max_eval_samples is not None and len(
@@ -418,7 +435,7 @@ def split_train_eval(
         train_dataset = dataset['train']
 
         # Reduce training dataset size (if specified)
-        print(
+        text_logger.info(
             f'You have set the max_train_samples: {max_train_samples}, will do sampling ...'
         )
         if max_train_samples is not None and len(
@@ -428,7 +445,7 @@ def split_train_eval(
     return train_dataset, eval_dataset
 
 
-def make_data_module(args):
+def make_data_module(text_logger, args):
     """Make dataset and collator for supervised fine-tuning. Datasets are
     expected to have the following columns: { `input`, `output` }
 
@@ -442,18 +459,12 @@ def make_data_module(args):
         - oasst1 (OpenAssistant) primary message tree only, 9,846 examples
 
     Coming soon:
-        - unnatural instructions core, 66010 examples
-        - unnatural instructions full, 240670 examples
-        - alpaca-gpt4, 52002 examples
-        - unnatural-instructions-gpt4, 9000 examples
-        - supernatural-instructions, 69624 examples (same as paper with 100 ex/task more can be used)
-        - flan (FLAN v2), up to 20M examples available
         - vicuna
     """
     train_datasets: List[Dataset] = []
     eval_datasets: List[Dataset] = []
     dataset_name_list = args.dataset_names
-    print(f'Loading datasets: {dataset_name_list}')
+    text_logger.info(f'Loading datasets: {dataset_name_list}')
     mutliturn_lst = [
         dataset_attr.multi_turn for dataset_attr in args.dataset_attr_list
     ]
@@ -462,8 +473,8 @@ def make_data_module(args):
     ), 'All datasets should be multi-turn or single-turn. As follwing we will concat all datasets, so they should be in the same format.'
 
     for dataset_attr in args.dataset_attr_list:
-        print('=' * 80)
-        print('DatasetAttr: {}'.format(dataset_attr))
+        text_logger.info('=' * 80)
+        text_logger.info('DatasetAttr: {}'.format(dataset_attr))
 
         if dataset_attr.load_from_local:
             dataset_path = dataset_attr.local_path
@@ -472,8 +483,11 @@ def make_data_module(args):
         else:
             raise ValueError('Please set the dataset path or hf_hub_url.')
 
-        dataset = load_data(dataset_path,
-                            eval_dataset_size=args.eval_dataset_size)
+        dataset = load_data(
+            dataset_path,
+            eval_dataset_size=args.eval_dataset_size,
+            text_logger=text_logger,
+        )
 
         if not dataset_attr.multi_turn:
             dataset = formate_instruction_dataset(
@@ -481,6 +495,7 @@ def make_data_module(args):
                 dataset_name=dataset_attr.dataset_name,
                 dataset_format=dataset_attr.dataset_format,
                 instruction_template=args.instruction_template,
+                text_logger=text_logger,
             )
 
         train_dataset, eval_dataset = split_train_eval(
@@ -490,24 +505,24 @@ def make_data_module(args):
             max_eval_samples=args.max_eval_samples,
             do_train=args.do_train,
             max_train_samples=args.max_train_samples,
+            text_logger=text_logger,
         )
         if train_dataset:
-            print('loaded dataset:', dataset_attr.dataset_name, ' ',
-                  '#train data size:', len(train_dataset))
             train_datasets.append(train_dataset)
         if eval_dataset:
-            print('loaded dataset:', dataset_attr.dataset_name, ' '
-                  '#eval data size:', len(eval_dataset))
             eval_datasets.append(eval_dataset)
 
     concate_train = concatenate_datasets(
         train_datasets) if train_datasets else None
-    print(
-        f'Concatenated dataset list: {dataset_name_list}, #train dataset size: {len(concate_train)}'
-    ) if concate_train else None
     concate_eval = concatenate_datasets(
         eval_datasets) if eval_datasets else None
-    print(
+
+    result_train = (
+        f'Concatenated dataset list: {dataset_name_list}, #train dataset size: {len(concate_train)}'
+        if concate_train else None)
+    result_eval = (
         f'Concatenated dataset list: {dataset_name_list}, #eval dataset size: {len(concate_eval)}'
-    ) if concate_eval else None
+        if concate_eval else None)
+    text_logger.info(result_train)
+    text_logger.info(result_eval)
     return concate_train, concate_eval, mutliturn_lst[0]

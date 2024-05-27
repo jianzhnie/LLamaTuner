@@ -1,3 +1,7 @@
+import argparse
+import logging
+
+import torch
 from transformers.tokenization_utils import PreTrainedTokenizer
 
 from .conv_dataset import ConversationDataset, VicunaDataset
@@ -5,8 +9,13 @@ from .data_utils import make_data_module
 from .sft_dataset import DataCollatorForSupervisedDataset, SupervisedDataset
 
 
-def make_supervised_data_module(tokenizer: PreTrainedTokenizer, args):
-    train_dataset, eval_dataset, multi_turn = make_data_module(args)
+def make_supervised_data_module(
+    tokenizer: PreTrainedTokenizer,
+    text_logger: logging.Logger,
+    args: argparse.Namespace,
+) -> dict[str, torch.utils.data.Dataset]:
+    train_dataset, eval_dataset, multi_turn = make_data_module(
+        text_logger, args)
     max_seq_length = tokenizer.model_max_length
     dataset_cls = (VicunaDataset if args.conversation_template == 'vicnua' else
                    ConversationDataset)
@@ -36,14 +45,14 @@ def make_supervised_data_module(tokenizer: PreTrainedTokenizer, args):
             max_seq_length=max_seq_length,
         ) if args.do_eval else None
 
-    print(
-        f'train_dataset: {type(train_dataset)}, mutlti-turn: {multi_turn},  #length: {len(train_dataset)}'
-    ) if args.do_train else None
-    print(
-        f'eval_dataset: {type(eval_dataset)}, mutlti-turn: {multi_turn}, #length: {len(eval_dataset)}'
-    ) if args.do_eval else None
+    if args.do_train:
+        train_info = f'train_dataset: {type(train_dataset)}, mutlti-turn: {multi_turn},  #length: {len(train_dataset)}'
+        text_logger.info(train_info)
 
-    print('Adding data collator: ', DataCollatorForSupervisedDataset)
+    if args.do_eval:
+        eval_info = f'eval_dataset: {type(eval_dataset)}, mutlti-turn: {multi_turn}, #length: {len(eval_dataset)}'
+        text_logger.info(eval_info)
+
     data_collator = DataCollatorForSupervisedDataset(
         tokenizer=tokenizer, predict_with_generate=args.predict_with_generate)
 

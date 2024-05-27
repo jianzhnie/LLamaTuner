@@ -4,23 +4,26 @@ import math
 import os
 import pathlib
 import sys
+import time
 from typing import Tuple
 
 import torch
+import wandb
 from transformers import (AutoConfig, AutoModelForCausalLM, AutoTokenizer,
                           HfArgumentParser, PreTrainedModel,
                           PreTrainedTokenizer, Trainer)
 
-import wandb
-
 sys.path.append(os.getcwd())
 from chatllms.configs import DataArguments, ModelArguments, TrainingArguments
 from chatllms.data import make_supervised_data_module
+from chatllms.utils.logger_utils import get_outdir, get_root_logger
 
 os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
 
 
-def load_model_tokenizer(args) -> Tuple[PreTrainedModel, PreTrainedTokenizer]:
+def load_model_tokenizer(
+    args, text_logger: logging.Logger
+) -> Tuple[PreTrainedModel, PreTrainedTokenizer]:
     """Load a pre-trained model and tokenizer for natural language processing
     tasks.
 
@@ -50,7 +53,7 @@ def load_model_tokenizer(args) -> Tuple[PreTrainedModel, PreTrainedTokenizer]:
     config.use_cache = False
 
     # Load the pre-trained model
-    print(f'Loading Model from {args.model_name_or_path}...')
+    text_logger.info(f'Loading Model from {args.model_name_or_path}...')
     model = AutoModelForCausalLM.from_pretrained(
         args.model_name_or_path,
         config=config,
@@ -63,14 +66,14 @@ def load_model_tokenizer(args) -> Tuple[PreTrainedModel, PreTrainedTokenizer]:
     setattr(model, 'is_parallelizable', True)
 
     if args.gradient_checkpointing:
-        logging.warning('Using gradient checkpointing...')
+        text_logger.info('Using gradient checkpointing...')
         model.enable_input_require_grads()
         model.config.use_cache = (
             False  # Turn off when gradient checkpointing is enabled
         )
 
     # Load the tokenizer
-    print(f'Loading tokenizer from {args.model_name_or_path}...')
+    text_logger.info(f'Loading tokenizer from {args.model_name_or_path}...')
     tokenizer = AutoTokenizer.from_pretrained(
         args.model_name_or_path,
         padding_side=args.padding_side,
@@ -103,24 +106,40 @@ def train() -> None:
     data_args.init_for_training()
     args = argparse.Namespace(**vars(model_args), **vars(data_args),
                               **vars(training_args))
+
+    # init the logger before other steps
+    timestamp = time.strftime('%Y%m%d_%H%M%S', time.localtime())
+    # log
+    output_dir = get_outdir(args.output_dir, args.wandb_run_name)
+    training_args.output_dir = get_outdir(output_dir, 'checkpoints')
+    wandb_dir = get_outdir(output_dir, 'wandb')
+    log_name = os.path.join(args.wandb_run_name,
+                            timestamp).replace(os.path.sep, '_')
+    log_file = os.path.join(output_dir, log_name + '.log')
+    text_logger = get_root_logger(log_file=log_file, log_level='INFO')
+
     # load model and tokenizer
-    logging.warning('Loading model and tokenizer...')
-    model, tokenizer = load_model_tokenizer(args=args)
-    logging.warning('Successfully loaded model and tokenizer.')
+    text_logger.info('Loading model and tokenizer...')
+    model, tokenizer = load_model_tokenizer(args=args, text_logger=text_logger)
+    text_logger.info('Successfully loaded model and tokenizer.')
 
     # Create a supervised dataset and Trainer, then train the model
-    logging.warning('Creating a supervised dataset and DataCollator...')
-    data_module = make_supervised_data_module(tokenizer=tokenizer, args=args)
+    text_logger.info('Creating a supervised dataset and DataCollator...')
+    data_module = make_supervised_data_module(tokenizer=tokenizer,
+                                              text_logger=text_logger,
+                                              args=args)
 
     # Initialize the Trainer object and start training
-    logging.warning('Initializing Trainer object.')
+    text_logger.info('Initializing Trainer object.')
 
-    # # Init the wandb
+    # Init the wandb
     wandb.init(
+        dir=wandb_dir,
         project=args.wandb_project,
         name=args.wandb_run_name,
         tags=['full-finetune', 'sft'],
         group='full-finetune',
+        config=args,
     )
     # Start trainner
     trainer = Trainer(
@@ -155,7 +174,7 @@ def train() -> None:
         trainer.log_metrics('eval', metrics)
         trainer.save_metrics('eval', metrics)
 
-    logging.warning('Done.')
+    text_logger.info('Done.')
 
 
 if __name__ == '__main__':
