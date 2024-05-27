@@ -3,6 +3,7 @@ import logging
 import math
 import os
 import pathlib
+import sys
 from typing import Tuple
 
 import torch
@@ -10,6 +11,7 @@ from transformers import (AutoConfig, AutoModelForCausalLM, AutoTokenizer,
                           HfArgumentParser, PreTrainedModel,
                           PreTrainedTokenizer, Trainer)
 
+sys.path.append('../')
 from chatllms.configs import DataArguments, ModelArguments, TrainingArguments
 from chatllms.data import make_supervised_data_module
 
