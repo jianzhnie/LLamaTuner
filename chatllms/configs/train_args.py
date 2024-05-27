@@ -77,3 +77,18 @@ class TrainingArguments(TrainingArguments):
             'Maximum sequence length. Sequences will be right padded (and possibly truncated).'
         },
     )
+    report_to: Optional[str] = field(
+        default='wandb',
+        metadata={
+            'help':
+            'The name of the service to report to. Currently only `wandb` is supported.'
+        },
+    )
+    wandb_project: Optional[str] = field(
+        default='ChatLLms',
+        metadata={'help': 'The name of the wandb project to log to.'},
+    )
+    wandb_run_name: Optional[str] = field(
+        default=None,
+        metadata={'help': 'The name of the wandb run.'},
+    )

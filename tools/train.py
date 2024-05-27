@@ -11,6 +11,8 @@ from transformers import (AutoConfig, AutoModelForCausalLM, AutoTokenizer,
                           HfArgumentParser, PreTrainedModel,
                           PreTrainedTokenizer, Trainer)
 
+import wandb
+
 sys.path.append(os.getcwd())
 from chatllms.configs import DataArguments, ModelArguments, TrainingArguments
 from chatllms.data import make_supervised_data_module
@@ -112,6 +114,14 @@ def train() -> None:
 
     # Initialize the Trainer object and start training
     logging.warning('Initializing Trainer object.')
+
+    # # Init the wandb
+    wandb.init(
+        project=args.wandb_project,
+        name=args.wandb_run_name,
+        tags=['full-finetune', 'sft'],
+        group='full-finetune',
+    )
     # Start trainner
     trainer = Trainer(
         model=model,
@@ -119,7 +129,6 @@ def train() -> None:
         args=training_args,
         **data_module,
     )
-
     # Training
     if args.do_train:
         if (list(pathlib.Path(args.output_dir).glob('checkpoint-*'))
@@ -132,7 +141,7 @@ def train() -> None:
         trainer.log_metrics('train', train_result.metrics)
         trainer.save_metrics('train', train_result.metrics)
         trainer.save_state()
-        trainer.save_model(args.output_dir)
+        trainer.save_model()
 
     # Evaluation
     if args.do_eval:
