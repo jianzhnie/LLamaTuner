@@ -1,21 +1,18 @@
 import copy
-import logging
 from dataclasses import dataclass
 from typing import Dict, List
 
-import datasets
 import torch
 from datasets import DatasetDict
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import Dataset
 from transformers.tokenization_utils import PreTrainedTokenizer
 
-from chatllms.data.data_utils import IGNORE_INDEX, make_data_module
-
-logger = logging.getLogger(__name__)
+from chatllms.data.data_utils import IGNORE_INDEX
 
 
-class SFTInstructionDataset(Dataset):
+@dataclass
+class SupervisedDataset(Dataset):
     """Dataset for supervised fine-tuning of instruction following models.
 
     Converts raw dataset containing source/target instructions
@@ -27,20 +24,30 @@ class SFTInstructionDataset(Dataset):
         max_seq_len: Maximum sequence length for truncation
     """
 
-    def __init__(self,
-                 raw_data: DatasetDict,
-                 tokenizer: PreTrainedTokenizer,
-                 max_seq_len: int = 1024):
+    def __init__(
+        self,
+        raw_data: DatasetDict,
+        tokenizer: PreTrainedTokenizer,
+        max_seq_len: int = 1024,
+        train_on_source: bool = False,
+        predict_with_generate: bool = False,
+    ):
         """Initialize the dataset with the raw data and tokenizer.
 
         Args:
             raw_data: Raw dataset containing source/target examples
             tokenizer: Tokenizer to encode text
             max_seq_len: Max sequence length for truncation
+            train_on_source (bool): If True, the model will be trained on the source text as well as the target text.
+            predict_with_generate (bool): If True, the model will generate predictions instead of training.
         """
+        super(SupervisedDataset, self).__init__()
+
         self.dataset = raw_data
         self.tokenizer = tokenizer
         self.max_seq_len = max_seq_len
+        self.train_on_source = train_on_source
+        self.predict_with_generate = predict_with_generate
 
     def __len__(self) -> int:
         """Return number of examples in dataset."""
@@ -58,19 +65,15 @@ class SFTInstructionDataset(Dataset):
         """
 
         example = self.dataset[idx]
-
-        source_text = example['input']
-        source_text = f'{self.tokenizer.bos_token}{source_text}{self.tokenizer.eos_token}'
-
-        target_text = example['output']
-        target_text = f'{target_text}{self.tokenizer.eos_token}'
+        source_text = f"{self.tokenizer.bos_token}{example['input']}"
+        target_text = f"{example['output']}{self.tokenizer.eos_token}"
 
         # Tokenize the source text
         tokenized_source = self.tokenizer(source_text,
                                           max_length=self.max_seq_len,
                                           truncation=True,
                                           add_special_tokens=False)
-        # Tokenize the example and source text
+        # Tokenize the target text
         tokenized_target = self.tokenizer(target_text,
                                           max_length=self.max_seq_len,
                                           truncation=True,
@@ -89,90 +92,22 @@ class SFTInstructionDataset(Dataset):
             print(
                 f'Target length {len(target_ids)} exceeds max seq length of {self.max_seq_len}'
             )
-
-        input_ids = torch.tensor(source_ids + target_ids)
-        labels = torch.tensor([IGNORE_INDEX for _ in range(len(source_ids))] +
-                              copy.deepcopy(target_ids))
-
-        # Construct data dictionary containing inputs and labels
-        data_dict = {'input_ids': input_ids, 'labels': labels}
-
-        return data_dict
-
-
-@dataclass
-class SupervisedDataset(Dataset):
-    """Dataset for supervised fine-tuning.
-
-    Args:
-        hf_dataset (dataset): The preprocesed dataset to load.
-        tokenizer (PreTrainedTokenizer): The tokenizer to use when tokenizing the data.
-        source_max_len (int): The maximum length allowed for the source text.
-        target_max_len (int): The maximum length allowed for the target text.
-        train_on_source (bool): If True, the model will be trained on the source text as well as the target text.
-        predict_with_generate (bool): If True, the model will generate predictions instead of training.
-    """
-
-    def __init__(
-        self,
-        hf_dataset: datasets.DatasetDict,
-        tokenizer: PreTrainedTokenizer,
-        source_max_len: int,
-        target_max_len: int,
-        train_on_source: bool,
-        predict_with_generate: bool = False,
-    ):
-
-        super(SupervisedDataset, self).__init__()
-        # Load the dataset and format it
-        self.dataset = hf_dataset
-        self.tokenizer = tokenizer
-        self.source_max_len = source_max_len
-        self.target_max_len = target_max_len
-        self.train_on_source = train_on_source
-        self.predict_with_generate = predict_with_generate
-
-    def __len__(self) -> int:
-        """Return the length of the dataset."""
-        return len(self.dataset)
-
-    def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
-        """Return an item from the dataset based on its index."""
-        example = self.dataset[idx]
-        # Tokenize the source text
-        source_txt = f"{self.tokenizer.bos_token}{example['input']}"
-        tokenized_source = self.tokenizer(
-            source_txt,
-            max_length=self.source_max_len,
-            truncation=True,
-            add_special_tokens=False,
-        )
-        # Tokenize the target text
-        target_txt = f"{example['output']}{self.tokenizer.eos_token}"
-        tokenized_target = self.tokenizer(
-            target_txt,
-            max_length=self.target_max_len,
-            truncation=True,
-            add_special_tokens=False,
-        )
-        src_ids = tokenized_source['input_ids']
-        tgt_ids = tokenized_target['input_ids']
         if not self.predict_with_generate:
             # If not generating predictions, concatenate the input and target ids
-            input_ids = torch.tensor(src_ids + tgt_ids)
+            input_ids = torch.tensor(source_ids + target_ids)
             if not self.train_on_source:
                 # If not training on the source text, set the labels to IGNORE_INDEX \
                 # for the input ids and the target ids
                 labels = torch.tensor(
-                    [IGNORE_INDEX
-                     for _ in range(len(src_ids))] + copy.deepcopy(tgt_ids))
+                    [IGNORE_INDEX for _ in range(len(source_ids))] +
+                    copy.deepcopy(target_ids))
             else:
                 # If training on the source text, set the labels to the concatenated \
                 # input and target ids
-                labels = torch.tensor(copy.deepcopy(src_ids + tgt_ids))
+                labels = torch.tensor(copy.deepcopy(source_ids + target_ids))
         else:
             # If generating predictions, only use the source ids as input
-            input_ids = torch.tensor(src_ids)
+            input_ids = torch.tensor(source_ids)
             labels = None
 
         # Construct data dictionary containing inputs and labels
@@ -225,39 +160,3 @@ class DataCollatorForSupervisedDataset:
             data_dict['labels'] = labels
 
         return data_dict
-
-
-def make_instruction_data_module(tokenizer: PreTrainedTokenizer, args):
-    train_dataset, eval_dataset = make_data_module(args)
-    train_dataset = SupervisedDataset(
-        train_dataset,
-        tokenizer=tokenizer,
-        source_max_len=args.source_max_len,
-        target_max_len=args.target_max_len,
-        train_on_source=args.train_on_source,
-        predict_with_generate=args.predict_with_generate,
-    ) if args.do_train else None
-
-    eval_dataset = SupervisedDataset(
-        eval_dataset,
-        tokenizer=tokenizer,
-        source_max_len=args.source_max_len,
-        target_max_len=args.target_max_len,
-        train_on_source=args.train_on_source,
-        predict_with_generate=args.predict_with_generate,
-    ) if args.do_eval else None
-
-    print(
-        f'train_dataset: {type(train_dataset)}, #length: {len(train_dataset)}'
-    ) if args.do_train else None
-    print(f'eval_dataset: {type(eval_dataset)}, #length: {len(eval_dataset)}'
-          ) if args.do_eval else None
-    print('Adding data collator: ', DataCollatorForSupervisedDataset)
-    data_collator = DataCollatorForSupervisedDataset(
-        tokenizer=tokenizer, predict_with_generate=args.predict_with_generate)
-
-    return {
-        'train_dataset': train_dataset,
-        'eval_dataset': eval_dataset,
-        'data_collator': data_collator
-    }
