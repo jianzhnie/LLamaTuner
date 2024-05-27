@@ -1,5 +1,6 @@
 import os
 import platform
+import sys
 from threading import Thread
 from typing import List, Tuple
 
@@ -8,6 +9,7 @@ import transformers
 from transformers import (AutoModelForCausalLM, AutoTokenizer, PreTrainedModel,
                           PreTrainedTokenizer, TextIteratorStreamer)
 
+sys.path.append(os.getcwd())
 from chatllms.configs import GenerationArguments, ModelInferenceArguments
 from chatllms.utils.model_utils import get_logits_processor
 from chatllms.utils.template import PromptTemplate
