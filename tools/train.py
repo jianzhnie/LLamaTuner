@@ -1,5 +1,4 @@
 import argparse
-import logging
 import math
 import os
 import pathlib
@@ -16,14 +15,13 @@ from transformers import (AutoConfig, AutoModelForCausalLM, AutoTokenizer,
 sys.path.append(os.getcwd())
 from chatllms.configs import DataArguments, ModelArguments, TrainingArguments
 from chatllms.data import make_supervised_data_module
-from chatllms.utils.logger_utils import get_outdir, get_root_logger
+from chatllms.utils.logger_utils import get_logger, get_outdir
 
 os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
 
 
 def load_model_tokenizer(
-    args, text_logger: logging.Logger
-) -> Tuple[PreTrainedModel, PreTrainedTokenizer]:
+        args, text_logger) -> Tuple[PreTrainedModel, PreTrainedTokenizer]:
     """Load a pre-trained model and tokenizer for natural language processing
     tasks.
 
@@ -109,14 +107,15 @@ def train() -> None:
 
     # init the logger before other steps
     timestamp = time.strftime('%Y%m%d_%H%M%S', time.localtime())
-    # log
+    # Set up the output directory
     output_dir = get_outdir(args.output_dir, args.wandb_run_name)
     training_args.output_dir = get_outdir(output_dir, 'checkpoints')
-    wandb_dir = get_outdir(output_dir, 'wandb')
     log_name = os.path.join(args.wandb_run_name,
                             timestamp).replace(os.path.sep, '_')
     log_file = os.path.join(output_dir, log_name + '.log')
-    text_logger = get_root_logger(log_file=log_file, log_level='INFO')
+    text_logger = get_logger(name='chatllms',
+                             log_file=log_file,
+                             log_level='INFO')
 
     # load model and tokenizer
     text_logger.info('Loading model and tokenizer...')
@@ -126,22 +125,20 @@ def train() -> None:
     # Create a supervised dataset and Trainer, then train the model
     text_logger.info('Creating a supervised dataset and DataCollator...')
     data_module = make_supervised_data_module(tokenizer=tokenizer,
-                                              text_logger=text_logger,
-                                              args=args)
-
-    # Initialize the Trainer object and start training
-    text_logger.info('Initializing Trainer object.')
-
+                                              args=args,
+                                              text_logger=text_logger)
     # Init the wandb
+    text_logger.info('Initializing wandb...')
     wandb.init(
-        dir=wandb_dir,
+        dir=output_dir,
         project=args.wandb_project,
         name=args.wandb_run_name,
         tags=['full-finetune', 'sft'],
         group='full-finetune',
         config=args,
     )
-    # Start trainner
+    # Initialize the Trainer object and start training
+    text_logger.info('Initializing Trainer object.')
     trainer = Trainer(
         model=model,
         tokenizer=tokenizer,
@@ -152,9 +149,11 @@ def train() -> None:
     if args.do_train:
         if (list(pathlib.Path(args.output_dir).glob('checkpoint-*'))
                 and args.resume_from_checkpoint):
+            text_logger.info('Resuming training from checkpoint...')
             train_result = trainer.train(
                 resume_from_checkpoint=args.resume_from_checkpoint)
         else:
+            text_logger.info('Starting training from scratch...')
             train_result = trainer.train()
 
         trainer.log_metrics('train', train_result.metrics)

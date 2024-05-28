@@ -161,7 +161,6 @@ def train() -> None:
     # log
     output_dir = get_outdir(args.output_dir, args.wandb_run_name)
     training_args.output_dir = get_outdir(output_dir, 'checkpoints')
-    wandb_dir = get_outdir(output_dir, 'wandb')
     log_name = os.path.join(args.wandb_run_name,
                             timestamp).replace(os.path.sep, '_')
     log_file = os.path.join(output_dir, log_name + '.log')
@@ -174,8 +173,6 @@ def train() -> None:
     text_logger.info(
         f'distributed training: {bool(training_args.local_rank != -1)}, 16-bits training: {training_args.fp16}'
     )
-    text_logger.info(f'Training parameters {training_args}')
-
     # load model and tokenizer
     model, tokenizer = load_model_tokenizer(args=args, text_logger=text_logger)
     text_logger.info('Successfully loaded model and tokenizer.')
@@ -183,16 +180,17 @@ def train() -> None:
     # Create a supervised dataset and Trainer, then train the model
     text_logger.info('Creating a supervised dataset and DataCollator...')
     data_module = make_supervised_data_module(tokenizer=tokenizer,
-                                              text_logger=text_logger,
-                                              args=args)
+                                              args=args,
+                                              text_logger=text_logger)
 
     # Init the wandb
+    text_logger.info('Initializing wandb...')
     wandb.init(
-        dir=wandb_dir,
+        dir=output_dir,
         project=args.wandb_project,
         name=args.wandb_run_name,
-        tags=['full-finetune', 'sft'],
-        group='full-finetune',
+        tags=['lora-finetune', 'sft'],
+        group='lora-finetune',
         config=args,
     )
 

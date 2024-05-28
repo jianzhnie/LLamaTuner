@@ -445,7 +445,7 @@ def split_train_eval(
     return train_dataset, eval_dataset
 
 
-def make_data_module(text_logger, args):
+def make_data_module(args, text_logger):
     """Make dataset and collator for supervised fine-tuning. Datasets are
     expected to have the following columns: { `input`, `output` }
 
