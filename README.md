@@ -10,13 +10,16 @@
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/release/python-390/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
+[![GitHub Tread](https://trendshift.io/api/badge/repositories/4535)](https://trendshift.io/repositories/4535)
+
+
 <div align="center">
 
 👋🤗🤗👋 Join our [WeChat](assets/wechat.jpg).
 
 </div>
 
-# Efficient Finetuning of Quantized LLMs  --- 低资源的大语言模型量化训练/部署方案
+# Easy and Efficient Fine-tuning LLMs  --- 简单高效的大语言模型训练/部署
 
 <div align="center">
 
@@ -24,81 +27,123 @@
 
 </div>
 
-This is the repo for the `Efficient Finetuning of Quantized LLMs` project, which aims to build and share instruction-following Chinese `baichuan-7b/LLaMA/Pythia/GLM` model tuning methods which can be trained on **a single Nvidia RTX-2080TI**, multi-round chatbot which can be trained on **a single Nvidia RTX-3090** with the context len 2048.
+## Table of Contents
+- [Easy and Efficient Fine-tuning LLMs  --- 简单高效的大语言模型训练/部署](#easy-and-efficient-fine-tuning-llms------简单高效的大语言模型训练部署)
+  - [Table of Contents](#table-of-contents)
+  - [Supported Models](#supported-models)
+  - [Supported Training Approaches](#supported-training-approaches)
+  - [Supported Datasets](#supported-datasets)
+    - [Data Preprocessing](#data-preprocessing)
+  - [Model Zoo](#model-zoo)
+  - [Installation](#installation)
+    - [Requirement](#requirement)
+    - [Install required packages](#install-required-packages)
+    - [Clone the code](#clone-the-code)
+  - [Getting Started](#getting-started)
+    - [QLora int4 Finetune](#qlora-int4-finetune)
+  - [Quantization](#quantization)
+  - [Tutorials and Demonstrations](#tutorials-and-demonstrations)
+  - [Using Local Datasets](#using-local-datasets)
+  - [Multi GPU](#multi-gpu)
+  - [Inference](#inference)
+    - [终端交互式对话](#终端交互式对话)
+    - [使用 Gradio 进行网页端交互](#使用-gradio-进行网页端交互)
+  - [Sample Outputs](#sample-outputs)
+  - [Known Issues and Limitations](#known-issues-and-limitations)
+  - [License](#license)
+  - [Acknowledgements](#acknowledgements)
+  - [Citation](#citation)
 
-We uses [bitsandbytes](https://github.com/TimDettmers/bitsandbytes) for quantization and is integrated with Huggingface's [PEFT](https://github.com/huggingface/peft) and [transformers](https://github.com/huggingface/transformers/) libraries.
-
-## News
-
-- [23/07/20] Now we support training the **LLaMA-2** models in this repo. Try `--model_name_or_path Llama-2-7b-hf` argument to use the LLaMA-2 model.
-- [23/07/12] Now we support training the **Baichuan-13B** model in this repo. Try `--model_name_or_path path_to_baichuan_model` and `--lora_target W_pack` arguments to train the Baichuan-13B model.
-- [23/07/03] Now we support training the **Falcon-7B/40B** models in this repo. Try `--model_name_or_path tiiuae/falcon-7b` and `--lora_target query_key_value` arguments to use the Falcon model.
-- [23/06/25] We release the supervised finetune **baichuan-7B** model ( [GaussianTech/baichuan-7b-sft](https://huggingface.co/GaussianTech/baichuan-7b-sft) ) and the corresponding training script.
-- [23/06/24] We release the supervised finetune **llama-7B** model ([GaussianTech/llama-7b-sft](https://huggingface.co/GaussianTech/llama-7b-sft) ) and the corresponding training script.
-- [23/06/15] Now we support training the baichuan-7B model in this repo. Try `--model_name_or_path baichuan-inc/baichuan-7B` to use the baichuan-7B model.
-- [23/06/03] Now we support quantized training and inference (aka QLoRA). Try `scripts/qlora_finetune/finetune_llama_guanaco7b.sh` and  set `--bits 4/8` argument to work with quantized model.
-- [23/05/25] Now we support Lora training and inference. Try  `scripts/lora_finetune/lora-finetune_alpaca.sh` to finetune the LLAMA model with Lora on the Alpaca dataset.
-- [23/05/20] Now we support full-parameter tuning and partial-parameter tuning.  Try `scripts/full_finetune/full-finetune_alpaca.sh` to full finetune the LLAMA model on the Alpaca dataset.
 
 ## Supported Models
 
-- [LLaMA](https://github.com/facebookresearch/llama) (7B/13B/33B/65B)
-- [LLama2](https://huggingface.co/meta-llama) (7B/13B/33B/70B)
-- [BLOOM](https://huggingface.co/bigscience/bloom) & [BLOOMZ](https://huggingface.co/bigscience/bloomz) (560M/1.1B/1.7B/3B/7.1B/176B)
-- [baichuan-7B](https://huggingface.co/baichuan-inc/baichuan-7B) (7B) [baichuan-13B](https://huggingface.co/baichuan-inc/baichuan-13B) (13B)
-- [OPT](https://huggingface.co/docs/transformers/model_doc/opt) (125M/350M/1.3B/2.7B/6.7B/66B )
+| Model                                                | Model size                       | Default module  | Template  |
+| ---------------------------------------------------- | -------------------------------- | --------------- | --------- |
+| [Baichuan](https://huggingface.co/baichuan-inc)      | 7B/13B                           | W_pack          | baichuan  |
+| [Baichuan2](https://huggingface.co/baichuan-inc)     | 7B/13B                           | W_pack          | baichuan2 |
+| [BLOOM](https://huggingface.co/bigscience)           | 560M/1.1B/1.7B/3B/7.1B/176B      | query_key_value | -         |
+| [BLOOMZ](https://huggingface.co/bigscience)          | 560M/1.1B/1.7B/3B/7.1B/176B      | query_key_value | -         |
+| [ChatGLM3](https://huggingface.co/THUDM)             | 6B                               | query_key_value | chatglm3  |
+| [Command-R](https://huggingface.co/CohereForAI)      | 35B/104B                         | q_proj,v_proj   | cohere    |
+| [DeepSeek (MoE)](https://huggingface.co/deepseek-ai) | 7B/16B/67B/236B                  | q_proj,v_proj   | deepseek  |
+| [Falcon](https://huggingface.co/tiiuae)              | 7B/11B/40B/180B                  | query_key_value | falcon    |
+| [Gemma/CodeGemma](https://huggingface.co/google)     | 2B/7B                            | q_proj,v_proj   | gemma     |
+| [InternLM2](https://huggingface.co/internlm)         | 7B/20B                           | wqkv            | intern2   |
+| [LLaMA](https://github.com/facebookresearch/llama)   | 7B/13B/33B/65B                   | q_proj,v_proj   | -         |
+| [LLaMA-2](https://huggingface.co/meta-llama)         | 7B/13B/70B                       | q_proj,v_proj   | llama2    |
+| [LLaMA-3](https://huggingface.co/meta-llama)         | 8B/70B                           | q_proj,v_proj   | llama3    |
+| [LLaVA-1.5](https://huggingface.co/llava-hf)         | 7B/13B                           | q_proj,v_proj   | vicuna    |
+| [Mistral/Mixtral](https://huggingface.co/mistralai)  | 7B/8x7B/8x22B                    | q_proj,v_proj   | mistral   |
+| [OLMo](https://huggingface.co/allenai)               | 1B/7B                            | q_proj,v_proj   | -         |
+| [PaliGemma](https://huggingface.co/google)           | 3B                               | q_proj,v_proj   | gemma     |
+| [Phi-1.5/2](https://huggingface.co/microsoft)        | 1.3B/2.7B                        | q_proj,v_proj   | -         |
+| [Phi-3](https://huggingface.co/microsoft)            | 3.8B                             | qkv_proj        | phi       |
+| [Qwen](https://huggingface.co/Qwen)                  | 1.8B/7B/14B/72B                  | c_attn          | qwen      |
+| [Qwen1.5 (Code/MoE)](https://huggingface.co/Qwen)    | 0.5B/1.8B/4B/7B/14B/32B/72B/110B | q_proj,v_proj   | qwen      |
+| [StarCoder2](https://huggingface.co/bigcode)         | 3B/7B/15B                        | q_proj,v_proj   | -         |
+| [XVERSE](https://huggingface.co/xverse)              | 7B/13B/65B                       | q_proj,v_proj   | xverse    |
+| [Yi (1/1.5)](https://huggingface.co/01-ai)           | 6B/9B/34B                        | q_proj,v_proj   | yi        |
+| [Yi-VL](https://huggingface.co/01-ai)                | 6B/34B                           | q_proj,v_proj   | yi_vl     |
+| [Yuan](https://huggingface.co/IEITYuan)              | 2B/51B/102B                      | q_proj,v_proj   | yuan      |
+
 
 ## Supported Training Approaches
 
-- (Continually) pre-training
-  - Full-parameter tuning
-  - Partial-parameter tuning
-  - [LoRA](https://arxiv.org/abs/2106.09685)
-  - [QLoRA](https://arxiv.org/abs/2305.14314)
-- Supervised fine-tuning
-  - Full-parameter tuning
-  - Partial-parameter tuning
-  - [LoRA](https://arxiv.org/abs/2106.09685)
-  - [QLoRA](https://arxiv.org/abs/2305.14314)
+| Approach               | Full-tuning        | Freeze-tuning      | LoRA               | QLoRA              |
+| ---------------------- | ------------------ | ------------------ | ------------------ | ------------------ |
+| Pre-Training           | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| Supervised Fine-Tuning | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| Reward Modeling        | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| PPO Training           | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| DPO Training           | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| KTO Training           | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| ORPO Training          | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 
 ## Supported Datasets
 
 As of now, we support the following datasets, most of which are all available in the [Hugging Face datasets library](https://huggingface.co/datasets/).
 
-- For supervised fine-tuning:
+<details><summary>Supervised fine-tuning dataset</summary>
 
-  - [Stanford Alpaca](https://github.com/tatsu-lab/stanford_alpaca)
-  - [Stanford Alpaca (Chinese)](https://github.com/ymcui/Chinese-LLaMA-Alpaca)
-  - [Hello-SimpleAI/HC3](https://huggingface.co/datasets/Hello-SimpleAI/HC3)
-  - [BELLE 2M (zh)](https://huggingface.co/datasets/BelleGroup/train_2M_CN)
-  - [BELLE 1M (zh)](https://huggingface.co/datasets/BelleGroup/train_1M_CN)
-  - [BELLE 0.5M (zh)](https://huggingface.co/datasets/BelleGroup/train_0.5M_CN)
-  - [BELLE Dialogue 0.4M (zh)](https://huggingface.co/datasets/BelleGroup/generated_chat_0.4M)
-  - [BELLE School Math 0.25M (zh)](https://huggingface.co/datasets/BelleGroup/school_math_0.25M)
-  - [BELLE Multiturn Chat 0.8M (zh)](https://huggingface.co/datasets/BelleGroup/multiturn_chat_0.8M)
-  - [databricks-dolly-15k](https://huggingface.co/datasets/databricks/databricks-dolly-15k)
-  - [mosaicml/dolly_hhrlhf](https://huggingface.co/datasets/mosaicml/dolly_hhrlhf)
-  - [GPT-4 Generated Data](https://github.com/Instruction-Tuning-with-GPT-4/GPT-4-LLM)
-  - [Alpaca CoT](https://huggingface.co/datasets/QingyiSi/Alpaca-CoT)
-  - [UltraChat](https://github.com/thunlp/UltraChat)
-  - [OpenAssistant/oasst1](https://huggingface.co/datasets/OpenAssistant/oasst1)
-  - [ShareGPT_Vicuna_unfiltered](https://huggingface.co/datasets/anon8231489123/ShareGPT_Vicuna_unfiltered)
-  - [BIAI/OL-CC](https://data.baai.ac.cn/details/OL-CC)
-  - [timdettmers/openassistant-guanaco](https://huggingface.co/datasets/timdettmers/openassistant-guanaco)
-  - [Evol-Instruct](https://huggingface.co/datasets/victor123/evol_instruct_70k)
-  - [OpenOrca](https://huggingface.co/datasets/Open-Orca/OpenOrca)
-  - [Platypus](https://huggingface.co/datasets/garage-bAInd/Open-Platypus)
-  - [OpenHermes](https://huggingface.co/datasets/teknium/openhermes)
+- [Stanford Alpaca](https://github.com/tatsu-lab/stanford_alpaca)
+- [Stanford Alpaca (Chinese)](https://github.com/ymcui/Chinese-LLaMA-Alpaca)
+- [Hello-SimpleAI/HC3](https://huggingface.co/datasets/Hello-SimpleAI/HC3)
+- [BELLE 2M (zh)](https://huggingface.co/datasets/BelleGroup/train_2M_CN)
+- [BELLE 1M (zh)](https://huggingface.co/datasets/BelleGroup/train_1M_CN)
+- [BELLE 0.5M (zh)](https://huggingface.co/datasets/BelleGroup/train_0.5M_CN)
+- [BELLE Dialogue 0.4M (zh)](https://huggingface.co/datasets/BelleGroup/generated_chat_0.4M)
+- [BELLE School Math 0.25M (zh)](https://huggingface.co/datasets/BelleGroup/school_math_0.25M)
+- [BELLE Multiturn Chat 0.8M (zh)](https://huggingface.co/datasets/BelleGroup/multiturn_chat_0.8M)
+- [databricks-dolly-15k](https://huggingface.co/datasets/databricks/databricks-dolly-15k)
+- [mosaicml/dolly_hhrlhf](https://huggingface.co/datasets/mosaicml/dolly_hhrlhf)
+- [GPT-4 Generated Data](https://github.com/Instruction-Tuning-with-GPT-4/GPT-4-LLM)
+- [Alpaca CoT](https://huggingface.co/datasets/QingyiSi/Alpaca-CoT)
+- [UltraChat](https://github.com/thunlp/UltraChat)
+- [OpenAssistant/oasst1](https://huggingface.co/datasets/OpenAssistant/oasst1)
+- [ShareGPT_Vicuna_unfiltered](https://huggingface.co/datasets/anon8231489123/ShareGPT_Vicuna_unfiltered)
+- [BIAI/OL-CC](https://data.baai.ac.cn/details/OL-CC)
+- [timdettmers/openassistant-guanaco](https://huggingface.co/datasets/timdettmers/openassistant-guanaco)
+- [Evol-Instruct](https://huggingface.co/datasets/victor123/evol_instruct_70k)
+- [OpenOrca](https://huggingface.co/datasets/Open-Orca/OpenOrca)
+- [Platypus](https://huggingface.co/datasets/garage-bAInd/Open-Platypus)
+- [OpenHermes](https://huggingface.co/datasets/teknium/openhermes)
 
-- For reward model training:
+</details>
 
-  - [HH-RLHF](https://huggingface.co/datasets/Anthropic/hh-rlhf)
-  - [Open Assistant](https://huggingface.co/datasets/OpenAssistant/oasst1)
-  - [GPT-4 Generated Data](https://github.com/Instruction-Tuning-with-GPT-4/GPT-4-LLM)
 
-Please refer to [data/README.md](data/README.md) to learn how to use these datasets.  If you want to explore more datasets, please refer to the [awesome-instruction-datasets](https://github.com/jianzhnie/awesome-instruction-datasets). As default, we use the [Standford Alpaca](https://github.com/tatsu-lab/stanford_alpaca) dataset for training and evaluation.
+<details><summary>Preference datasets</summary>
 
-Some datasets require confirmation before using them, so we recommend logging in with your Hugging Face account using these commands.
+- [DPO mixed (en&zh)](https://huggingface.co/datasets/hiyouga/DPO-En-Zh-20k)
+- [Orca DPO Pairs (en)](https://huggingface.co/datasets/Intel/orca_dpo_pairs)
+- [HH-RLHF (en)](https://huggingface.co/datasets/Anthropic/hh-rlhf)
+- [Open Assistant(en&zh)](https://huggingface.co/datasets/OpenAssistant/oasst1)
+- [Nectar (en)](https://huggingface.co/datasets/berkeley-nest/Nectar)
+- [Orca DPO (de)](https://huggingface.co/datasets/mayflowergmbh/intel_orca_dpo_pairs_de)
+- [KTO mixed (en)](https://huggingface.co/datasets/argilla/kto-mix-15k)
+</details>
+
+
+Please refer to [data/README.md](data/README.md) to learn how to use these datasets.  If you want to explore more datasets, please refer to the [awesome-instruction-datasets](https://github.com/jianzhnie/awesome-instruction-datasets). Some datasets require confirmation before using them, so we recommend logging in with your Hugging Face account using these commands.
 
 ```bash
 pip install --upgrade huggingface_hub
