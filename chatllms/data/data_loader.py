@@ -4,18 +4,19 @@ import logging
 import torch
 from transformers.tokenization_utils import PreTrainedTokenizer
 
-from .conv_dataset import ConversationDataset, VicunaDataset
-from .data_utils import make_data_module
-from .sft_dataset import DataCollatorForSupervisedDataset, SupervisedDataset
+from chatllms.data.conv_dataset import ConversationDataset, VicunaDataset
+from chatllms.data.data_utils import make_data_module
+from chatllms.data.sft_dataset import (DataCollatorForSupervisedDataset,
+                                       SupervisedDataset)
 
 
 def make_supervised_data_module(
     tokenizer: PreTrainedTokenizer,
-    text_logger: logging.Logger,
     args: argparse.Namespace,
+    text_logger: logging.Logger,
 ) -> dict[str, torch.utils.data.Dataset]:
     train_dataset, eval_dataset, multi_turn = make_data_module(
-        text_logger, args)
+        args, text_logger)
     max_seq_length = tokenizer.model_max_length
     dataset_cls = (VicunaDataset if args.conversation_template == 'vicnua' else
                    ConversationDataset)

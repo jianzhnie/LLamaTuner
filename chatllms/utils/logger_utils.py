@@ -1,5 +1,6 @@
 import logging
 import os
+import sys
 
 import torch.distributed as dist
 
@@ -49,7 +50,7 @@ def get_logger(name, log_file=None, log_level=logging.INFO, file_mode='w'):
         if type(handler) is logging.StreamHandler:
             handler.setLevel(logging.ERROR)
 
-    stream_handler = logging.StreamHandler()
+    stream_handler = logging.StreamHandler(sys.stdout)
     handlers = [stream_handler]
 
     if dist.is_available() and dist.is_initialized():
@@ -66,7 +67,9 @@ def get_logger(name, log_file=None, log_level=logging.INFO, file_mode='w'):
         handlers.append(file_handler)
 
     formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        fmt='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S',
+    )
     for handler in handlers:
         handler.setFormatter(formatter)
         handler.setLevel(log_level)
@@ -129,7 +132,18 @@ def get_root_logger(log_file=None, log_level=logging.INFO):
     return logger
 
 
-def get_outdir(path, *paths, inc=False):
+def get_outdir(path: str, *paths, inc: bool = False) -> str:
+    """Get the output directory. If the directory does not exist, it will be created.
+    If `inc` is True, the directory will be incremented if the directory already exists.
+
+    Args:
+        path (str): The root path.
+        *paths: The subdirectories.
+        inc (bool, optional): Whether to increment the directory. Defaults to False.
+
+    Returns:
+        str: The output directory.
+    """
     outdir = os.path.join(path, *paths)
     if not os.path.exists(outdir):
         os.makedirs(outdir)
