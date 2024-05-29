@@ -2,126 +2,67 @@
 alpaca:
   hf_hub_url: tatsu-lab/alpaca
   local_path: tatsu-lab/alpaca/alpaca.json
-  dataset_format: alpaca
-  multi_turn: False
+  formatting: alpaca
 
 alpaca-clean:
   hf_hub_url: yahma/alpaca-cleaned
   local_path: ''
-  dataset_format: alpaca
-  multi_turn: False
-
-coig:
-  hf_hub_url: BAAI/COIG
-  local_path: /home/robin/prompt_data//COIG/train_alpaca.json
-  dataset_format: alpaca
-  multi_turn: False
+  formatting: alpaca
 
 dolly-15k:
   hf_hub_url: databricks/databricks-dolly-15k
   local_path: databricks/databricks-dolly-15k
-  dataset_format: dolly
-  multi_turn: False
-
-cvalues_comparison_train:
-  hf_hub_url: ''
-  local_path: /home/robin/prompt_data/CValues-Comparison/train_alpaca.json
-  dataset_format: alpaca
-  multi_turn: False
-
-cvalues_comparison_test:
-  hf_hub_url: ''
-  local_path: /home/robin/prompt_data/CValues-Comparison/test_alpaca.json
-  dataset_format: alpaca
-  multi_turn: False
+  formatting: alpaca
 
 guanaco:
   hf_hub_url: JosephusCheung/GuanacoDataset
+  ms_hub_url: AI-ModelScope/GuanacoDataset
   local_path: ''
-  dataset_format: guanaco
-  multi_turn: False
-
-hh-rlhf:
-  hf_hub_url: Anthropic/hh-rlhf
-  local_path: ''
-  dataset_format: hh-rlhf
-  multi_turn: False
-
-huatuogpt:
-  hf_hub_url: FreedomIntelligence/HuatuoGPT-sft-data-v1
-  local_path: /home/robin/prompt_data/HuatuoGPT-sft-data-v1/HuatuoGPT_alpaca.jsonl
-  dataset_format: alpaca
-  multi_turn: False
+  formatting: alpaca
 
 openassistant-guanaco:
   hf_hub_url: timdettmers/openassistant-guanaco
-  local_path: /home/robin/prompt_data/timdettmers/openassistant-guanaco
-  dataset_format: alpaca
-  multi_turn: False
-
-olcc:
-  hf_hub_url: ''
-  local_path: /home/robin/prompt_data/olcc/olcc_alpaca.json
-  dataset_format: alpaca
-  multi_turn: False
-
-100PoisonMpts:
-  hf_hub_url: 'damo/100PoisonMpts'
-  local_path: /home/robin/prompt_data/100PoisonMpts/train.jsonl
-  dataset_format: 100PoisonMpts
-  multi_turn: False
-
-safety_prompt_part1:
-  hf_hub_url: ''
-  local_path: /home/robin/prompt_data/Safety-Prompts/attack_scenarios_alpaca.json
-  dataset_format: alpaca
-  multi_turn: False
-
-safety_prompt_part2:
-  hf_hub_url: ''
-  local_path: /home/robin/prompt_data/Safety-Prompts/safety_scenarios_alpaca.json
-  dataset_format: alpaca
-  multi_turn: False
+  local_path: ''
+  formatting: alpaca
 
 # Belle Group
 belle_0.5m:
   hf_hub_url: BelleGroup/train_0.5M_CN
+  ms_hub_url: AI-ModelScope/train_0.5M_CN
   local_path: ''
-  dataset_format: alpaca
-  multi_turn: False
+  formatting: alpaca
 
 belle_1m:
   hf_hub_url: BelleGroup/train_1M_CN
+  ms_hub_url: AI-ModelScope/train_1M_CN
   local_path: ''
-  dataset_format: alpaca
-  multi_turn: False
+  formatting: alpaca
 
 belle_2m:
   hf_hub_url: BelleGroup/train_2M_CN
+  ms_hub_url: AI-ModelScope/train_2M_CN
   local_path: ''
-  dataset_format: alpaca
-  multi_turn: False
+  formatting: alpaca
 
 belle_dialog:
   hf_hub_url: BelleGroup/generated_chat_0.4M
+  ms_hub_url: AI-ModelScope/generated_chat_0.4M
   local_path: ''
-  dataset_format: belle_dialog
-  multi_turn: False
+  formatting: alpaca
 
 belle_math:
   hf_hub_url: BelleGroup/school_math_0.25M
+  ms_hub_url: AI-ModelScope/school_math_0.25M
   local_path: ''
-  dataset_format: alpaca
-  multi_turn: False
+  formatting: alpaca
 
 belle_multiturn:
   hf_hub_url: BelleGroup/multi_turn_0.5M
   local_path: ''
-  dataset_format: belle_multiturn
+  formatting: sharegpt
   multi_turn: True
   columns:
     prompt: instruction
-    query: ''
     response: output
     history: history
 
@@ -129,47 +70,90 @@ belle_multiturn:
 firefly:
   hf_hub_url: YeungNLP/firefly-train-1.1M
   local_path: ''
-  dataset_format: alpaca
-  multi_turn: False
+  formatting: alpaca
   columns:
     prompt: input
-    query: ''
     response: target
-    history: ''
 
 # CodeAlpaca
 codealpaca:
   hf_hub_url: sahil2801/CodeAlpaca-20k
+  ms_hub_url: AI-ModelScope/CodeAlpaca-20k
   local_path: ''
-  dataset_format: codealpaca
-  multi_turn: False
+  formatting: alpaca
 
 # alpacacot
 alpaca_cot:
   hf_hub_url: QingyiSi/Alpaca-CoT
+  ms_hub_url: AI-ModelScope/Alpaca-CoT
   local_path: ''
-  multi_turn: False
 
 webqa:
   hf_hub_url: suolyer/webqa
+  ms_hub_url: AI-ModelScope/webqa
   local_path: ''
-  dataset_format: webqa
-  multi_turn: False
+  formatting: alpaca
   columns:
     prompt: input
-    query: ''
     response: output
-    history: ''
 
 # mutli-turn datasets
 evol_instruct:
   hf_hub_url: WizardLM/WizardLM_evol_instruct_V2_196k
-  local_path: WizardLM/WizardLM_evol_instruct_V2_196k/WizardLM_evol_instruct_V2_143k.json
-  dataset_format: sharegpt
+  ms_hub_url: AI-ModelScope/WizardLM_evol_instruct_V2_196k
+  formatting: sharegpt
   multi_turn: True
 
-share_gpt:
-  hf_hub_url: ''
-  local_path: /home/robin/prompt_data/sharegpt/sharegpt_split.json
-  dataset_format: sharegpt
-  multi_turn: True
+ultrachat_200k:
+  hf_hub_url: HuggingFaceH4/ultrachat_200k
+  ms_hub_url: AI-ModelScope/ultrachat_200k
+  formatting: sharegpt
+  columns:
+    messages: messages
+  tags:
+    role_tag: role
+    content_tag: content
+    user_tag: user
+    assistant_tag: assistant
+
+lmsys_chat:
+  hf_hub_url: lmsys/lmsys-chat-1m
+  ms_hub_url: AI-ModelScope/lmsys-chat-1m
+  formatting: sharegpt
+  columns:
+    messages: conversation
+  tags:
+    role_tag: role
+    content_tag: content
+    user_tag: human
+    assistant_tag: assistant
+
+hh_rlhf_en:
+  script_url: hh_rlhf_en
+  ranking: true
+  columns:
+    prompt: instruction
+    chosen: chosen
+    rejected: rejected
+    history: history
+
+orca_pairs:
+  hf_hub_url: Intel/orca_dpo_pairs
+  ranking: true
+  columns:
+    prompt: question
+    chosen: chosen
+    rejected: rejected
+    system: system
+
+kto_mix_en:
+  hf_hub_url: argilla/kto-mix-15k
+  formatting: sharegpt
+  columns:
+    messages: completion
+    kto_tag: label
+  tags:
+    role_tag: role
+    content_tag: content
+    user_tag: user
+    assistant_tag: assistant
