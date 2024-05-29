@@ -1,11 +1,33 @@
-# 如何使用
+# 数据集配置指南
+
+- [数据集配置指南](#数据集配置指南)
+  - [数据集配置](#数据集配置)
+  - [数据集配置文件](#数据集配置文件)
+    - [Alpaca 格式](#alpaca-格式)
+      - [指令监督微调数据集](#指令监督微调数据集)
+      - [预训练数据集](#预训练数据集)
+      - [偏好数据集](#偏好数据集)
+      - [KTO 数据集](#kto-数据集)
+      - [多模态数据集](#多模态数据集)
+    - [Sharegpt 格式](#sharegpt-格式)
+      - [指令监督微调数据集](#指令监督微调数据集-1)
+      - [偏好数据集](#偏好数据集-1)
+      - [OpenAI 格式](#openai-格式)
+  - [数据集格式转换](#数据集格式转换)
+    - [转换为 Alpaca 格式](#转换为-alpaca-格式)
+      - [第一种方式，加载过程中转换](#第一种方式加载过程中转换)
+      - [第二种方式，提前转换](#第二种方式提前转换)
+    - [转换为 Sharegpt 格式](#转换为-sharegpt-格式)
+
 
 ## 数据集配置
-[dataset_info.yaml](dataset_info.yaml) 包含了所有可用的数据集。如果您希望使用自定义数据集，请**务必**在 `dataset_info.yaml` 文件中添加*数据集描述*，并通过修改 `dataset: 数据集名称` 参数配置来使用你的数据集。
+[dataset_info.yaml](dataset_info.yaml) 包含了所有可用的数据集。如果你训练模型的数据集在其中，只需在训练参数配置中指定 `dataset: 数据集名称` 即可。
+
+如果您希望使用自定义数据集，请**务必**在 `dataset_info.yaml` 文件中添加*数据集描述*，并通过修改 `dataset: 数据集名称` 参数配置来使用你的数据集。
 
 目前我们支持 **alpaca** 格式和 **sharegpt** 格式的数据集。
 
-### 数据集配置文件
+## 数据集配置文件
 
 ```yaml
 数据集名称:
@@ -42,7 +64,7 @@
 ### Alpaca 格式
 
 
-### 指令监督微调数据集
+#### 指令监督微调数据集
 
 - [样例数据集](alpaca_zh_demo.json)
 
@@ -80,7 +102,7 @@
     history: history
 ```
 
-### 预训练数据集
+#### 预训练数据集
 
 - [样例数据集](c4_demo.json)
 
@@ -102,7 +124,7 @@
     prompt: text
 ```
 
-### 偏好数据集
+#### 偏好数据集
 
 偏好数据集用于奖励模型训练、PPO、 DPO 训练和 ORPO 训练。
 
@@ -132,7 +154,7 @@
     rejected: rejected
 ```
 
-### KTO 数据集
+#### KTO 数据集
 
 - [样例数据集](kto_en_demo.json)
 
@@ -161,7 +183,7 @@ KTO 数据集需要额外添加一个 `kto_tag` 列，包含 bool 类型的人�
     kto_tag: kto_tag
 ```
 
-### 多模态数据集
+#### 多模态数据集
 
 - [样例数据集](mllm_demo.json)
 
@@ -192,9 +214,9 @@ KTO 数据集需要额外添加一个 `kto_tag` 列，包含 bool 类型的人�
     images: images
 ```
 
-## Sharegpt 格式
+### Sharegpt 格式
 
-### 指令监督微调数据集
+#### 指令监督微调数据集
 
 - [样例数据集](glaive_toolcall_zh_demo.json)
 
@@ -241,7 +263,7 @@ KTO 数据集需要额外添加一个 `kto_tag` 列，包含 bool 类型的人�
     tools: tools
 ```
 
-### 偏好数据集
+#### 偏好数据集
 
 - [样例数据集](dpo_zh_demo.json)
 
@@ -289,7 +311,7 @@ Sharegpt 格式的偏好数据集同样需要在 `chosen` 列中提供更优的�
     rejected: rejected
 ```
 
-### OpenAI 格式
+#### OpenAI 格式
 
 OpenAI 格式仅仅是 sharegpt 格式的一种特殊情况，其中第一条消息可能是系统提示词。
 
@@ -339,7 +361,7 @@ Sharegpt 格式中的 KTO 数据集和多模态数据集与 alpaca 格式的类�
 ### 转换为 Alpaca 格式
 如果您的数据集不符合上述格式，您可以通过以下两种方式将其转换为 Alpaca 格式。
 
-#### 第一种方式，在加载数据集时使用
+#### 第一种方式，加载过程中转换
 
 例如，以下代码用于将 [databricks-dolly-15k](https://huggingface.co/datasets/databricks/databricks-dolly-15k) 转换为 Alpaca 格式。
 
