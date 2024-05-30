@@ -1,59 +1,114 @@
-import os
 from dataclasses import dataclass, field
-from typing import List, Optional
-
-import yaml
-
-
-@dataclass
-class DatasetAttr(object):
-
-    dataset_name: Optional[str] = None
-    hf_hub_url: Optional[str] = None
-    local_path: Optional[str] = None
-    dataset_format: Optional[str] = None
-    load_from_local: bool = False
-    multi_turn: Optional[bool] = False
-
-    def __repr__(self) -> str:
-        rep = (f'dataset_name: {self.dataset_name} || '
-               f'hf_hub_url: {self.hf_hub_url} || '
-               f'local_path: {self.local_path} \n'
-               f'data_formate: {self.dataset_format}  || '
-               f'load_from_local: {self.load_from_local} || '
-               f'multi_turn: {self.multi_turn}')
-        return rep
-
-    def __post_init__(self):
-        self.prompt_column = 'instruction'
-        self.query_column = 'input'
-        self.response_column = 'output'
-        self.history_column = None
+from typing import Literal, Optional
 
 
 @dataclass
 class DataArguments:
-    dataset_cfg: Optional[str] = field(
-        default='./data/alpaca_zh.yaml',
-        metadata={
-            'help':
-            'Path to dataset infos, please refer to `./data/README.md` to see how to prepare your datasets for training.'
-        })
-    instruction_template: str = field(
-        default='default',
+    r"""
+    Arguments pertaining to what data we are going to input our model for training and evaluation.
+    """
+
+    template: Optional[str] = field(
+        default=None,
         metadata={
             'help':
             'Which template to use for constructing prompts in training and inference.'
-        })
-    conversation_template: str = field(
-        default='default',
+        },
+    )
+    dataset: Optional[str] = field(
+        default=None,
         metadata={
             'help':
-            'Which template to use for constructing prompts in multi-turn dataset training and inference.'
-        })
+            'The name of provided dataset(s) to use. Use commas to separate multiple datasets.'
+        },
+    )
+    dataset_dir: str = field(
+        default='data',
+        metadata={'help': 'Path to the folder containing the datasets.'},
+    )
+    split: str = field(
+        default='train',
+        metadata={
+            'help': 'Which dataset split to use for training and evaluation.'
+        },
+    )
+    cutoff_len: int = field(
+        default=1024,
+        metadata={
+            'help': 'The cutoff length of the tokenized inputs in the dataset.'
+        },
+    )
+    reserved_label_len: int = field(
+        default=1,
+        metadata={
+            'help':
+            'The minimum cutoff length reserved for the tokenized labels in the dataset.'
+        },
+    )
+    train_on_prompt: bool = field(
+        default=False,
+        metadata={'help': 'Whether to disable the mask on the prompt or not.'},
+    )
+    streaming: bool = field(
+        default=False,
+        metadata={'help': 'Enable dataset streaming.'},
+    )
+    buffer_size: int = field(
+        default=16384,
+        metadata={
+            'help':
+            'Size of the buffer to randomly sample examples from in dataset streaming.'
+        },
+    )
+    mix_strategy: Literal[
+        'concat', 'interleave_under', 'interleave_over'] = field(
+            default='concat',
+            metadata={
+                'help':
+                'Strategy to use in dataset mixing (concat/interleave) (undersampling/oversampling).'
+            },
+        )
+    interleave_probs: Optional[str] = field(
+        default=None,
+        metadata={
+            'help':
+            'Probabilities to sample data from datasets. Use commas to separate multiple datasets.'
+        },
+    )
+    overwrite_cache: bool = field(
+        default=False,
+        metadata={
+            'help': 'Overwrite the cached training and evaluation sets.'
+        },
+    )
+    preprocessing_num_workers: Optional[int] = field(
+        default=None,
+        metadata={
+            'help': 'The number of processes to use for the pre-processing.'
+        },
+    )
+    eval_num_beams: Optional[int] = field(
+        default=None,
+        metadata={
+            'help':
+            'Number of beams to use for evaluation. This argument will be passed to `model.generate`'
+        },
+    )
+    ignore_pad_token_for_loss: bool = field(
+        default=True,
+        metadata={
+            'help':
+            'Whether or not to ignore the tokens corresponding to padded labels in the loss computation.'
+        },
+    )
     # 验证数据集的尺寸，也就是数量
     eval_dataset_size: Optional[float] = field(
-        default=0.1, metadata={'help': 'Size of validation dataset.'})
+        default=0.1,
+        metadata={
+            'help':
+            'Size of the development set, should be an integer or a float in range `[0,1)`.'
+        },
+    )
     # 最大训练数据样本的数量。主要是为了快速调试训练代码
     max_train_samples: Optional[int] = field(
         default=None,
@@ -72,43 +127,28 @@ class DataArguments:
             'value if set.'
         },
     )
+    packing: Optional[bool] = field(
+        default=None,
+        metadata={
+            'help':
+            'Whether or not to pack the sequences in training. Will automatically enable in pre-training.'
+        },
+    )
+    tokenized_path: Optional[str] = field(
+        default=None,
+        metadata={'help': 'Path to save or load the tokenized datasets.'},
+    )
 
-    def init_for_training(self):  # support mixing multiple datasets
-        assert self.dataset_cfg is not None and os.path.exists(
-            self.dataset_cfg
-        ), f'{self.dataset_cfg} does not exist!, please check the path.'
-        datasets_info = yaml.safe_load(open(self.dataset_cfg, 'r'))
-        self.dataset_names = list(datasets_info.keys())
-        self.dataset_attr_list: List[DatasetAttr] = []
-        for idx, name in enumerate(self.dataset_names):
-            print(f'Loading the {idx} dataset {name}...')
-            dataset_attr = DatasetAttr()
-            dataset_attr.dataset_name = name
-            dataset_attr.dataset_format = datasets_info[name].get(
-                'dataset_format', None)
-            dataset_attr.hf_hub_url = datasets_info[name].get(
-                'hf_hub_url', None)
-            dataset_attr.local_path = datasets_info[name].get(
-                'local_path', None)
-            dataset_attr.multi_turn = datasets_info[name].get(
-                'multi_turn', False)
-
-            if datasets_info[name]['local_path'] and os.path.exists(
-                    datasets_info[name]['local_path']):
-                dataset_attr.load_from_local = True
-            else:
-                dataset_attr.load_from_local = False
-
-            if 'columns' in datasets_info[name]:
-                dataset_attr.prompt_column = datasets_info[name][
-                    'columns'].get('prompt', None)
-                dataset_attr.query_column = datasets_info[name]['columns'].get(
-                    'query', None)
-                dataset_attr.response_column = datasets_info[name][
-                    'columns'].get('response', None)
-                dataset_attr.history_column = datasets_info[name][
-                    'columns'].get('history', None)
-            print(f'Parser dataset cfg: {name} with the following attributes:'
-                  f'\n{dataset_attr}')
-            print('===' * 20)
-            self.dataset_attr_list.append(dataset_attr)
+    def __post_init__(self):
+        if self.reserved_label_len >= self.cutoff_len:
+            raise ValueError(
+                '`reserved_label_len` must be smaller than `cutoff_len`.')
+        if (self.streaming and self.eval_dataset_size > 1e-6
+                and self.eval_dataset_size < 1):
+            raise ValueError('Streaming mode should have an integer val size.')
+        if self.streaming and self.max_train_samples is not None:
+            raise ValueError(
+                '`max_train_samples` is incompatible with `streaming`.')
+        if self.streaming and self.max_eval_samples is not None:
+            raise ValueError(
+                '`max_eval_samples` is incompatible with `streaming`.')
