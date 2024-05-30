@@ -9,7 +9,6 @@ alpaca-clean:
 
 dolly-15k:
   hf_hub_url: databricks/databricks-dolly-15k
-  file_name: databricks/databricks-dolly-15k
   formatting: alpaca
 
 guanaco:
