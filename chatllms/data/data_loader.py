@@ -44,18 +44,14 @@ def load_single_dataset(
         Union[Dataset, IterableDataset]: The loaded dataset.
     """
     logger.info(f'Loading dataset {dataset_attr}...')
-    data_path, data_name, data_dir, data_files = None, None, None, None
+    data_path, data_files = None, None
 
     # Determine dataset source and configure paths
     if dataset_attr.load_from in ['hf_hub', 'ms_hub']:
         data_path = dataset_attr.dataset_name
-        data_name = dataset_attr.subset
-        data_dir = dataset_attr.folder
     elif dataset_attr.load_from == 'script':
         data_path = os.path.join(data_args.dataset_dir,
                                  dataset_attr.dataset_name)
-        data_name = dataset_attr.subset
-        data_dir = dataset_attr.folder
     elif dataset_attr.load_from == 'file':
         data_files = []
         local_path = os.path.join(data_args.dataset_dir,
@@ -88,8 +84,8 @@ def load_single_dataset(
             cache_dir = model_args.cache_dir or MS_DATASETS_CACHE
             dataset = MsDataset.load(
                 dataset_name=data_path,
-                subset_name=data_name,
-                data_dir=data_dir,
+                subset_name=dataset_attr.subset,
+                data_dir=dataset_attr.folder,
                 data_files=data_files,
                 split=data_args.split,
                 cache_dir=cache_dir,
@@ -113,8 +109,8 @@ def load_single_dataset(
         # Load dataset from Hugging Face Hub or local script/file
         dataset = load_dataset(
             path=data_path,
-            name=data_name,
-            data_dir=data_dir,
+            name=dataset_attr.subset,
+            data_dir=dataset_attr.folder,
             data_files=data_files,
             split=data_args.split,
             cache_dir=model_args.cache_dir,
