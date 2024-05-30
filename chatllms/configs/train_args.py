@@ -6,8 +6,6 @@ from transformers import TrainingArguments
 
 @dataclass
 class TrainingArguments(TrainingArguments):
-    # 缓存目录
-    cache_dir: Optional[str] = field(default=None)
     # 不使用adapter进行全微调（不适用Lora或qlora？）
     full_finetune: bool = field(
         default=False,
