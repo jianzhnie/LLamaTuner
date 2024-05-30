@@ -1,22 +1,15 @@
-import argparse
 import inspect
-import logging
 import os
 from typing import Literal, Optional, Union
 
-import torch
 from datasets import Dataset, IterableDataset, load_dataset, load_from_disk
 from transformers import ProcessorMixin, Seq2SeqTrainingArguments
 from transformers.tokenization_utils import PreTrainedTokenizer
 
 from chatllms.configs import DataArguments, ModelArguments
-from chatllms.data.conv_dataset import ConversationDataset, VicunaDataset
 from chatllms.data.data_align import align_dataset
 from chatllms.data.data_parser import DatasetAttr, get_dataset_list
-from chatllms.data.data_utils import make_data_module
 from chatllms.data.preprocess import get_preprocess_and_print_func
-from chatllms.data.sft_dataset import (DataCollatorForSupervisedDataset,
-                                       SupervisedDataset)
 from chatllms.data.template import get_template_and_fix_tokenizer
 from chatllms.data.utils import merge_dataset
 from chatllms.utils.constants import FILEEXT2TYPE
@@ -43,7 +36,7 @@ def load_single_dataset(
     Returns:
         Union[Dataset, IterableDataset]: The loaded dataset.
     """
-    logger.info(f'Loading dataset {dataset_attr}...')
+    logger.info('Loading dataset %s...', dataset_attr)
     data_path, data_files = None, None
 
     # Determine dataset source and configure paths
@@ -56,7 +49,8 @@ def load_single_dataset(
         data_files = []
         local_path = os.path.join(data_args.dataset_dir,
                                   dataset_attr.dataset_name)
-        if os.path.isdir(local_path):  # Check if the path is a directory
+        # Check if the path is a directory
+        if os.path.isdir(local_path):
             for file_name in os.listdir(local_path):
                 data_files.append(os.path.join(local_path, file_name))
                 if data_path is None:
@@ -65,7 +59,8 @@ def load_single_dataset(
                 elif data_path != FILEEXT2TYPE.get(
                         file_name.split('.')[-1], None):
                     raise ValueError('File types should be identical.')
-        elif os.path.isfile(local_path):  # Check if the path is a file
+        # Check if the path is a file
+        elif os.path.isfile(local_path):
             data_files.append(local_path)
             data_path = FILEEXT2TYPE.get(local_path.split('.')[-1], None)
         else:
@@ -129,7 +124,8 @@ def load_single_dataset(
         num_samples = min(data_args.max_train_samples, len(dataset))
         dataset = dataset.select(range(num_samples))
 
-    return align_dataset(dataset, dataset_attr, data_args)
+    aligned_dataset = align_dataset(dataset, dataset_attr, data_args)
+    return aligned_dataset
 
 
 def get_dataset(
@@ -140,19 +136,35 @@ def get_dataset(
     tokenizer: PreTrainedTokenizer,
     processor: Optional[ProcessorMixin] = None,
 ) -> Union[Dataset, IterableDataset]:
+    """
+    Retrieves and processes the dataset for training.
+
+    Args:
+        model_args (ModelArguments): Arguments related to the model configuration.
+        data_args (DataArguments): Arguments related to the dataset and data processing.
+        training_args (Seq2SeqTrainingArguments): Arguments for training configuration.
+        stage (Literal['pt', 'sft', 'rm', 'kto']): The current training stage.
+        tokenizer (PreTrainedTokenizer): Tokenizer to be used for preprocessing.
+        processor (Optional[ProcessorMixin], optional): Optional processor for additional preprocessing. Defaults to None.
+
+    Returns:
+        Union[Dataset, IterableDataset]: The processed dataset ready for training.
+    """
+    # Adjust the template and tokenizer
     template = get_template_and_fix_tokenizer(tokenizer, data_args.template)
+
     if data_args.train_on_prompt and template.efficient_eos:
         raise ValueError(
             'Current template does not support `train_on_prompt`.')
 
-    # Load tokenized dataset
+    # Load tokenized dataset from disk if available
     if data_args.tokenized_path is not None:
         if has_tokenized_data(data_args.tokenized_path):
             logger.warning(
                 'Loading dataset from disk will ignore other data arguments.')
             dataset = load_from_disk(data_args.tokenized_path)
-            logger.info('Loaded tokenized dataset from {}.'.format(
-                data_args.tokenized_path))
+            logger.info('Loaded tokenized dataset from %s.',
+                        data_args.tokenized_path)
             if data_args.streaming:
                 dataset = dataset.to_iterable_dataset()
             return dataset
@@ -161,107 +173,62 @@ def get_dataset(
             raise ValueError(
                 'Turn off `streaming` when saving dataset to disk.')
 
+    # Load raw dataset and align it
     with training_args.main_process_first(desc='load dataset'):
         all_datasets = []
         for dataset_attr in get_dataset_list(data_args):
-            if (stage == 'rm' and dataset_attr.ranking is False) or (
-                    stage != 'rm' and dataset_attr.ranking is True):
+            if (stage == 'rm' and not dataset_attr.ranking) or (
+                    stage != 'rm' and dataset_attr.ranking):
                 raise ValueError(
                     'The dataset is not applicable in the current training stage.'
                 )
-
             all_datasets.append(
                 load_single_dataset(dataset_attr, model_args, data_args))
+
         dataset = merge_dataset(all_datasets, data_args, training_args)
 
+    # Preprocess the dataset
     with training_args.main_process_first(desc='pre-process dataset'):
         preprocess_func, print_function = get_preprocess_and_print_func(
             data_args, training_args, stage, template, tokenizer, processor)
+
         column_names = list(next(iter(dataset)).keys())
         kwargs = {}
         if not data_args.streaming:
-            kwargs = dict(
-                num_proc=data_args.preprocessing_num_workers,
-                load_from_cache_file=(not data_args.overwrite_cache),
-                desc='Running tokenizer on dataset',
-            )
+            kwargs = {
+                'num_proc': data_args.preprocessing_num_workers,
+                'load_from_cache_file': not data_args.overwrite_cache,
+                'desc': 'Running tokenizer on dataset',
+            }
 
-        dataset = dataset.map(preprocess_func,
-                              batched=True,
-                              remove_columns=column_names,
-                              **kwargs)
+        dataset = dataset.map(
+            preprocess_func,
+            batched=True,
+            remove_columns=column_names,
+            **kwargs,
+        )
 
+        # Save tokenized dataset to disk if required
         if data_args.tokenized_path is not None:
             if training_args.should_save:
-                dataset.save_to_disk(data_args.tokenized_path)
-                logger.info('Tokenized dataset saved at {}.'.format(
-                    data_args.tokenized_path))
                 logger.info(
-                    'Please restart the training with `--tokenized_path {}`.'.
-                    format(data_args.tokenized_path))
-
+                    'Tokenized dataset saved at %s.',
+                    data_args.tokenized_path,
+                )
+                logger.info(
+                    'Please restart the training with `--tokenized_path %s`.',
+                    data_args.tokenized_path,
+                )
+                dataset.save_to_disk(data_args.tokenized_path)
             exit(0)
 
+        # Log a sample of the dataset
         if training_args.should_log:
             try:
                 print_function(next(iter(dataset)))
-            except StopIteration:
+            except StopIteration as exc:
                 raise RuntimeError(
                     'Cannot find valid samples, check `data/README.md` for the data format.'
-                )
+                ) from exc
 
-        return dataset
-
-
-def make_supervised_data_module(
-    tokenizer: PreTrainedTokenizer,
-    args: argparse.Namespace,
-    text_logger: logging.Logger,
-) -> dict[str, torch.utils.data.Dataset]:
-    train_dataset, eval_dataset, multi_turn = make_data_module(
-        args, text_logger)
-    max_seq_length = tokenizer.model_max_length
-    dataset_cls = (VicunaDataset if args.conversation_template == 'vicnua' else
-                   ConversationDataset)
-
-    if not multi_turn:
-        train_dataset = (SupervisedDataset(
-            train_dataset,
-            tokenizer=tokenizer,
-            max_seq_len=max_seq_length,
-        ) if args.do_train else None)
-
-        eval_dataset = (SupervisedDataset(
-            eval_dataset,
-            tokenizer=tokenizer,
-            max_seq_len=max_seq_length,
-        ) if args.do_eval else None)
-
-    else:
-        train_dataset = dataset_cls(
-            train_dataset,
-            tokenizer=tokenizer,
-            max_seq_length=max_seq_length,
-        ) if args.do_train else None
-        eval_dataset = dataset_cls(
-            eval_dataset,
-            tokenizer=tokenizer,
-            max_seq_length=max_seq_length,
-        ) if args.do_eval else None
-
-    if args.do_train:
-        train_info = f'train_dataset: {type(train_dataset)}, mutlti-turn: {multi_turn},  #length: {len(train_dataset)}'
-        text_logger.info(train_info)
-
-    if args.do_eval:
-        eval_info = f'eval_dataset: {type(eval_dataset)}, mutlti-turn: {multi_turn}, #length: {len(eval_dataset)}'
-        text_logger.info(eval_info)
-
-    data_collator = DataCollatorForSupervisedDataset(
-        tokenizer=tokenizer, predict_with_generate=args.predict_with_generate)
-
-    return {
-        'train_dataset': train_dataset,
-        'eval_dataset': eval_dataset,
-        'data_collator': data_collator
-    }
+    return dataset
