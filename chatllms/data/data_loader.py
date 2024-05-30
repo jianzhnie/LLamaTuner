@@ -30,26 +30,37 @@ def load_single_dataset(
     dataset_attr: DatasetAttr,
     model_args: ModelArguments,
     data_args: DataArguments,
-    logger: logging.Logger = logger,
 ) -> Union[Dataset, IterableDataset]:
+    """
+    Load a single dataset based on the provided dataset attributes, model arguments, and data arguments.
+
+    Args:
+        dataset_attr (DatasetAttr): Attributes of the dataset to be loaded.
+        model_args (ModelArguments): Arguments related to the model and cache directories.
+        data_args (DataArguments): Arguments related to data loading and processing.
+        logger (logging.Logger): Logger for logging information and errors.
+
+    Returns:
+        Union[Dataset, IterableDataset]: The loaded dataset.
+    """
     logger.info(f'Loading dataset {dataset_attr}...')
     data_path, data_name, data_dir, data_files = None, None, None, None
+
+    # Determine dataset source and configure paths
     if dataset_attr.load_from in ['hf_hub', 'ms_hub']:
         data_path = dataset_attr.dataset_name
         data_name = dataset_attr.subset
         data_dir = dataset_attr.folder
-
     elif dataset_attr.load_from == 'script':
         data_path = os.path.join(data_args.dataset_dir,
                                  dataset_attr.dataset_name)
         data_name = dataset_attr.subset
         data_dir = dataset_attr.folder
-
     elif dataset_attr.load_from == 'file':
         data_files = []
         local_path = os.path.join(data_args.dataset_dir,
                                   dataset_attr.dataset_name)
-        if os.path.isdir(local_path):  # is directory
+        if os.path.isdir(local_path):  # Check if the path is a directory
             for file_name in os.listdir(local_path):
                 data_files.append(os.path.join(local_path, file_name))
                 if data_path is None:
@@ -58,17 +69,17 @@ def load_single_dataset(
                 elif data_path != FILEEXT2TYPE.get(
                         file_name.split('.')[-1], None):
                     raise ValueError('File types should be identical.')
-        elif os.path.isfile(local_path):  # is file
+        elif os.path.isfile(local_path):  # Check if the path is a file
             data_files.append(local_path)
             data_path = FILEEXT2TYPE.get(local_path.split('.')[-1], None)
         else:
             raise ValueError(f'File {local_path} not found.')
-
         if data_path is None:
             raise ValueError('File extension must be txt, csv, json or jsonl.')
     else:
-        raise NotImplementedError
+        raise NotImplementedError('Unsupported dataset source.')
 
+    # Load dataset from Microsoft Hub
     if dataset_attr.load_from == 'ms_hub':
         try:
             from modelscope import MsDataset
@@ -84,7 +95,7 @@ def load_single_dataset(
                 cache_dir=cache_dir,
                 token=model_args.ms_hub_token,
                 use_streaming=(data_args.streaming
-                               and (dataset_attr.load_from != 'file')),
+                               and dataset_attr.load_from != 'file'),
             )
             if isinstance(dataset, MsDataset):
                 dataset = dataset.to_hf_dataset()
@@ -93,11 +104,13 @@ def load_single_dataset(
                 'Please install modelscope via `pip install modelscope -U`'
             ) from exc
     else:
-        if 'trust_remote_code' in inspect.signature(load_dataset).parameters:
-            kwargs = {'trust_remote_code': True}
-        else:
-            kwargs = {}
+        # Prepare arguments for `load_dataset`
+        kwargs = ({
+            'trust_remote_code': True
+        } if 'trust_remote_code' in inspect.signature(load_dataset).parameters
+                  else {})
 
+        # Load dataset from Hugging Face Hub or local script/file
         dataset = load_dataset(
             path=data_path,
             name=data_name,
@@ -107,16 +120,16 @@ def load_single_dataset(
             cache_dir=model_args.cache_dir,
             token=model_args.hf_hub_token,
             streaming=(data_args.streaming
-                       and (dataset_attr.load_from != 'file')),
+                       and dataset_attr.load_from != 'file'),
             **kwargs,
         )
 
-    if data_args.streaming and (dataset_attr.load_from == 'file'
-                                ):  # faster than specifying streaming=True
-        dataset = dataset.to_iterable_dataset(
-        )  # TODO: add num shards parameter
+    # Convert dataset to iterable if streaming and loaded from file
+    if data_args.streaming and dataset_attr.load_from == 'file':
+        dataset = dataset.to_iterable_dataset()
 
-    if data_args.max_train_samples is not None:  # truncate dataset
+    # Truncate dataset if max_train_samples is set
+    if data_args.max_train_samples is not None:
         num_samples = min(data_args.max_train_samples, len(dataset))
         dataset = dataset.select(range(num_samples))
 
