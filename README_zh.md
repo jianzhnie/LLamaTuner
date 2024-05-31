@@ -16,7 +16,7 @@
 
 </div>
 
-# Efficient Finetuning of Quantized LLMs --- 低资源的大语言模型量化训练/部署方案
+# LLamaTuner--- 低资源的大语言模型量化训练/部署方案
 
 <div align="center">
 
@@ -24,7 +24,7 @@
 
 </div>
 
-这里是`Efficient Finetuning of Quantized LLMs`项目的存储库，旨在构建和开源 遵循指令的`baichuan/LLaMA/Pythia/GLM`中文大模型微调训练方法，该方法可以在**单个 Nvidia RTX-2080TI**上进行训练，多轮聊天机器人可以在**单个 Nvidia RTX-3090**上进行上下文长度 2048的模型训练。
+这里是`LLamaTuner`项目的存储库，旨在构建和开源 遵循指令的`baichuan/LLaMA/Pythia/GLM`中文大模型微调训练方法，该方法可以在**单个 Nvidia RTX-2080TI**上进行训练，多轮聊天机器人可以在**单个 Nvidia RTX-3090**上进行上下文长度 2048的模型训练。
 
 我们使用[bitsandbytes](https://github.com/TimDettmers/bitsandbytes)进行量化，并与Huggingface的[PEFT](https://github.com/huggingface/peft)和 [transformers](https://github.com/huggingface/transformers/)库集成。
 
@@ -49,7 +49,7 @@ QLora 引入了多种创新，旨在在不牺牲性能的情况下减少内存�
 3. Paged Optimizers：使用NVIDIA统一内存来避免在处理小批量的长序列时出现的梯度 Checkppints 内存峰值。
 4. 增加 Adapter：4-bit NormalFloat与Double Quantization，节省了很多空间，但带来了性能损失，作者通过插入更多adapter来弥补这种性能损失。在LoRA中，一般会选择在query和value的全连接层处插入adapter。而QLora则在所有全连接层处都插入了adapter，增加了训练参数，弥补精度带来的性能损失。
 
-完整介绍查看：[QLORA: Efficient Finetuning of Quantized LLMs](https://jianzhnie.github.io/machine-learning-wiki/#/ai-general/quantization/qlora)
+完整介绍查看：[QLORA: LLamaTuner](https://jianzhnie.github.io/machine-learning-wiki/#/ai-general/quantization/qlora)
 
 </details>
 
@@ -187,133 +187,12 @@ python train_qlora.py --model_name_or_path <path_or_name>
 python train_qlora.py –learning_rate 0.0001 --model_name_or_path <path_or_name>
 ```
 
-我们还可以调整我们的超参数：
-
-```bash
-python train_qlora.py \
-    --model_name_or_path ~/checkpoints/baichuan7b \
-    --dataset_cfg ./data/alpaca_zh_pcyn.yaml \
-    --data_dir ~/prompt_datasets \
-    --load_from_local \
-    --output_dir ./work_dir/oasst1-baichuan-7b \
-    --num_train_epochs 4 \
-    --per_device_train_batch_size 4 \
-    --per_device_eval_batch_size 4 \
-    --gradient_accumulation_steps 8 \
-    --evaluation_strategy steps \
-    --eval_steps 50 \
-    --save_strategy steps \
-    --save_total_limit 5 \
-    --save_steps 100 \
-    --logging_strategy steps \
-    --logging_steps 1 \
-    --learning_rate 0.0002 \
-    --warmup_ratio 0.03 \
-    --weight_decay 0.0 \
-    --lr_scheduler_type constant \
-    --adam_beta2 0.999 \
-    --max_grad_norm 0.3 \
-    --max_new_tokens 32 \
-    --source_max_len 512 \
-    --target_max_len 512 \
-    --lora_r 64 \
-    --lora_alpha 16 \
-    --lora_dropout 0.1 \
-    --double_quant \
-    --quant_type nf4 \
-    --fp16 \
-    --bits 4 \
-    --gradient_checkpointing \
-    --trust_remote_code \
-    --do_train \
-    --do_eval \
-    --sample_generate \
-    --data_seed 42 \
-    --seed 0
-```
-
 要查找更多用于微调和推理的脚本，请参阅该`scripts`文件夹。
 
-## 量化
-
-`BitsandbytesConfig`量化参数由（[参见 huggingface 文档](https://huggingface.co/docs/transformers/main_classes/quantization#transformers.BitsAndBytesConfig)）控制，如下所示：
-
-- 4 位加载通过以下方式激活`load_in_4bit`
-- 用于线性层计算的数据类型`bnb_4bit_compute_dtype`
-- 嵌套量化通过以下方式激活`bnb_4bit_use_double_quant`
-- 用于量化的数据类型由 指定`bnb_4bit_quant_type`。请注意，有两种支持的量化数据类型`fp4`（四位浮点）和`nf4`（普通四位浮点）。后者理论上对于正态分布权重来说是最佳的，我们建议使用`nf4`。
-
-```
-    model = AutoModelForCausalLM.from_pretrained(
-        model_name_or_path='/name/or/path/to/your/model',
-        load_in_4bit=True,
-        device_map='auto',
-        max_memory=max_memory,
-        torch_dtype=torch.bfloat16,
-        quantization_config=BitsAndBytesConfig(
-            load_in_4bit=True,
-            bnb_4bit_compute_dtype=torch.bfloat16,
-            bnb_4bit_use_double_quant=True,
-            bnb_4bit_quant_type='nf4'
-        ),
-    )
-```
-
-## 教程和演示
-
-我们提供了两个 Google Colab 笔记本来演示 4 位模型在推理和微调中的使用。这些笔记本旨在成为进一步研究和开发的起点。
-
-- [Basic usage Google Colab notebook](https://colab.research.google.com/drive/1ge2F1QSK8Q7h0hn3YKuBCOAS0bK8E0wf?usp=sharing) 该笔记本展示了如何在推理中使用 4 位模型及其所有变体，以及如何在免费的 Google Colab 实例上运行 GPT-neo-X（20B 参数模型）🤯
-- [Fine tuning Google Colab notebook](https://colab.research.google.com/drive/1VoYNfYDKcKRQRor98Zbf2-9VQTtGJ24k?usp=sharing)  该笔记本展示了如何使用 Hugging Face 生态系统在下游任务中微调 4 位模型。我们证明可以在 Google Colab 实例上微调 GPT-neo-X 20B！
-
-其他示例可以在示例/文件夹下找到。
-
-- 微调 LLama-7B (ex1)
-- 微调 GPT-neo-X 20B (ex2)
-
-## 多GPU训练
-
-Hugging Face 的 Accelerate 可以开箱即用地进行多 GPU 训练和推理。请注意，per_device_train_batch_size 和 per_device_eval_batch_size 参数是全局批量大小，与其名称所暗示的不同。
-
-当加载模型以在多个 GPU 上进行训练或推理时，您应该将类似以下内容传递给 AutoModelForCausalLM.from_pretrained()：
-
-```
-device_map = "auto"
-max_memory = {i: '46000MB' for i in range(torch.cuda.device_count())}
-```
-
-## 推理
-
-### 终端交互式对话
-
-运行下面的脚本，程序会在命令行中和你的ChatBot进行交互式的对话，在命令行中输入指示并回车即可生成回复，输入 `clear` 可以清空对话历史，输入 `stop` 终止程序。
-
-```
-python cli_demo.py \
-    --model_name_or_path ~/checkpoints/baichuan7b \ # base model
-    --checkpoint_dir ./work_dir/checkpoint-700  \ # 训练的模型权重
-    --trust_remote_code  \
-    --double_quant \
-    --quant_type nf4 \
-    --fp16 \
-    --bits 4
-```
-
-### 使用Gradio进行网页端交互
-
-该文件从 Hugging Face 模型中心读取基础模型，并从 `path/to/your/model_dir` 读取 LoRA 权重，运行 Gradio 接口以对指定输入进行推理。用户应将此视为模型使用的示例代码，并根据需要进行修改。
-
-用法示例：
-
-```
-python gradio_webserver.py \
-    --model_name_or_path decapoda-research/llama-7b-hf \
-    --lora_model_name_or_path  `path/to/your/model_dir`
-```
 
 ## License
 
-`Efficient Finetuning of Quantized LLMs`根据 Apache 2.0 许可证发布。
+`LLamaTuner`根据 Apache 2.0 许可证发布。
 
 ## 致谢
 
@@ -335,10 +214,10 @@ python gradio_webserver.py \
 ```
 @misc{Chinese-Guanaco,
   author = {jianzhnie},
-  title = {Chinese-Guanaco: Efficient Finetuning of Quantized LLMs for Chinese},
+  title = { LLamaTuner: Easy and Efficient Fine-tuning LLMs},
   year = {2023},
   publisher = {GitHub},
   journal = {GitHub repository},
-  howpublished = {\url{https://github.com/jianzhnie/Efficient-Tuning-LLMs}},
+  howpublished = {\url{https://github.com/jianzhnie/LLamaTuner}},
 }
 ```
