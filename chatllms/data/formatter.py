@@ -18,33 +18,35 @@ TOOL_SYSTEM_PROMPT = ('You have access to the following tools:\n{tool_text}'
 
 
 def default_tool_formatter(tools: List[Dict[str, Any]]) -> str:
+    """
+    Formats tool information into a human-readable string.
+
+    Args:
+        tools (List[Dict[str, Any]]): List of tool dictionaries.
+
+    Returns:
+        str: Formatted tool information.
+    """
     tool_text = ''
     tool_names = []
+
     for tool in tools:
         param_text = ''
         for name, param in tool['parameters']['properties'].items():
+            # Format each parameter's details
             required = (', required' if name in tool['parameters'].get(
                 'required', []) else '')
             enum = (', should be one of [{}]'.format(', '.join(param['enum']))
-                    if param.get('enum', None) else '')
+                    if param.get('enum') else '')
             items = (', where each item should be {}'.format(
                 param['items'].get('type', '')) if param.get('items') else '')
-            param_text += '  - {name} ({type}{required}): {desc}{enum}{items}\n'.format(
-                name=name,
-                type=param.get('type', ''),
-                required=required,
-                desc=param.get('description', ''),
-                enum=enum,
-                items=items,
-            )
+            param_text += f"  - {name} ({param.get('type', '')}{required}): {param.get('description', '')}{enum}{items}\n"
 
-        tool_text += ('> Tool Name: {name}\nTool Description: {desc}\n'
-                      'Tool Args:\n{args}\n'.format(name=tool['name'],
-                                                    desc=tool.get(
-                                                        'description', ''),
-                                                    args=param_text))
+        # Format each tool's details
+        tool_text += f"> Tool Name: {tool['name']}\nTool Description: {tool.get('description', '')}\nTool Args:\n{param_text}\n"
         tool_names.append(tool['name'])
 
+    # Combine all formatted tool information into the final prompt
     return TOOL_SYSTEM_PROMPT.format(
         tool_text=tool_text,
         tool_names=', '.join(tool_names),
@@ -53,14 +55,25 @@ def default_tool_formatter(tools: List[Dict[str, Any]]) -> str:
 
 
 def default_tool_extractor(content: str) -> Union[str, Tuple[str, str]]:
+    """
+    Extracts tool name and input arguments from the provided content.
+
+    Args:
+        content (str): The content to extract information from.
+
+    Returns:
+        Union[str, Tuple[str, str]]: Extracted tool name and arguments in JSON format, or original content if extraction fails.
+    """
     regex = re.compile(r'Action:\s*([a-zA-Z0-9_]+).*?Action Input:\s*(.*)',
                        re.DOTALL)
     action_match = re.search(regex, content)
+
     if not action_match:
         return content
 
     tool_name = action_match.group(1).strip()
     tool_input = action_match.group(2).strip().strip('"').strip('```')
+
     try:
         arguments = json.loads(tool_input)
     except json.JSONDecodeError:
@@ -71,6 +84,15 @@ def default_tool_extractor(content: str) -> Union[str, Tuple[str, str]]:
 
 @dataclass
 class Formatter(ABC):
+    """
+    Abstract base class for formatters. Defines the structure for formatters
+    that manipulate sequences of strings, sets, or dictionaries based on specific rules.
+
+    Attributes:
+        slots (Sequence[Union[str, Set[str], Dict[str, str]]]): The slots to format.
+        tool_format (Optional[Literal["default"]]): Optional tool format specification.
+    """
+
     slots: Sequence[Union[str, Set[str],
                           Dict[str, str]]] = field(default_factory=list)
     tool_format: Optional[Literal['default']] = None
@@ -78,76 +100,115 @@ class Formatter(ABC):
     @abstractmethod
     def apply(self,
               **kwargs) -> Sequence[Union[str, Set[str], Dict[str, str]]]:
+        """
+        Applies formatting to the slots based on provided keyword arguments.
+
+        Returns:
+            Sequence[Union[str, Set[str], Dict[str, str]]]: The formatted slots.
+        """
         ...
 
     def extract(self, content: str) -> Union[str, Tuple[str, str]]:
+        """
+        Extracts information from the provided content string. Must be implemented by subclasses.
+
+        Args:
+            content (str): The content to extract information from.
+
+        Returns:
+            Union[str, Tuple[str, str]]: Extracted information.
+        """
         raise NotImplementedError
 
 
 @dataclass
 class EmptyFormatter(Formatter):
+    """
+    Formatter that ensures no placeholders are present in the slots.
+    """
 
     def __post_init__(self):
-        has_placeholder = False
-        for slot in filter(lambda s: isinstance(s, str), self.slots):
-            if re.search(r'\{\{[a-zA-Z_][a-zA-Z0-9_]*\}\}', slot):
-                has_placeholder = True
-
+        # Ensure no placeholders are present in the slots
+        has_placeholder = any(
+            isinstance(slot, str)
+            and re.search(r'\{\{[a-zA-Z_][a-zA-Z0-9_]*\}\}', slot)
+            for slot in self.slots)
         if has_placeholder:
             raise ValueError(
                 'Empty formatter should not contain any placeholder.')
 
     def apply(self,
               **kwargs) -> Sequence[Union[str, Set[str], Dict[str, str]]]:
+        """
+        Returns the slots without any modification.
+
+        Returns:
+            Sequence[Union[str, Set[str], Dict[str, str]]]: The original slots.
+        """
         return self.slots
 
 
-@dataclass
 class StringFormatter(Formatter):
+    """
+    Formatter that replaces placeholders in the slots with provided values.
+    """
 
     def __post_init__(self):
-        has_placeholder = False
-        for slot in filter(lambda s: isinstance(s, str), self.slots):
-            if re.search(r'\{\{[a-zA-Z_][a-zA-Z0-9_]*\}\}', slot):
-                has_placeholder = True
-
+        # Ensure at least one placeholder is present in the slots
+        has_placeholder = any(
+            isinstance(slot, str)
+            and re.search(r'\{\{[a-zA-Z_][a-zA-Z0-9_]*\}\}', slot)
+            for slot in self.slots)
         if not has_placeholder:
             raise ValueError(
                 'A placeholder is required in the string formatter.')
 
     def apply(self,
               **kwargs) -> Sequence[Union[str, Set[str], Dict[str, str]]]:
+        """
+        Replaces placeholders in the slots with provided values.
+
+        Args:
+            **kwargs: The values to replace the placeholders with.
+
+        Returns:
+            Sequence[Union[str, Set[str], Dict[str, str]]]: The formatted slots.
+
+        Raises:
+            RuntimeError: If a non-string value is provided for a placeholder.
+        """
         elements = []
         for slot in self.slots:
             if isinstance(slot, str):
                 for name, value in kwargs.items():
                     if not isinstance(value, str):
                         raise RuntimeError(
-                            'Expected a string, got {}'.format(value))
-
-                    slot = slot.replace('{{' + name + '}}', value, 1)
+                            f'Expected a string, got {type(value)}')
+                    slot = slot.replace(f'{{{{{name}}}}}', value)
                 elements.append(slot)
             elif isinstance(slot, (dict, set)):
                 elements.append(slot)
             else:
                 raise RuntimeError(
-                    'Input must be string, set[str] or dict[str, str], got {}'.
-                    format(type(slot)))
-
+                    f'Input must be string, set[str], or dict[str, str], got {type(slot)}'
+                )
         return elements
 
 
 @dataclass
 class FunctionFormatter(Formatter):
+    """
+    Formatter that replaces placeholders for function name and arguments in the slots.
+    """
 
     def __post_init__(self):
-        has_name, has_args = False, False
-        for slot in filter(lambda s: isinstance(s, str), self.slots):
-            if '{{name}}' in slot:
-                has_name = True
-            if '{{arguments}}' in slot:
-                has_args = True
-
+        # Ensure both name and arguments placeholders are present in the slots
+        has_name = any(
+            isinstance(slot, str) and '{{name}}' in slot
+            for slot in self.slots)
+        has_args = any(
+            isinstance(slot, str) and '{{arguments}}' in slot
+            for slot in self.slots)
         if not has_name or not has_args:
             raise ValueError(
                 'Name and arguments placeholders are required in the function formatter.'
@@ -155,12 +216,25 @@ class FunctionFormatter(Formatter):
 
     def apply(self,
               **kwargs) -> Sequence[Union[str, Set[str], Dict[str, str]]]:
-        content = kwargs.pop('content')
+        """
+        Replaces placeholders for function name and arguments in the slots.
+
+        Args:
+            **kwargs: The function content in JSON format to extract name and arguments from.
+
+        Returns:
+            Sequence[Union[str, Set[str], Dict[str, str]]]: The formatted slots.
+
+        Raises:
+            RuntimeError: If the input slot is not a string, set, or dictionary.
+        """
+        content = kwargs.pop('content', '')
         try:
             function = json.loads(content)
-            name = function['name']
-            arguments = json.dumps(function['arguments'], ensure_ascii=False)
-        except Exception:
+            name = function.get('name', '')
+            arguments = json.dumps(function.get('arguments', {}),
+                                   ensure_ascii=False)
+        except json.JSONDecodeError:
             name, arguments = '', ''
 
         elements = []
@@ -173,9 +247,8 @@ class FunctionFormatter(Formatter):
                 elements.append(slot)
             else:
                 raise RuntimeError(
-                    'Input must be string, set[str] or dict[str, str], got {}'.
-                    format(type(slot)))
-
+                    f'Input must be string, set[str], or dict[str, str], got {type(slot)}'
+                )
         return elements
 
 
@@ -183,26 +256,49 @@ class FunctionFormatter(Formatter):
 class ToolFormatter(Formatter):
 
     def __post_init__(self):
+        """
+        Post-initialization check to ensure tool_format is specified.
+        """
         if self.tool_format is None:
             raise ValueError('Tool format was not found.')
 
     def apply(self,
               **kwargs) -> Sequence[Union[str, Set[str], Dict[str, str]]]:
-        content = kwargs.pop('content')
+        """
+        Apply the tool formatter to the provided content.
+
+        Args:
+            **kwargs: Arbitrary keyword arguments, expected to include 'content'.
+
+        Returns:
+            Sequence[Union[str, Set[str], Dict[str, str]]]: Formatted tools information.
+        """
+        content = kwargs.pop('content', '')
         try:
             tools = json.loads(content)
-            if not len(tools):
+            if not tools:
                 return ['']
 
             if self.tool_format == 'default':
                 return [default_tool_formatter(tools)]
             else:
-                raise NotImplementedError
-        except Exception:
+                raise NotImplementedError(
+                    f"Tool format '{self.tool_format}' is not implemented.")
+        except json.JSONDecodeError:
             return ['']
 
     def extract(self, content: str) -> Union[str, Tuple[str, str]]:
+        """
+        Extract tool information from the content.
+
+        Args:
+            content (str): The content to extract information from.
+
+        Returns:
+            Union[str, Tuple[str, str]]: Extracted tool information.
+        """
         if self.tool_format == 'default':
             return default_tool_extractor(content)
         else:
-            raise NotImplementedError
+            raise NotImplementedError(
+                f"Tool format '{self.tool_format}' is not implemented.")
