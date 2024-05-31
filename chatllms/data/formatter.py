@@ -87,10 +87,16 @@ class Formatter(ABC):
     """
     Abstract base class for formatters. Defines the structure for formatters
     that manipulate sequences of strings, sets, or dictionaries based on specific rules.
+    Formatter类是一个抽象基类，定义了所有格式化器必须实现的接口。
 
     Attributes:
         slots (Sequence[Union[str, Set[str], Dict[str, str]]]): The slots to format.
         tool_format (Optional[Literal["default"]]): Optional tool format specification.
+
+        slots: 一个序列，包含字符串、集合或字典，这些元素将被格式化。
+        tool_format: 可选的工具格式，可以设置为 "default"。
+        apply: 一个抽象方法，要求子类实现具体的格式化逻辑。
+        extract: 一个未实现的方法，子类可以根据需要重载这个方法来提取内容
     """
 
     slots: Sequence[Union[str, Set[str],
@@ -125,6 +131,7 @@ class Formatter(ABC):
 class EmptyFormatter(Formatter):
     """
     Formatter that ensures no placeholders are present in the slots.
+    EmptyFormatter类 确保插槽（slots）中没有任何占位符
     """
 
     def __post_init__(self):
@@ -151,6 +158,7 @@ class EmptyFormatter(Formatter):
 class StringFormatter(Formatter):
     """
     Formatter that replaces placeholders in the slots with provided values.
+    StringFormatter类 用于替换插槽中的占位符。
     """
 
     def __post_init__(self):
@@ -199,6 +207,7 @@ class StringFormatter(Formatter):
 class FunctionFormatter(Formatter):
     """
     Formatter that replaces placeholders for function name and arguments in the slots.
+    FunctionFormatter 类 用于替换插槽中的函数名和参数占位符。
     """
 
     def __post_init__(self):
@@ -254,6 +263,7 @@ class FunctionFormatter(Formatter):
 
 @dataclass
 class ToolFormatter(Formatter):
+    """ToolFormatter，用于处理工具格式的内容。"""
 
     def __post_init__(self):
         """
@@ -266,6 +276,15 @@ class ToolFormatter(Formatter):
               **kwargs) -> Sequence[Union[str, Set[str], Dict[str, str]]]:
         """
         Apply the tool formatter to the provided content.
+
+        apply 方法用于将输入的 content 格式化。具体步骤如下：
+
+        - 从 kwargs 中提取 content。
+        - 尝试将 content 解析为 JSON 对象。
+        - 如果 tools 列表为空，则返回包含一个空字符串的列表。
+        - 如果 tool_format 为 'default'，则调用 default_tool_formatter(tools) 函数进行格式化，并返回结果。
+        - 如果 tool_format 不是 'default'，则抛出 NotImplementedError，表示尚未实现其他格式。
+        - 如果解析 content 失败，则返回包含一个空字符串的列表。
 
         Args:
             **kwargs: Arbitrary keyword arguments, expected to include 'content'.
