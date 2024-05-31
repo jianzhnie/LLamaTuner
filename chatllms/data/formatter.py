@@ -135,6 +135,14 @@ class EmptyFormatter(Formatter):
     """
 
     def __post_init__(self):
+        """
+        __post_init__方法：在类的初始化之后自动调用，\
+            用于检查slots中是否包含任何占位符（如{{placeholder}}）。
+            如果包含占位符，则抛出错误，因为空格式化器不应该包含占位符。
+
+        Raises:
+            ValueError: _description_
+        """
         # Ensure no placeholders are present in the slots
         has_placeholder = any(
             isinstance(slot, str)
