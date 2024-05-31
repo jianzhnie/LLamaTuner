@@ -12,9 +12,9 @@ from transformers import (AutoConfig, AutoModelForCausalLM, AutoTokenizer,
 # Add parent directory to sys.path
 sys.path.append('../../')
 
-from chatllms.configs import ModelInferenceArguments
-from chatllms.data.data_utils import IGNORE_INDEX
-from chatllms.utils.model_utils import add_special_tokens_if_missing
+from llamatuner.configs import ModelInferenceArguments
+from llamatuner.data.data_utils import IGNORE_INDEX
+from llamatuner.utils.model_utils import add_special_tokens_if_missing
 
 
 class LLMPerplexity:

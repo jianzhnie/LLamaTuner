@@ -15,8 +15,8 @@ from transformers.tokenization_utils import PreTrainedTokenizer
 from transformers.utils import check_min_version
 from transformers.utils.versions import require_version
 
-from chatllms.utils.model_utils import (add_special_tokens_if_missing,
-                                        find_all_linear_names)
+from llamatuner.utils.model_utils import (add_special_tokens_if_missing,
+                                          find_all_linear_names)
 
 check_min_version('4.29.1')
 

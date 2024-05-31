@@ -10,11 +10,11 @@ import torch
 from datasets import Dataset, DatasetDict, concatenate_datasets, load_dataset
 from transformers import PreTrainedTokenizer
 
-from chatllms.data.conv_dataset import ConversationDataset, VicunaDataset
-from chatllms.data.sft_dataset import (DataCollatorForSupervisedDataset,
-                                       SupervisedDataset)
-from chatllms.data.template import (ALPACA_PROMPT_DICT, DEFAULT_PROMPT_DICT,
-                                    RANDOM_PROMPT_DICT)
+from llamatuner.data.conv_dataset import ConversationDataset, VicunaDataset
+from llamatuner.data.sft_dataset import (DataCollatorForSupervisedDataset,
+                                         SupervisedDataset)
+from llamatuner.data.template import (ALPACA_PROMPT_DICT, DEFAULT_PROMPT_DICT,
+                                      RANDOM_PROMPT_DICT)
 
 
 def extract_default_prompt_dataset(example: Dict[str, Any]) -> Dict[str, str]:

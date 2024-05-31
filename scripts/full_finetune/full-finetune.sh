@@ -1,15 +1,19 @@
-python train.py \
+python tools/train.py \
     --model_name_or_path  facebook/opt-125m \
-    --dataset_name share_gpt \
+    --dataset alpaca \
     --output_dir work_dir/full-finetune \
+    --wandb_project llamatuner \
+    --wandb_run_name alpaca_opt-125m_full-finetune \
     --num_train_epochs 3 \
+    --max_train_samples 200 \
+    --max_eval_samples 200 \
     --per_device_train_batch_size 4 \
     --per_device_eval_batch_size 4 \
     --gradient_accumulation_steps 8 \
-    --evaluation_strategy "steps" \
+    --eval_strategy "steps" \
     --save_strategy "steps" \
-    --eval_steps 1000 \
-    --save_steps 1000 \
+    --eval_steps 1 \
+    --save_steps 1 \
     --save_total_limit 5 \
     --logging_steps 1 \
     --learning_rate 2e-5 \
@@ -18,7 +22,7 @@ python train.py \
     --optim "adamw_torch" \
     --lr_scheduler_type "cosine" \
     --gradient_checkpointing True \
-    --model_max_length 128 \
     --trust_remote_code \
+    --model_max_length 128 \
     --do_train \
     --do_eval

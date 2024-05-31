@@ -3,11 +3,11 @@ from typing import Dict, List, Optional, Sequence, Set, Tuple, Union
 
 from transformers import PreTrainedTokenizer
 
-from chatllms.data.formatter import (EmptyFormatter, Formatter,
-                                     FunctionFormatter, StringFormatter,
-                                     ToolFormatter)
-from chatllms.data.utils import Role, infer_max_len
-from chatllms.utils.logger_utils import get_logger
+from llamatuner.data.formatter import (EmptyFormatter, Formatter,
+                                       FunctionFormatter, StringFormatter,
+                                       ToolFormatter)
+from llamatuner.data.utils import Role, infer_max_len
+from llamatuner.utils.logger_utils import get_logger
 
 logger = get_logger(__name__)
 

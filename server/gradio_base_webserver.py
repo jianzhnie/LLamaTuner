@@ -4,7 +4,7 @@ import gradio as gr
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, GenerationConfig
 
-from chatllms.utils.apply_lora import apply_lora
+from llamatuner.utils.apply_lora import apply_lora
 
 
 def args_parser():

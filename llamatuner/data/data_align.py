@@ -4,10 +4,10 @@ from typing import Any, Callable, Dict, List, Union
 
 from datasets import Dataset, Features, IterableDataset
 
-from chatllms.configs import DataArguments
-from chatllms.data.data_parser import DatasetAttr
-from chatllms.data.utils import Role
-from chatllms.utils.logger_utils import get_logger
+from llamatuner.configs import DataArguments
+from llamatuner.data.data_parser import DatasetAttr
+from llamatuner.data.utils import Role
+from llamatuner.utils.logger_utils import get_logger
 
 logger = get_logger(__name__)
 

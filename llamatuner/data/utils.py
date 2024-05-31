@@ -5,8 +5,8 @@ from datasets import (Dataset, IterableDataset, concatenate_datasets,
                       interleave_datasets)
 from transformers import Seq2SeqTrainingArguments
 
-from chatllms.configs import DataArguments
-from chatllms.utils.logger_utils import get_logger
+from llamatuner.configs import DataArguments
+from llamatuner.utils.logger_utils import get_logger
 
 logger = get_logger(__name__)
 

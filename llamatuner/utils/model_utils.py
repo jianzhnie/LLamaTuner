@@ -12,8 +12,8 @@ from transformers.generation.logits_process import LogitsProcessor
 from transformers.generation.utils import LogitsProcessorList
 from transformers.trainer_utils import get_last_checkpoint
 
-from chatllms.data.data_utils import (DEFAULT_BOS_TOKEN, DEFAULT_EOS_TOKEN,
-                                      DEFAULT_PAD_TOKEN, DEFAULT_UNK_TOKEN)
+from llamatuner.utils.constants import (DEFAULT_BOS_TOKEN, DEFAULT_EOS_TOKEN,
+                                        DEFAULT_PAD_TOKEN, DEFAULT_UNK_TOKEN)
 
 
 def add_special_tokens_if_missing(tokenizer: PreTrainedTokenizer,
@@ -51,9 +51,11 @@ def add_special_tokens_if_missing(tokenizer: PreTrainedTokenizer,
                                              model)
 
 
-def smart_tokenizer_and_embedding_resize(special_tokens_dict: Dict[str, str],
-                                         tokenizer: PreTrainedTokenizer,
-                                         model: PreTrainedModel) -> None:
+def smart_tokenizer_and_embedding_resize(
+    special_tokens_dict: Dict[str, str],
+    tokenizer: PreTrainedTokenizer,
+    model: PreTrainedModel,
+) -> None:
     """Resize tokenizer and embedding to accommodate new special tokens.
     改变tokenizer和embedding的尺寸。 一般需要将tokenizer和embedding的尺寸设置为64的倍数，方便GPU加速。
 
@@ -178,7 +180,9 @@ def print_trainable_parameters(args: argparse.Namespace,
     for _, param in model.named_parameters():
         all_param += param.numel()
         # Add the number of elements in the parameter tensor to the total count
-        if param.requires_grad:  # If the parameter requires gradient computation during backpropagation
+        if (
+                param.requires_grad
+        ):  # If the parameter requires gradient computation during backpropagation
             trainable_params += param.numel()
             # Add its number of elements to the trainable parameters count
 

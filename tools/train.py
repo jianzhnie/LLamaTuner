@@ -13,9 +13,9 @@ from transformers import (AutoConfig, AutoModelForCausalLM, AutoTokenizer,
                           PreTrainedTokenizer, Trainer)
 
 sys.path.append(os.getcwd())
-from chatllms.configs import DataArguments, ModelArguments, TrainingArguments
-from chatllms.data import make_supervised_data_module
-from chatllms.utils.logger_utils import get_logger, get_outdir
+from llamatuner.configs import DataArguments, ModelArguments, TrainingArguments
+from llamatuner.data.data_utils import make_supervised_data_module
+from llamatuner.utils.logger_utils import get_logger, get_outdir
 
 os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
 
@@ -113,7 +113,7 @@ def train() -> None:
     log_name = os.path.join(args.wandb_run_name,
                             timestamp).replace(os.path.sep, '_')
     log_file = os.path.join(output_dir, log_name + '.log')
-    text_logger = get_logger(name='chatllms',
+    text_logger = get_logger(name='llamatuner',
                              log_file=log_file,
                              log_level='INFO')
 

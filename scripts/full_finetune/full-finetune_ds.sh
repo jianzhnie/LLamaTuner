@@ -1,15 +1,18 @@
-CUDA_VISIBLE_DEVICES=0 torchrun --nproc_per_node=1 train.py \
+CUDA_VISIBLE_DEVICES=0 torchrun --nproc_per_node=1 tools/train.py \
     --model_name_or_path facebook/opt-125m \
-    --data_path ~/prompt_data/InstructionWild/instinwild_en.json  \
-    --output_dir work_dir/alpaca_full-finetune \
+    --dataset_cfg ./data/run_test.yaml \
+    --output_dir work_dir/full-finetune \
     --num_train_epochs 3 \
+    --max_train_samples 200 \
     --per_device_train_batch_size 4 \
     --per_device_eval_batch_size 4 \
     --gradient_accumulation_steps 8 \
-    --evaluation_strategy "no" \
+    --evaluation_strategy "steps" \
     --save_strategy "steps" \
-    --save_steps 500 \
+    --eval_steps 1000 \
+    --save_steps 1000 \
     --save_total_limit 5 \
+    --logging_steps 1 \
     --learning_rate 2e-5 \
     --weight_decay 0. \
     --warmup_ratio 0.03 \

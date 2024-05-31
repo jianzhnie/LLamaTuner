@@ -418,7 +418,7 @@ class FinetuningArguments(FreezeArguments, LoraArguments, RLHFArguments,
         },
     )
     wandb_project: Optional[str] = field(
-        default='ChatLLms',
+        default='llamatuner',
         metadata={'help': 'The name of the wandb project to log to.'},
     )
     wandb_run_name: Optional[str] = field(

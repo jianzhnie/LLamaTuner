@@ -7,8 +7,8 @@ from transformers import (AutoModelForCausalLM, AutoTokenizer,
                           TextIteratorStreamer)
 
 sys.path.append('../')
-from chatllms.configs import GenerationArguments, ModelInferenceArguments
-from chatllms.utils.model_utils import get_logits_processor
+from llamatuner.configs import GenerationArguments, ModelInferenceArguments
+from llamatuner.utils.model_utils import get_logits_processor
 
 
 def main(model_server_args, generation_args):

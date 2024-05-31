@@ -3,7 +3,7 @@ from typing import Any, Dict, Optional
 
 
 @dataclass
-class GenerationArguments:
+class GeneratingArguments:
     """Arguments pertaining to specify the model generation parameters."""
 
     # Generation strategy

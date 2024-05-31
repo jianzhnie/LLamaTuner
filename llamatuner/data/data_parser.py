@@ -4,10 +4,10 @@ from typing import Any, Dict, List, Literal, Optional
 
 import yaml
 
-from chatllms.configs.data_args import DataArguments
-from chatllms.utils.constants import DATA_CONFIG
-from chatllms.utils.logger_utils import get_logger
-from chatllms.utils.misc import use_modelscope
+from llamatuner.configs.data_args import DataArguments
+from llamatuner.utils.constants import DATA_CONFIG
+from llamatuner.utils.logger_utils import get_logger
+from llamatuner.utils.misc import use_modelscope
 
 logger = get_logger(__name__)
 

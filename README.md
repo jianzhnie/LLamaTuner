@@ -141,11 +141,11 @@ huggingface-cli login
 
 ### Data Preprocessing
 
-We provide a number of data preprocessing tools in the [data](./chatllms/data) folder. These tools are intended to be a starting point for further research and development.
+We provide a number of data preprocessing tools in the [data](./llamatuner/data) folder. These tools are intended to be a starting point for further research and development.
 
-- [data_utils.py](./chatllms/data/data_utils.py) :  Data preprocessing and formatting
-- [sft_dataset.py](./chatllms/data/sft_dataset.py) :  Supervised fine-tuning dataset class and collator
-- [conv_dataset.py](./chatllms/data/conv_dataset.py) :  Conversation dataset class and collator
+- [data_utils.py](./llamatuner/data/data_utils.py) :  Data preprocessing and formatting
+- [sft_dataset.py](./llamatuner/data/sft_dataset.py) :  Supervised fine-tuning dataset class and collator
+- [conv_dataset.py](./llamatuner/data/conv_dataset.py) :  Conversation dataset class and collator
 
 ## Model Zoo
 
