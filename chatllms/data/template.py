@@ -84,6 +84,26 @@ RANDOM_PROMPT_DICT = {
 
 @dataclass
 class Template:
+    """
+    Template 类的主要作用是将对话消息（如用户和助手之间的对话）格式化并编码成 token IDs，\
+    这些 token IDs 可以用于自然语言处理（NLP）任务中的模型输入。
+    这个类提供了一些方法来处理单轮和多轮对话的编码
+
+    Args:
+        - format_user：用户消息的格式化器。
+        - format_assistant：助手消息的格式化器。
+        - format_system：系统消息的格式化器。
+        - format_function：功能消息的格式化器。
+        - format_observation：观察消息的格式化器。
+        - format_tools：工具信息的格式化器。
+        - format_separator：消息之间分隔符的格式化器。
+        - default_system：默认的系统消息，如果未提供系统消息时使用。
+        - stop_words：处理过程中使用的停用词列表。
+        - efficient_eos：高效处理结束标记的标志。
+        - replace_eos：替换结束标记的标志。
+        - force_system：强制包含系统消息的标志。
+    """
+
     format_user: Formatter
     format_assistant: Formatter
     format_system: Formatter
@@ -106,8 +126,32 @@ class Template:
         cutoff_len: int = 1_000_000,
         reserved_label_len: int = 1,
     ) -> Tuple[List[int], List[int]]:
-        r"""
-        Returns a single pair of token ids representing prompt and response respectively.
+        """
+        这个方法用于编码单轮对话，将其表示为提示和响应的 token IDs 序列。
+
+        Returns a single pair of token IDs representing prompt and response respectively.
+
+        方法逻辑:
+
+            - 调用 _encode 方法：首先，调用 _encode 方法对消息进行编码，生成一个包含成对的 token \
+                IDs 的序列。
+
+            - 拼接 token IDs：接着，将所有消息的查询部分（query_ids）和响应部分（resp_ids）拼 \
+              接起来，生成一个完整的提示序列 prompt_ids。最后一个查询部分的 token IDs 和最后一个响应\
+              部分的 token IDs 分别作为提示和响应返回。
+
+        Args:
+            tokenizer (PreTrainedTokenizer): Tokenizer to convert text to tokens.
+            messages (List[Dict[str, str]]): List of message dictionaries containing roles and content.
+            system (Optional[str]): System message to include at the beginning.
+            tools (Optional[str]): Tools information to include.
+            cutoff_len (int): Maximum allowed length for the encoded sequences.
+            reserved_label_len (int): Length reserved for the label.
+
+        Returns:
+
+            返回一个元组，包含两个列表：提示（prompt_ids）和响应（answer_ids）的 token IDs。
+            Tuple[List[int], List[int]]: Encoded prompt and response token IDs.
         """
         encoded_pairs = self._encode(tokenizer, messages, system, tools,
                                      cutoff_len, reserved_label_len)
@@ -127,8 +171,19 @@ class Template:
         cutoff_len: int = 1_000_000,
         reserved_label_len: int = 1,
     ) -> Sequence[Tuple[List[int], List[int]]]:
-        r"""
-        Returns multiple pairs of token ids representing prompts and responses respectively.
+        """
+        Returns multiple pairs of token IDs representing prompts and responses respectively.
+
+        Args:
+            tokenizer (PreTrainedTokenizer): Tokenizer to convert text to tokens.
+            messages (List[Dict[str, str]]): List of message dictionaries containing roles and content.
+            system (Optional[str]): System message to include at the beginning.
+            tools (Optional[str]): Tools information to include.
+            cutoff_len (int): Maximum allowed length for the encoded sequences.
+            reserved_label_len (int): Length reserved for the label.
+
+        Returns:
+            Sequence[Tuple[List[int], List[int]]]: Encoded prompt and response token ID pairs.
         """
         return self._encode(tokenizer, messages, system, tools, cutoff_len,
                             reserved_label_len)
@@ -142,13 +197,29 @@ class Template:
         cutoff_len: int,
         reserved_label_len: int,
     ) -> Sequence[Tuple[List[int], List[int]]]:
-        r"""
-        Encodes formatted inputs to pairs of token ids.
-        Turn 0: system + query        resp
-        Turn t: sep + query           resp
+        """
+        Encodes formatted inputs to pairs of token IDs.
+
+        Args:
+            tokenizer (PreTrainedTokenizer): Tokenizer to convert text to tokens.
+            messages (List[Dict[str, str]]): List of message dictionaries containing roles and content.
+            system (Optional[str]): System message to include at the beginning.
+            tools (Optional[str]): Tools information to include.
+            cutoff_len (int): Maximum allowed length for the encoded sequences.
+            reserved_label_len (int): Length reserved for the label.
+
+        主要步骤：
+        - 初始化系统消息：使用提供的系统消息或默认系统消息。
+        - 处理每条消息：遍历消息列表，根据消息的角色（用户、助手等）应用相应的格式化器。
+        - 转换为 token IDs：将格式化后的元素转换为 token IDs。
+        - 生成成对序列：将所有的 token IDs 按查询和响应成对分组，返回这些成对的序列。
+
+        Returns:
+            Sequence[Tuple[List[int], List[int]]]: Encoded prompt and response token ID pairs.
         """
         system = system or self.default_system
         encoded_messages = []
+
         for i, message in enumerate(messages):
             elements = []
             if i == 0 and (system or tools or self.force_system):
@@ -172,8 +243,8 @@ class Template:
                 elements += self.format_function.apply(
                     content=message['content'])
             else:
-                raise NotImplementedError('Unexpected role: {}'.format(
-                    message['role']))
+                raise NotImplementedError(
+                    f'Unexpected role: {message["role"]}')
 
             encoded_messages.append(
                 self._convert_elements_to_ids(tokenizer, elements))
@@ -186,29 +257,34 @@ class Template:
         tokenizer: PreTrainedTokenizer,
         elements: List[Union[str, Dict[str, str]]],
     ) -> List[int]:
-        r"""
-        Converts elements to token ids.
+        """
+        Converts elements to token IDs.
+
+        Args:
+            tokenizer (PreTrainedTokenizer): Tokenizer to convert text to tokens.
+            elements (List[Union[str, Dict[str, str]]]): List of elements to convert.
+
+        Returns:
+            List[int]: List of token IDs.
         """
         token_ids = []
         for elem in elements:
             if isinstance(elem, str):
-                if len(elem) != 0:
+                if elem:
                     token_ids += tokenizer.encode(elem,
                                                   add_special_tokens=False)
             elif isinstance(elem, dict):
-                token_ids += [
-                    tokenizer.convert_tokens_to_ids(elem.get('token'))
-                ]
+                token_ids.append(
+                    tokenizer.convert_tokens_to_ids(elem.get('token')))
             elif isinstance(elem, set):
                 if 'bos_token' in elem and tokenizer.bos_token_id is not None:
-                    token_ids += [tokenizer.bos_token_id]
+                    token_ids.append(tokenizer.bos_token_id)
                 elif 'eos_token' in elem and tokenizer.eos_token_id is not None:
-                    token_ids += [tokenizer.eos_token_id]
+                    token_ids.append(tokenizer.eos_token_id)
             else:
                 raise ValueError(
-                    'Input must be string, set[str] or dict[str, str], got {}'.
-                    format(type(elem)))
-
+                    f'Input must be string, set[str] or dict[str, str], got {type(elem)}'
+                )
         return token_ids
 
     def _make_pairs(
@@ -217,6 +293,17 @@ class Template:
         cutoff_len: int,
         reserved_label_len: int,
     ) -> Sequence[Tuple[List[int], List[int]]]:
+        """
+        Creates pairs of source and target token IDs.
+
+        Args:
+            encoded_messages (Sequence[List[int]]): List of encoded messages.
+            cutoff_len (int): Maximum allowed length for the encoded sequences.
+            reserved_label_len (int): Length reserved for the label.
+
+        Returns:
+            Sequence[Tuple[List[int], List[int]]]: Sequence of source and target token ID pairs.
+        """
         encoded_pairs = []
         total_length = 0
         for i in range(0, len(encoded_messages), 2):
