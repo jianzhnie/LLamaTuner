@@ -10,9 +10,9 @@ from transformers import (AutoModelForCausalLM, AutoTokenizer, PreTrainedModel,
                           PreTrainedTokenizer, TextIteratorStreamer)
 
 sys.path.append(os.getcwd())
-from chatllms.configs import GenerationArguments, ModelInferenceArguments
-from chatllms.utils.model_utils import get_logits_processor
-from chatllms.utils.template import PromptTemplate
+from llamatuner.configs import GenerationArguments, ModelInferenceArguments
+from llamatuner.utils.model_utils import get_logits_processor
+from llamatuner.utils.template import PromptTemplate
 
 
 def generate_response(

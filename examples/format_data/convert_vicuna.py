@@ -5,7 +5,7 @@ from datasets import load_dataset
 
 sys.path.append('../../')
 
-from chatllms.data.data_utils import extract_default_prompt_dataset
+from llamatuner.data.data_utils import extract_default_prompt_dataset
 
 
 def json_dump(obj, path):

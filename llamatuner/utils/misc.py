@@ -13,9 +13,9 @@ from transformers.utils import (SAFE_WEIGHTS_NAME, WEIGHTS_NAME,
                                 is_torch_xpu_available)
 from transformers.utils.versions import require_version
 
-from chatllms.utils.constants import (V_HEAD_SAFE_WEIGHTS_NAME,
-                                      V_HEAD_WEIGHTS_NAME)
-from chatllms.utils.logger_utils import get_logger
+from llamatuner.utils.constants import (V_HEAD_SAFE_WEIGHTS_NAME,
+                                        V_HEAD_WEIGHTS_NAME)
+from llamatuner.utils.logger_utils import get_logger
 
 _is_fp16_available = is_torch_npu_available() or is_torch_cuda_available()
 try:
@@ -25,7 +25,7 @@ except Exception:
 
 from trl import AutoModelForCausalLMWithValueHead
 
-from chatllms.configs.model_args import ModelArguments
+from llamatuner.configs.model_args import ModelArguments
 
 logger = get_logger(__name__)
 

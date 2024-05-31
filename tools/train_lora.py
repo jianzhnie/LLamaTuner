@@ -16,10 +16,10 @@ from transformers import (AutoModelForCausalLM, AutoTokenizer,
                           deepspeed)
 
 sys.path.append(os.getcwd())
-from chatllms.configs import DataArguments, ModelArguments, TrainingArguments
-from chatllms.data import make_supervised_data_module
-from chatllms.utils.logger_utils import get_outdir, get_root_logger
-from chatllms.utils.model_utils import get_peft_state_maybe_zero_3
+from llamatuner.configs import DataArguments, ModelArguments, TrainingArguments
+from llamatuner.data import make_supervised_data_module
+from llamatuner.utils.logger_utils import get_outdir, get_root_logger
+from llamatuner.utils.model_utils import get_peft_state_maybe_zero_3
 
 os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
 

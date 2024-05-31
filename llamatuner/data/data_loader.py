@@ -6,15 +6,15 @@ from datasets import Dataset, IterableDataset, load_dataset, load_from_disk
 from transformers import ProcessorMixin, Seq2SeqTrainingArguments
 from transformers.tokenization_utils import PreTrainedTokenizer
 
-from chatllms.configs import DataArguments, ModelArguments
-from chatllms.data.data_align import align_dataset
-from chatllms.data.data_parser import DatasetAttr, get_dataset_list
-from chatllms.data.preprocess import get_preprocess_and_print_func
-from chatllms.data.template import get_template_and_fix_tokenizer
-from chatllms.data.utils import merge_dataset
-from chatllms.utils.constants import FILEEXT2TYPE
-from chatllms.utils.logger_utils import get_logger
-from chatllms.utils.misc import has_tokenized_data
+from llamatuner.configs import DataArguments, ModelArguments
+from llamatuner.data.data_align import align_dataset
+from llamatuner.data.data_parser import DatasetAttr, get_dataset_list
+from llamatuner.data.preprocess import get_preprocess_and_print_func
+from llamatuner.data.template import get_template_and_fix_tokenizer
+from llamatuner.data.utils import merge_dataset
+from llamatuner.utils.constants import FILEEXT2TYPE
+from llamatuner.utils.logger_utils import get_logger
+from llamatuner.utils.misc import has_tokenized_data
 
 logger = get_logger(__name__)
 

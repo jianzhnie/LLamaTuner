@@ -7,9 +7,9 @@ import torch
 from torch.utils.data import Dataset
 from transformers import PreTrainedTokenizer
 
-from chatllms.data.data_utils import make_data_module
-from chatllms.data.sft_dataset import DataCollatorForSupervisedDataset
-from chatllms.utils.constants import IGNORE_INDEX
+from llamatuner.data.data_utils import make_data_module
+from llamatuner.data.sft_dataset import DataCollatorForSupervisedDataset
+from llamatuner.utils.constants import IGNORE_INDEX
 
 
 @dataclass

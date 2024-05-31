@@ -10,15 +10,15 @@ from transformers.trainer_utils import get_last_checkpoint
 from transformers.utils import is_torch_bf16_gpu_available
 from transformers.utils.versions import require_version
 
-from chatllms.configs.data_args import DataArguments
-from chatllms.configs.eval_args import EvaluationArguments
-from chatllms.configs.finetune_args import FinetuningArguments
-from chatllms.configs.gen_args import GeneratingArguments
-from chatllms.configs.model_args import ModelArguments
-from chatllms.configs.quant_args import QuantArguments
-from chatllms.utils.constants import TRAINER_CONFIG
-from chatllms.utils.logger_utils import get_logger
-from chatllms.utils.misc import check_dependencies, get_current_device
+from llamatuner.configs.data_args import DataArguments
+from llamatuner.configs.eval_args import EvaluationArguments
+from llamatuner.configs.finetune_args import FinetuningArguments
+from llamatuner.configs.gen_args import GeneratingArguments
+from llamatuner.configs.model_args import ModelArguments
+from llamatuner.configs.quant_args import QuantArguments
+from llamatuner.utils.constants import TRAINER_CONFIG
+from llamatuner.utils.logger_utils import get_logger
+from llamatuner.utils.misc import check_dependencies, get_current_device
 
 logger = get_logger(__name__)
 

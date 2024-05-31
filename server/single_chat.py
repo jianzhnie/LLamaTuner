@@ -10,8 +10,8 @@ from transformers import (AutoModelForCausalLM, AutoTokenizer, PreTrainedModel,
                           PreTrainedTokenizer, TextIteratorStreamer)
 
 sys.path.append('../')
-from chatllms.configs import GenerationArguments, ModelInferenceArguments
-from chatllms.utils.model_utils import get_logits_processor
+from llamatuner.configs import GenerationArguments, ModelInferenceArguments
+from llamatuner.utils.model_utils import get_logits_processor
 
 
 def generate_response(query: str, tokenizer: PreTrainedTokenizer,

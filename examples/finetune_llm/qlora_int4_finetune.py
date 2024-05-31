@@ -24,7 +24,7 @@ from transformers import (AutoModelForCausalLM, AutoTokenizer,
                           set_seed)
 from transformers.trainer_utils import PREFIX_CHECKPOINT_DIR
 
-from chatllms.model import SampleGenerateCallback
+from llamatuner.model import SampleGenerateCallback
 
 torch.backends.cuda.matmul.allow_tf32 = True
 

@@ -8,17 +8,17 @@ import transformers
 from transformers import GenerationConfig, Trainer, set_seed
 
 sys.path.append(os.getcwd())
-from chatllms.configs import (DataArguments, GenerationArguments,
-                              LoraArguments, ModelArguments, QuantArguments,
-                              TrainingArguments)
-from chatllms.data import make_supervised_data_module
-from chatllms.model import (MMLUEvalCallback, SampleGenerateCallback,
-                            SavePeftModelCallback, load_model_tokenizer)
-from chatllms.train.training import train_and_evaluate
-from chatllms.utils.logger_utils import get_root_logger
-from chatllms.utils.model_utils import (check_training_finished,
-                                        print_trainable_parameters,
-                                        verify_dtypes)
+from llamatuner.configs import (DataArguments, GenerationArguments,
+                                LoraArguments, ModelArguments, QuantArguments,
+                                TrainingArguments)
+from llamatuner.data import make_supervised_data_module
+from llamatuner.model import (MMLUEvalCallback, SampleGenerateCallback,
+                              SavePeftModelCallback, load_model_tokenizer)
+from llamatuner.train.training import train_and_evaluate
+from llamatuner.utils.logger_utils import get_root_logger
+from llamatuner.utils.model_utils import (check_training_finished,
+                                          print_trainable_parameters,
+                                          verify_dtypes)
 
 torch.backends.cuda.matmul.allow_tf32 = True
 

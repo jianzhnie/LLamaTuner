@@ -11,8 +11,8 @@ from tqdm.auto import tqdm
 from transformers import (PreTrainedModel, PreTrainedTokenizer, Trainer,
                           TrainerCallback)
 
-from chatllms.data.data_utils import IGNORE_INDEX
-from chatllms.data.sft_dataset import SupervisedDataset
+from llamatuner.data.data_utils import IGNORE_INDEX
+from llamatuner.data.sft_dataset import SupervisedDataset
 
 
 @dataclass

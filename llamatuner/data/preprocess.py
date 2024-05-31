@@ -10,11 +10,11 @@ from transformers import ProcessorMixin, Seq2SeqTrainingArguments
 from transformers.image_processing_utils import BaseImageProcessor
 from transformers.tokenization_utils import PreTrainedTokenizer
 
-from chatllms.configs import DataArguments
-from chatllms.data.template import Template
-from chatllms.data.utils import Role
-from chatllms.utils.constants import IGNORE_INDEX, IMAGE_TOKEN
-from chatllms.utils.logger_utils import get_logger
+from llamatuner.configs import DataArguments
+from llamatuner.data.template import Template
+from llamatuner.data.utils import Role
+from llamatuner.utils.constants import IGNORE_INDEX, IMAGE_TOKEN
+from llamatuner.utils.logger_utils import get_logger
 
 logger = get_logger(__name__)
 

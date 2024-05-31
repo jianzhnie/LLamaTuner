@@ -17,19 +17,19 @@ python merge.py \
     --out-file /userhome/jianzhnie/prompt_data/sharegpt/evol_sharegpt_merge.json
 
 # chinese data
-python chatllms/data/utils/convert_alpaca.py \
+python llamatuner/data/utils/convert_alpaca.py \
     --in-file ./prompt_data/chinese_data/alpaca_data_zh_51k.json \
     --out-file ./prompt_data/chinese_data/alpaca_vicuna.json
 
-python chatllms/data/utils/convert_alpaca.py \
+python llamatuner/data/utils/convert_alpaca.py \
     --in-file ./prompt_data/InstructionWild/instinwild_ch.json \
     --out-file ./prompt_data/chinese_data/instinwild_ch_vicuna.json
 
-python chatllms/data/utils/convert_alpaca.py \
+python llamatuner/data/utils/convert_alpaca.py \
     --in-file ./prompt_data/InstructionWild/instinwild_en.json \
     --out-file ./prompt_data/chinese_data/instinwild_en_vicuna.json
 
-python chatllms/data/utils/convert_alpaca.py \
+python llamatuner/data/utils/convert_alpaca.py \
     --in-file ./prompt_data/databricks-dolly-15k/databricks-dolly-15k.jsonl \
     --out-file ./prompt_data/chinese_data/dolly-15k_vicuna.json
 
@@ -39,11 +39,11 @@ python merge.py \
 
 
 #  belle-group
-python chatllms/data/utils/convert_alpaca.py \
+python llamatuner/data/utils/convert_alpaca.py \
     --in-file ./prompt_data/belle_group/generated_chat_0.4M/generated_chat_0.4M.json \
     --out-file ./prompt_data/belle_group/generated_chat_vicuna.json
 
 
-python chatllms/data/utils/convert_alpaca.py \
+python llamatuner/data/utils/convert_alpaca.py \
     --in-file ./prompt_data/belle_group/school_math_0.25M/school_math_0.25M.json \
     --out-file ./prompt_data/belle_group/school_math_vicuna.json
