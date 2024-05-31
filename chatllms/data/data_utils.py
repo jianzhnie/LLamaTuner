@@ -1,3 +1,4 @@
+import argparse
 import logging
 import os
 import random
@@ -5,73 +6,15 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
+import torch
 from datasets import Dataset, DatasetDict, concatenate_datasets, load_dataset
+from transformers import PreTrainedTokenizer
 
-IGNORE_INDEX = -100
-DEFAULT_PAD_TOKEN = '[PAD]'
-DEFAULT_EOS_TOKEN = '</s>'
-DEFAULT_BOS_TOKEN = '<s>'
-DEFAULT_UNK_TOKEN = '<unk>'
-
-DEFAULT_PROMPT_DICT = {
-    'prompt_input': ('{instruction}{input}'),
-    'prompt_no_input': ('{instruction}'),
-}
-
-ALPACA_PROMPT_DICT = {
-    'prompt_input':
-    ('Below is an instruction that describes a task, paired with an input that provides further context. '
-     'Write a response that appropriately completes the request.\n\n'
-     '### Instruction:\n{instruction}\n\n### Input:\n{input}\n\n### Response: '
-     ),
-    'prompt_no_input':
-    ('Below is an instruction that describes a task. '
-     'Write a response that appropriately completes the request.\n\n'
-     '### Instruction:\n{instruction}\n\n### Response: '),
-}
-
-RANDOM_PROMPT_DICT = {
-    'prompt_input': [
-        # input encoding template, output encoding template, weight
-        ('{instruction}\n\n{input}\n\n', 0.2),
-        ('{instruction}\n{input}\n\n', 0.1),
-        ('{instruction}\n{input}\n', 0.1),
-        ('{instruction}\n\nInput: {input}\n\nOutput:', 0.05),
-        ('{instruction}\nInput: {input}\nOutput:', 0.05),
-        ('{instruction}\n{input}\n\nResponse:', 0.05),
-        ('{instruction}\n\nAdditional Context:\n{input}\n\nAnswer:', 0.05),
-        ('Task: {instruction}\nInput: {input}\nOutput:', 0.05),
-        ('Task: {instruction}\n\n{input}\n\n', 0.05),
-        ('Task: {instruction}\n\n{input}\n\nAnswer:', 0.05),
-        ('You need to complete the following task:\n\n{instruction}\n\n{input}\n\nAnswer:',
-         0.05),
-        ('{instruction}\n\nNow complete the following instance -\nInput: {input}\nOutput:',
-         0.05),
-        ('Instruction:{instruction}\n\nInput: {input}\n\n', 0.05),
-        ('Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.\n\n'
-         '### Instruction:\n{instruction}\n\n### Input:\n{input}\n\n### Response: ',
-         0.1),  # alpaca template
-    ],
-    'prompt_no_input': [
-        ('{instruction}\n\n', 0.2),
-        ('{instruction}\n', 0.1),
-        ('{instruction}\n\nOutput:', 0.1),
-        ('{instruction}\nOutput:', 0.05),
-        ('{instruction}\nResponse:', 0.05),
-        ('{instruction}\n\nAnswer:', 0.05),
-        ('Task: {instruction}\n\n', 0.05),
-        ('Instruction: {instruction}\n', 0.05),
-        ('Instruction: {instruction}\nOutput:', 0.05),
-        ('You need to complete the following task:\n\n{instruction}\n\n',
-         0.05),
-        ('Can you help with this?\n\n{instruction}\n', 0.05),
-        ('Plase answer the following request: {instruction}\nAnswer:', 0.05),
-        ('Tell me how would you respond to the following request.\n{instruction}\n',
-         0.05),
-        ('Below is an instruction that describes a task. Write a response that appropriately completes the request.\n\n### Instruction:\n{instruction}\n\n### Response:',
-         0.1),  # alpaca template
-    ]
-}
+from chatllms.data.conv_dataset import ConversationDataset, VicunaDataset
+from chatllms.data.sft_dataset import (DataCollatorForSupervisedDataset,
+                                       SupervisedDataset)
+from chatllms.data.template import (ALPACA_PROMPT_DICT, DEFAULT_PROMPT_DICT,
+                                    RANDOM_PROMPT_DICT)
 
 
 def extract_default_prompt_dataset(example: Dict[str, Any]) -> Dict[str, str]:
@@ -526,3 +469,57 @@ def make_data_module(args, text_logger):
     text_logger.info(result_train)
     text_logger.info(result_eval)
     return concate_train, concate_eval, mutliturn_lst[0]
+
+
+def make_supervised_data_module(
+    tokenizer: PreTrainedTokenizer,
+    args: argparse.Namespace,
+    text_logger: logging.Logger,
+) -> dict[str, torch.utils.data.Dataset]:
+    train_dataset, eval_dataset, multi_turn = make_data_module(
+        args, text_logger)
+    max_seq_length = tokenizer.model_max_length
+    dataset_cls = (VicunaDataset if args.conversation_template == 'vicnua' else
+                   ConversationDataset)
+
+    if not multi_turn:
+        train_dataset = (SupervisedDataset(
+            train_dataset,
+            tokenizer=tokenizer,
+            max_seq_len=max_seq_length,
+        ) if args.do_train else None)
+
+        eval_dataset = (SupervisedDataset(
+            eval_dataset,
+            tokenizer=tokenizer,
+            max_seq_len=max_seq_length,
+        ) if args.do_eval else None)
+
+    else:
+        train_dataset = (dataset_cls(
+            train_dataset,
+            tokenizer=tokenizer,
+            max_seq_length=max_seq_length,
+        ) if args.do_train else None)
+        eval_dataset = (dataset_cls(
+            eval_dataset,
+            tokenizer=tokenizer,
+            max_seq_length=max_seq_length,
+        ) if args.do_eval else None)
+
+    if args.do_train:
+        train_info = f'train_dataset: {type(train_dataset)}, mutlti-turn: {multi_turn},  #length: {len(train_dataset)}'
+        text_logger.info(train_info)
+
+    if args.do_eval:
+        eval_info = f'eval_dataset: {type(eval_dataset)}, mutlti-turn: {multi_turn}, #length: {len(eval_dataset)}'
+        text_logger.info(eval_info)
+
+    data_collator = DataCollatorForSupervisedDataset(
+        tokenizer=tokenizer, predict_with_generate=args.predict_with_generate)
+
+    return {
+        'train_dataset': train_dataset,
+        'eval_dataset': eval_dataset,
+        'data_collator': data_collator,
+    }

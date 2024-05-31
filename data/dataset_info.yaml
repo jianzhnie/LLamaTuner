@@ -1,66 +1,54 @@
 # The dataset_info.yaml file contains the information of the datasets used in the experiments.
 alpaca:
   hf_hub_url: tatsu-lab/alpaca
-  local_path: tatsu-lab/alpaca/alpaca.json
   formatting: alpaca
 
 alpaca-clean:
   hf_hub_url: yahma/alpaca-cleaned
-  local_path: ''
   formatting: alpaca
 
 dolly-15k:
   hf_hub_url: databricks/databricks-dolly-15k
-  local_path: databricks/databricks-dolly-15k
   formatting: alpaca
 
 guanaco:
   hf_hub_url: JosephusCheung/GuanacoDataset
   ms_hub_url: AI-ModelScope/GuanacoDataset
-  local_path: ''
   formatting: alpaca
 
 openassistant-guanaco:
   hf_hub_url: timdettmers/openassistant-guanaco
-  local_path: ''
   formatting: alpaca
 
 # Belle Group
 belle_0.5m:
   hf_hub_url: BelleGroup/train_0.5M_CN
   ms_hub_url: AI-ModelScope/train_0.5M_CN
-  local_path: ''
   formatting: alpaca
 
 belle_1m:
   hf_hub_url: BelleGroup/train_1M_CN
   ms_hub_url: AI-ModelScope/train_1M_CN
-  local_path: ''
   formatting: alpaca
 
 belle_2m:
   hf_hub_url: BelleGroup/train_2M_CN
   ms_hub_url: AI-ModelScope/train_2M_CN
-  local_path: ''
   formatting: alpaca
 
 belle_dialog:
   hf_hub_url: BelleGroup/generated_chat_0.4M
   ms_hub_url: AI-ModelScope/generated_chat_0.4M
-  local_path: ''
   formatting: alpaca
 
 belle_math:
   hf_hub_url: BelleGroup/school_math_0.25M
   ms_hub_url: AI-ModelScope/school_math_0.25M
-  local_path: ''
   formatting: alpaca
 
 belle_multiturn:
   hf_hub_url: BelleGroup/multi_turn_0.5M
-  local_path: ''
   formatting: sharegpt
-  multi_turn: True
   columns:
     prompt: instruction
     response: output
@@ -69,7 +57,6 @@ belle_multiturn:
 # firefly
 firefly:
   hf_hub_url: YeungNLP/firefly-train-1.1M
-  local_path: ''
   formatting: alpaca
   columns:
     prompt: input
@@ -79,19 +66,16 @@ firefly:
 codealpaca:
   hf_hub_url: sahil2801/CodeAlpaca-20k
   ms_hub_url: AI-ModelScope/CodeAlpaca-20k
-  local_path: ''
   formatting: alpaca
 
 # alpacacot
 alpaca_cot:
   hf_hub_url: QingyiSi/Alpaca-CoT
   ms_hub_url: AI-ModelScope/Alpaca-CoT
-  local_path: ''
 
 webqa:
   hf_hub_url: suolyer/webqa
   ms_hub_url: AI-ModelScope/webqa
-  local_path: ''
   formatting: alpaca
   columns:
     prompt: input
@@ -99,10 +83,9 @@ webqa:
 
 # mutli-turn datasets
 evol_instruct:
-  hf_hub_url: WizardLM/WizardLM_evol_instruct_V2_196k
+  hf_hub_url: MaziyarPanahi/WizardLM_evol_instruct_V2_196k
   ms_hub_url: AI-ModelScope/WizardLM_evol_instruct_V2_196k
   formatting: sharegpt
-  multi_turn: True
 
 ultrachat_200k:
   hf_hub_url: HuggingFaceH4/ultrachat_200k

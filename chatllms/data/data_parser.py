@@ -12,6 +12,11 @@ from chatllms.utils.misc import use_modelscope
 logger = get_logger(__name__)
 
 
+def get_attrs(cls):
+    attrs = vars(cls)
+    return {k: v for k, v in attrs.items() if not k.startswith('__')}
+
+
 @dataclass
 class DatasetAttr:
     """
@@ -185,6 +190,8 @@ def get_dataset_list(data_args: 'DataArguments') -> List[DatasetAttr]:
             for tag in tag_names:
                 dataset_attr.set_attr(tag, dataset_info['tags'])
 
+        attr = get_attrs(dataset_attr)
+        logger.info('Dataset %s has the following attributes: %s', name, attr)
         dataset_list.append(dataset_attr)
 
     return dataset_list

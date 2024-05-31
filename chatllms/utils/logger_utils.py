@@ -67,7 +67,8 @@ def get_logger(name, log_file=None, log_level=logging.INFO, file_mode='w'):
         handlers.append(file_handler)
 
     formatter = logging.Formatter(
-        fmt='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        fmt=
+        '%(asctime)s, %(name)s [%(filename)s:%(lineno)d] %(levelname)s - %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S',
     )
     for handler in handlers:
