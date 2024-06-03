@@ -69,9 +69,10 @@ def parse_args(parser: HfArgumentParser,
         return_remaining_strings=True)
 
     if unknown_args:
-        print(parser.format_help())
-        print('Got unknown args, potentially deprecated arguments: {}'.format(
-            unknown_args))
+        logger.info(parser.format_help())
+        logger.info(
+            'Got unknown args, potentially deprecated arguments: {}'.format(
+                unknown_args))
         raise ValueError(
             'Some specified arguments are not used by the HfArgumentParser: {}'
             .format(unknown_args))

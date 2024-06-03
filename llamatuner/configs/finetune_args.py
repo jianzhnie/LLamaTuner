@@ -126,6 +126,22 @@ class RLHFArguments:
     Arguments pertaining to the PPO and DPO training.
     """
 
+    pref_beta: float = field(
+        default=0.1,
+        metadata={'help': 'The beta parameter in the preference loss.'},
+    )
+    pref_ftx: float = field(
+        default=0.0,
+        metadata={
+            'help':
+            'The supervised fine-tuning loss coefficient in DPO training.'
+        },
+    )
+    pref_loss: Literal['sigmoid', 'hinge', 'ipo', 'kto_pair', 'orpo',
+                       'simpo'] = field(
+                           default='sigmoid',
+                           metadata={'help': 'The type of DPO loss to use.'},
+                       )
     dpo_beta: float = field(
         default=0.1,
         metadata={'help': 'The beta parameter for the DPO loss.'},
@@ -172,6 +188,10 @@ class RLHFArguments:
             'help':
             'The supervised fine-tuning loss coefficient in KTO training.'
         },
+    )
+    simpo_gamma: float = field(
+        default=0.5,
+        metadata={'help': 'The target reward margin term in SimPO loss.'},
     )
     orpo_beta: float = field(
         default=0.1,
@@ -367,9 +387,6 @@ class FinetuningArguments(FreezeArguments, LoraArguments, RLHFArguments,
     Arguments pertaining to which techniques we are going to fine-tuning with.
     """
 
-    # 使用nvidia的分页机制优化器，可以在偶尔OOM的情况，让模型继续训练下去。
-    optim: str = field(default='paged_adamw_32bit',
-                       metadata={'help': 'The optimizer to be used'})
     pure_bf16: bool = field(
         default=False,
         metadata={
@@ -392,30 +409,22 @@ class FinetuningArguments(FreezeArguments, LoraArguments, RLHFArguments,
             'Whether or not to make only the parameters in the expanded blocks trainable.'
         },
     )
-    # 梯度截断因子
-    max_grad_norm: float = field(
-        default=0.3,
+    freeze_vision_tower: bool = field(
+        default=True,
         metadata={
-            'help':
-            'Gradient clipping max norm. This is tuned and works well for all models tested.'
+            'help': 'Whether ot not to freeze vision tower in MLLM training.'
         },
     )
-    # 梯度检查，设置为True，来减少显存占用。
-    # 显存这么紧张，肯定是要设置为 True，但是运行时间就会提升
-    gradient_checkpointing: bool = field(
-        default=True,
-        metadata={'help': 'Use gradient checkpointing. You want to use this.'},
+    train_mm_proj_only: bool = field(
+        default=False,
+        metadata={
+            'help':
+            'Whether or not to train the multimodal projector for MLLM only.'
+        },
     )
     plot_loss: bool = field(
         default=False,
         metadata={'help': 'Whether or not to save the training loss curves.'},
-    )
-    report_to: Optional[str] = field(
-        default='wandb',
-        metadata={
-            'help':
-            'The name of the service to report to. Currently only `wandb` is supported.'
-        },
     )
     wandb_project: Optional[str] = field(
         default='llamatuner',
@@ -424,16 +433,6 @@ class FinetuningArguments(FreezeArguments, LoraArguments, RLHFArguments,
     wandb_run_name: Optional[str] = field(
         default=None,
         metadata={'help': 'The name of the wandb run.'},
-    )
-    # 是否进行训练，那肯定是要的
-    do_train: bool = field(
-        default=True,
-        metadata={'help': 'To train or not to train, that is the question?'},
-    )
-    # 是否进行验证
-    do_eval: bool = field(
-        default=False,
-        metadata={'help': 'To train or not to train, that is the question?'},
     )
 
     def __post_init__(self):
