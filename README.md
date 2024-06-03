@@ -41,6 +41,9 @@
   - [Known Issues and Limitations](#known-issues-and-limitations)
   - [License](#license)
   - [Acknowledgements](#acknowledgements)
+  - [Some lmm fine-tuning repos](#some-lmm-fine-tuning-repos)
+    - [崔一鸣](#崔一鸣)
+    - [Qwen](#qwen)
   - [Citation](#citation)
 
 
@@ -264,6 +267,16 @@ We appreciate the work by many open-source contributors, especially:
 - [Unsloth](https://github.com/unslothai/unsloth)
 - [qlora](https://github.com/artidoro/qlora)
 - [bitsandbytes](https://github.com/TimDettmers/bitsandbytes)
+
+
+## Some lmm fine-tuning repos
+
+### 崔一鸣
+- https://github.com/ymcui/Chinese-LLaMA-Alpaca-3
+- https://github.com/ymcui/Chinese-Mixtral
+
+### Qwen
+- https://github.com/QwenLM
 
 
 ## Citation

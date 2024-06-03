@@ -242,11 +242,9 @@ class RLHFArguments:
         default=None,
         metadata={'help': 'Path to the adapters of the reference model.'},
     )
-    ref_model_quantization_bit: Optional[int] = field(
+    ref_model_quant_bit: Optional[int] = field(
         default=None,
-        metadata={
-            'help': 'The number of bits to quantize the reference model.'
-        },
+        metadata={"help": "The number of bits to quantize the reference model."},
     )
     reward_model: Optional[str] = field(
         default=None,
@@ -258,9 +256,9 @@ class RLHFArguments:
         default=None,
         metadata={'help': 'Path to the adapters of the reward model.'},
     )
-    reward_model_quantization_bit: Optional[int] = field(
+    reward_model_quant_bit: Optional[int] = field(
         default=None,
-        metadata={'help': 'The number of bits to quantize the reward model.'},
+        metadata={"help": "The number of bits to quantize the reward model."},
     )
     reward_model_type: Literal['lora', 'full', 'api'] = field(
         default='lora',
@@ -455,16 +453,16 @@ class FinetuningArguments(FreezeArguments, LoraArguments, RLHFArguments,
             'freeze',
             'full',
         ], 'Invalid fine-tuning method.'
-        assert self.ref_model_quantization_bit in [
+        assert self.ref_model_quant_bit in [
             None,
             8,
             4,
-        ], 'We only accept 4-bit or 8-bit quantization.'
-        assert self.reward_model_quantization_bit in [
+        ], "We only accept 4-bit or 8-bit quantization."
+        assert self.reward_model_quant_bit in [
             None,
             8,
             4,
-        ], 'We only accept 4-bit or 8-bit quantization.'
+        ], "We only accept 4-bit or 8-bit quantization."
 
         if self.stage == 'ppo' and self.reward_model is None:
             raise ValueError('`reward_model` is necessary for PPO training.')
