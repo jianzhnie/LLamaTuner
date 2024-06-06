@@ -247,9 +247,10 @@ def try_download_model_from_ms(model_args: 'ModelArguments') -> str:
             revision=revision,
             cache_dir=model_args.cache_dir,
         )
-    except ImportError:
+    except ImportError as exc:
         raise ImportError(
-            'Please install modelscope via `pip install modelscope -U`')
+            'Please install modelscope via `pip install modelscope -U`'
+        ) from exc
 
 
 def use_modelscope() -> bool:
