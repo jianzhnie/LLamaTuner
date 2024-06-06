@@ -15,7 +15,7 @@ def _is_package_available(name: str) -> bool:
 def _get_package_version(name: str) -> 'Version':
     try:
         return version.parse(importlib.metadata.version(name))
-    except Exception:
+    except importlib.metadata.PackageNotFoundError:
         return version.parse('0.0.0')
 
 

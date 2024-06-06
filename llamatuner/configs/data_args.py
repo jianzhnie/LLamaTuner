@@ -116,24 +116,6 @@ class DataArguments:
             'Size of the development set, should be an integer or a float in range `[0,1)`.'
         },
     )
-    # 最大训练数据样本的数量。主要是为了快速调试训练代码
-    max_train_samples: Optional[int] = field(
-        default=None,
-        metadata={
-            'help':
-            'For debugging purposes or quicker training, truncate the number of training examples to this '
-            'value if set.'
-        },
-    )
-    # 与max_train_samples类似，主要是为了快速调试训练代码
-    max_eval_samples: Optional[int] = field(
-        default=None,
-        metadata={
-            'help':
-            'For debugging purposes or quicker training, truncate the number of evaluation examples to this '
-            'value if set.'
-        },
-    )
     packing: Optional[bool] = field(
         default=None,
         metadata={
@@ -153,9 +135,5 @@ class DataArguments:
         if (self.streaming and self.eval_dataset_size > 1e-6
                 and self.eval_dataset_size < 1):
             raise ValueError('Streaming mode should have an integer val size.')
-        if self.streaming and self.max_train_samples is not None:
-            raise ValueError(
-                '`max_train_samples` is incompatible with `streaming`.')
-        if self.streaming and self.max_eval_samples is not None:
-            raise ValueError(
-                '`max_eval_samples` is incompatible with `streaming`.')
+        if self.streaming and self.max_samples is not None:
+            raise ValueError('`max_samples` is incompatible with `streaming`.')

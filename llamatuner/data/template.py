@@ -541,14 +541,17 @@ def _get_jinja_template(template: 'Template',
 
 def get_template_and_fix_tokenizer(
     tokenizer: PreTrainedTokenizer,
-    name: Optional[str] = None,
+    template_name: Optional[str] = None,
 ) -> Template:
-    if name is None:
+    if template_name is None:
         template = templates['empty']  # placeholder
     else:
-        template = templates.get(name, None)
+        template = templates.get(template_name, None)
         if template is None:
-            raise ValueError('Template {} does not exist.'.format(name))
+            raise ValueError(
+                'Template {} does not exist.'.format(template_name))
+
+    logger.info(f'Using template: {template_name}')
 
     stop_words = template.stop_words
     if template.replace_eos:
