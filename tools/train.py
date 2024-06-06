@@ -147,7 +147,8 @@ def train() -> None:
         processor=None,
     )
     data_module = split_dataset(all_dataset, data_args, training_args)
-
+    text_logger.info('Successfully created the supervised dataset.')
+    text_logger.info('Creating DataCollator for Seq2Seq...')
     data_collator = DataCollatorForSeq2Seq(
         tokenizer=tokenizer,
         pad_to_multiple_of=8 if tokenizer.padding_side == 'right' else None,
@@ -172,7 +173,7 @@ def train() -> None:
     gen_kwargs['logits_processor'] = get_logits_processor()
 
     # Init the wandb
-    text_logger.info('Initializing wandb...')
+    text_logger.info('Initializing wandb project...')
     wandb.init(
         dir=output_dir,
         project=args.wandb_project,
@@ -193,12 +194,14 @@ def train() -> None:
         **data_module,
     )
     # Training
-    if args.do_train:
-        if (list(pathlib.Path(args.output_dir).glob('checkpoint-*'))
-                and args.resume_from_checkpoint):
-            text_logger.info('Resuming training from checkpoint...')
+    training_args: TrainingArguments = trainer.args
+    if training_args.do_train:
+        if (list(pathlib.Path(training_args.output_dir).glob('checkpoint-*'))
+                and training_args.resume_from_checkpoint):
+            text_logger.info('Resuming training from checkpoint %s' %
+                             (training_args.resume_from_checkpoint))
             train_result = trainer.train(
-                resume_from_checkpoint=args.resume_from_checkpoint)
+                resume_from_checkpoint=training_args.resume_from_checkpoint)
         else:
             text_logger.info('Starting training from scratch...')
             train_result = trainer.train()
@@ -209,7 +212,7 @@ def train() -> None:
         trainer.save_model()
 
     # Evaluation
-    if args.do_eval:
+    if training_args.do_eval:
         metrics = trainer.evaluate(metric_key_prefix='eval')
         try:
             perplexity = math.exp(metrics['eval_loss'])
