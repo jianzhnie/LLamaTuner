@@ -139,8 +139,8 @@ def train() -> None:
     text_logger.info('Creating a supervised dataset and DataCollator...')
 
     all_dataset = get_dataset(
-        model_args,
         data_args,
+        model_args,
         training_args,
         stage='sft',
         tokenizer=tokenizer,
