@@ -6,6 +6,12 @@ from typing import Any, Dict, Literal, Optional
 class ModelArguments:
     """Arguments pertaining to which model/config/tokenizer we are going to fine-tune or infer."""
 
+    torch_dtype: Literal['float16', 'bf16', 'float32'] = field(
+        default='float16',
+        metadata={
+            'help': 'The data type used in the model (float16 or float32).'
+        },
+    )
     model_name_or_path: Optional[str] = field(
         default='facebook/opt-125m',
         metadata={
@@ -19,6 +25,13 @@ class ModelArguments:
         metadata={
             'help':
             'Pretrained tokenizer name or path if not the same as model_name'
+        },
+    )
+    trust_remote_code: Optional[bool] = field(
+        default=True,
+        metadata={
+            'help':
+            'Whether or not to trust the remote code in the model configuration.'
         },
     )
     adapter_name_or_path: Optional[str] = field(
