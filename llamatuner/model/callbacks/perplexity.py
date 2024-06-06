@@ -12,12 +12,12 @@ from transformers import (AutoConfig, AutoModelForCausalLM, AutoTokenizer,
 # Add parent directory to sys.path
 sys.path.append('../../')
 
-from llamatuner.configs import ModelInferenceArguments
-from llamatuner.data.data_utils import IGNORE_INDEX
+from llamatuner.configs import ModelArguments
+from llamatuner.utils.constants import IGNORE_INDEX
 from llamatuner.utils.model_utils import add_special_tokens_if_missing
 
 
-class LLMPerplexity:
+class ComputePerplexity:
     """Language model to compute perplexity.
 
     Args:
@@ -64,14 +64,14 @@ class LLMPerplexity:
         self.config = AutoConfig.from_pretrained(model_name_or_path,
                                                  **config_kwargs)
 
-        self.model = AutoModelForCausalLM.from_pretrained(
+        self.model = (AutoModelForCausalLM.from_pretrained(
             model_name_or_path,
             config=self.config,
             low_cpu_mem_usage=low_cpu_mem_usage,
             torch_dtype=torch_dtype,
             device_map=device_map,
             **config_kwargs,
-        ).to(device).eval()
+        ).to(device).eval())
 
         # Loss function
         self.loss_fct = CrossEntropyLoss(reduction='none')
@@ -111,7 +111,7 @@ class LLMPerplexity:
 
         losses = []
         pbar = tqdm(batch_id, desc='Computing perplexity')
-        for (start_idx, end_idx) in pbar:
+        for start_idx, end_idx in pbar:
             pbar.set_postfix({'batch': f'{start_idx}-{end_idx}'})
             input_text = input_texts[start_idx:end_idx]
             model_inputs = self.tokenizer(
@@ -159,11 +159,11 @@ class LLMPerplexity:
 
 if __name__ == '__main__':
     # Parse command-line arguments
-    parser = HfArgumentParser(ModelInferenceArguments)
-    model_args, = parser.parse_args_into_dataclasses()
+    parser = HfArgumentParser(ModelArguments)
+    (model_args, ) = parser.parse_args_into_dataclasses()
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model_args.device = device
-    scorer = LLMPerplexity(
+    scorer = ComputePerplexity(
         cache_dir=model_args.cache_dir,
         model_name_or_path=model_args.model_name_or_path,
         trust_remote_code=model_args.trust_remote_code,

@@ -1,11 +1,21 @@
 from dataclasses import dataclass
-from typing import Dict, List, Tuple, Union
+from typing import Dict, Sequence, Tuple, Union
 
-import jieba
 import numpy as np
-from nltk.translate.bleu_score import SmoothingFunction, sentence_bleu
-from rouge_chinese import Rouge
 from transformers import PreTrainedTokenizer
+
+from llamatuner.utils.constants import IGNORE_INDEX
+from llamatuner.utils.packages import (is_jieba_available, is_nltk_available,
+                                       is_rouge_available)
+
+if is_jieba_available():
+    import jieba  # type: ignore
+
+if is_nltk_available():
+    from nltk.translate.bleu_score import SmoothingFunction, sentence_bleu
+
+if is_rouge_available():
+    from rouge_chinese import Rouge
 
 
 @dataclass
@@ -25,7 +35,7 @@ class ComputeMetrics:
         self.tokenizer = tokenizer
 
     def __call__(
-        self, eval_preds: List[Union[np.ndarray, Tuple[np.ndarray]]]
+        self, eval_preds: Sequence[Union[np.ndarray, Tuple[np.ndarray]]]
     ) -> Dict[str, float]:
         """Computes evaluation metrics for model predictions.
 
@@ -41,32 +51,31 @@ class ComputeMetrics:
         if isinstance(preds, tuple):
             preds = preds[0]
 
-        # Replace IGNORE_INDEX in the labels with pad_token_id as we cannot decode them if ignore_pad_token_for_loss=True.
-        preds = np.where(preds != self.tokenizer.pad_token_id, preds,
-                         self.tokenizer.pad_token_id)
-        labels = np.where(labels != self.tokenizer.pad_token_id, labels,
-                          self.tokenizer.pad_token_id)
-
         score_dict = {
-            'rouge-1': [],  # numericl 1
+            'rouge-1': [],
             'rouge-2': [],
-            'rouge-l': [],  # string l
+            'rouge-l': [],
             'bleu-4': []
         }
 
-        # Calculate metrics for each prediction-label pair
-        for pred, label in zip(preds, labels):
-            pred = pred[(pred == self.tokenizer.bos_token_id
-                         ).nonzero()[0][0]:]  # remove the query
-            hypothesis = list(
-                jieba.cut(self.tokenizer.decode(pred,
-                                                skip_special_tokens=True)))
-            reference = list(
-                jieba.cut(
-                    self.tokenizer.decode(label, skip_special_tokens=True)))
+        # Replace IGNORE_INDEX in the labels with pad_token_id as we cannot decode them if ignore_pad_token_for_loss=True.
+        preds = np.where(preds != IGNORE_INDEX, preds,
+                         self.tokenizer.pad_token_id)
+        labels = np.where(labels != IGNORE_INDEX, labels,
+                          self.tokenizer.pad_token_id)
 
+        decoded_preds = self.tokenizer.batch_decode(preds,
+                                                    skip_special_tokens=True)
+        decoded_labels = self.tokenizer.batch_decode(labels,
+                                                     skip_special_tokens=True)
+
+        # Calculate metrics for each prediction-label pair
+        for pred, label in zip(decoded_preds, decoded_labels):
+            hypothesis = list(jieba.cut(pred))
+            reference = list(jieba.cut(label))
             # If there are no words in the hypothesis, set all scores to 0
-            if len(' '.join(hypothesis).split()) == 0:
+            if (len(' '.join(hypothesis).split()) == 0
+                    or len(' '.join(reference).split()) == 0):
                 result = {
                     'rouge-1': {
                         'f': 0.0
@@ -76,7 +85,7 @@ class ComputeMetrics:
                     },
                     'rouge-l': {
                         'f': 0.0
-                    }
+                    },
                 }
             else:
                 rouge = Rouge()

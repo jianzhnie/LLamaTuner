@@ -27,6 +27,13 @@ class ModelArguments:
             'Pretrained tokenizer name or path if not the same as model_name'
         },
     )
+    model_max_length: Optional[int] = field(
+        default=128,
+        metadata={
+            'help':
+            'The maximum length of the model input, including special tokens.'
+        },
+    )
     trust_remote_code: Optional[bool] = field(
         default=True,
         metadata={
@@ -235,7 +242,6 @@ class ModelArguments:
     def __post_init__(self):
         self.compute_dtype = None
         self.device_map = None
-        self.model_max_length = None
 
         if self.split_special_tokens and self.use_fast_tokenizer:
             raise ValueError(

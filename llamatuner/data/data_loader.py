@@ -3,7 +3,7 @@ import os
 from typing import Literal, Optional, Union
 
 from datasets import Dataset, IterableDataset, load_dataset, load_from_disk
-from transformers import ProcessorMixin, Seq2SeqTrainingArguments
+from transformers import ProcessorMixin, TrainingArguments
 from transformers.tokenization_utils import PreTrainedTokenizer
 
 from llamatuner.configs import DataArguments, ModelArguments
@@ -131,7 +131,7 @@ def load_single_dataset(
 def get_dataset(
     model_args: ModelArguments,
     data_args: DataArguments,
-    training_args: Seq2SeqTrainingArguments,
+    training_args: TrainingArguments,
     stage: Literal['pt', 'sft', 'rm', 'kto'],
     tokenizer: PreTrainedTokenizer,
     processor: Optional[ProcessorMixin] = None,
@@ -142,7 +142,7 @@ def get_dataset(
     Args:
         model_args (ModelArguments): Arguments related to the model configuration.
         data_args (DataArguments): Arguments related to the dataset and data processing.
-        training_args (Seq2SeqTrainingArguments): Arguments for training configuration.
+        training_args (TrainingArguments): Arguments for training configuration.
         stage (Literal['pt', 'sft', 'rm', 'kto']): The current training stage.
         tokenizer (PreTrainedTokenizer): Tokenizer to be used for preprocessing.
         processor (Optional[ProcessorMixin], optional): Optional processor for additional preprocessing. Defaults to None.

@@ -1,4 +1,5 @@
 import argparse
+import logging
 import math
 import os
 import pathlib
@@ -6,22 +7,29 @@ import sys
 import time
 from typing import Tuple
 
-import torch
 import wandb
 from transformers import (AutoConfig, AutoModelForCausalLM, AutoTokenizer,
-                          HfArgumentParser, PreTrainedModel,
-                          PreTrainedTokenizer, Trainer)
+                          DataCollatorForSeq2Seq, HfArgumentParser,
+                          PreTrainedModel, PreTrainedTokenizer)
+from transformers import Seq2SeqTrainingArguments as TrainingArguments
+from transformers import Trainer
 
 sys.path.append(os.getcwd())
-from llamatuner.configs import DataArguments, ModelArguments, TrainingArguments
-from llamatuner.data.data_utils import make_supervised_data_module
+from llamatuner.configs import (DataArguments, FinetuningArguments,
+                                GeneratingArguments, ModelArguments)
+from llamatuner.data.data_loader import get_dataset
+from llamatuner.data.utils import split_dataset
+from llamatuner.model.callbacks import ComputeMetrics
+from llamatuner.utils.constants import IGNORE_INDEX
 from llamatuner.utils.logger_utils import get_logger, get_outdir
+from llamatuner.utils.model_utils import get_logits_processor
 
 os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
 
 
 def load_model_tokenizer(
-        args, text_logger) -> Tuple[PreTrainedModel, PreTrainedTokenizer]:
+    model_args: ModelArguments, text_logger: logging.Logger
+) -> Tuple[PreTrainedModel, PreTrainedTokenizer]:
     """Load a pre-trained model and tokenizer for natural language processing
     tasks.
 
@@ -31,39 +39,33 @@ def load_model_tokenizer(
     Returns:
         A tuple containing the loaded model and tokenizer.
     """
-    # Determine the torch data type based on the input arguments
-    torch_dtype = (torch.float16 if args.fp16 else
-                   (torch.bfloat16 if args.bf16 else torch.float32))
-
     config_kwargs = {
-        'cache_dir': args.cache_dir,
-        'trust_remote_code': args.trust_remote_code,
+        'cache_dir': model_args.cache_dir,
+        'trust_remote_code': model_args.trust_remote_code,
     }
 
     # Set RoPE scaling factor
-    config = AutoConfig.from_pretrained(args.model_name_or_path,
+    config = AutoConfig.from_pretrained(model_args.model_name_or_path,
                                         **config_kwargs)
 
     orig_ctx_len = getattr(config, 'max_position_embeddings', None)
-    if orig_ctx_len and args.model_max_length > orig_ctx_len:
-        scaling_factor = float(math.ceil(args.model_max_length / orig_ctx_len))
+    if orig_ctx_len and model_args.model_max_length > orig_ctx_len:
+        scaling_factor = float(
+            math.ceil(model_args.model_max_length / orig_ctx_len))
         config.rope_scaling = {'type': 'linear', 'factor': scaling_factor}
     config.use_cache = False
 
     # Load the pre-trained model
-    text_logger.info(f'Loading Model from {args.model_name_or_path}...')
-    model = AutoModelForCausalLM.from_pretrained(
-        args.model_name_or_path,
-        config=config,
-        torch_dtype=torch_dtype,
-        **config_kwargs,
-    )
+    text_logger.info(f'Loading Model from {model_args.model_name_or_path}...')
+    model = AutoModelForCausalLM.from_pretrained(model_args.model_name_or_path,
+                                                 config=config,
+                                                 **config_kwargs)
 
     # Enable model parallelism
     setattr(model, 'model_parallel', True)
     setattr(model, 'is_parallelizable', True)
 
-    if args.gradient_checkpointing:
+    if not model_args.disable_gradient_checkpointing:
         text_logger.info('Using gradient checkpointing...')
         model.enable_input_require_grads()
         model.config.use_cache = (
@@ -71,11 +73,12 @@ def load_model_tokenizer(
         )
 
     # Load the tokenizer
-    text_logger.info(f'Loading tokenizer from {args.model_name_or_path}...')
+    text_logger.info(
+        f'Loading tokenizer from {model_args.model_name_or_path}...')
     tokenizer = AutoTokenizer.from_pretrained(
-        args.model_name_or_path,
-        padding_side=args.padding_side,
-        model_max_length=args.model_max_length,
+        model_args.model_name_or_path,
+        padding_side=model_args.padding_side,
+        model_max_length=model_args.model_max_length,
         use_fast=False,
         **config_kwargs,
     )
@@ -97,13 +100,22 @@ def train() -> None:
     Returns:
         None
     """
-    parser = HfArgumentParser(
-        (ModelArguments, DataArguments, TrainingArguments))
-    (model_args, data_args,
-     training_args) = parser.parse_args_into_dataclasses()
-    data_args.init_for_training()
-    args = argparse.Namespace(**vars(model_args), **vars(data_args),
-                              **vars(training_args))
+    parser = HfArgumentParser((
+        ModelArguments,
+        DataArguments,
+        TrainingArguments,
+        FinetuningArguments,
+        GeneratingArguments,
+    ))
+    (model_args, data_args, training_args, finetune_args,
+     generating_args) = (parser.parse_args_into_dataclasses())
+    args = argparse.Namespace(
+        **vars(model_args),
+        **vars(data_args),
+        **vars(training_args),
+        **vars(finetune_args),
+        **vars(generating_args),
+    )
 
     # init the logger before other steps
     timestamp = time.strftime('%Y%m%d_%H%M%S', time.localtime())
@@ -119,14 +131,46 @@ def train() -> None:
 
     # load model and tokenizer
     text_logger.info('Loading model and tokenizer...')
-    model, tokenizer = load_model_tokenizer(args=args, text_logger=text_logger)
+    model, tokenizer = load_model_tokenizer(model_args,
+                                            text_logger=text_logger)
     text_logger.info('Successfully loaded model and tokenizer.')
 
     # Create a supervised dataset and Trainer, then train the model
     text_logger.info('Creating a supervised dataset and DataCollator...')
-    data_module = make_supervised_data_module(tokenizer=tokenizer,
-                                              args=args,
-                                              text_logger=text_logger)
+
+    all_dataset = get_dataset(
+        model_args,
+        data_args,
+        training_args,
+        stage='sft',
+        tokenizer=tokenizer,
+        processor=None,
+    )
+    data_module = split_dataset(all_dataset, data_args, training_args)
+
+    data_collator = DataCollatorForSeq2Seq(
+        tokenizer=tokenizer,
+        pad_to_multiple_of=8 if tokenizer.padding_side == 'right' else None,
+        label_pad_token_id=IGNORE_INDEX
+        if data_args.ignore_pad_token_for_loss else tokenizer.pad_token_id,
+    )
+
+    # Override the decoding parameters of Seq2SeqTrainer
+    training_args.generation_max_length = (training_args.generation_max_length
+                                           or data_args.cutoff_len)
+    training_args.generation_num_beams = (data_args.eval_num_beams or
+                                          training_args.generation_num_beams)
+    training_args.remove_unused_columns = (False
+                                           if model_args.visual_inputs else
+                                           training_args.remove_unused_columns)
+
+    # Keyword arguments for `model.generate`
+    gen_kwargs = generating_args.to_dict()
+    gen_kwargs['eos_token_id'] = [tokenizer.eos_token_id
+                                  ] + tokenizer.additional_special_tokens_ids
+    gen_kwargs['pad_token_id'] = tokenizer.pad_token_id
+    gen_kwargs['logits_processor'] = get_logits_processor()
+
     # Init the wandb
     text_logger.info('Initializing wandb...')
     wandb.init(
@@ -143,6 +187,9 @@ def train() -> None:
         model=model,
         tokenizer=tokenizer,
         args=training_args,
+        data_collator=data_collator,
+        compute_metrics=ComputeMetrics(tokenizer)
+        if training_args.predict_with_generate else None,
         **data_module,
     )
     # Training

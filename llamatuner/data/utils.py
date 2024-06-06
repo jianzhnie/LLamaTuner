@@ -3,7 +3,7 @@ from typing import Dict, List, Tuple, Union
 
 from datasets import (Dataset, IterableDataset, concatenate_datasets,
                       interleave_datasets)
-from transformers import Seq2SeqTrainingArguments
+from transformers import TrainingArguments
 
 from llamatuner.configs import DataArguments
 from llamatuner.utils.logger_utils import get_logger
@@ -31,7 +31,7 @@ def infer_max_len(source_len: int, target_len: int, max_len: int,
 def merge_dataset(
     all_datasets: List[Union[Dataset, IterableDataset]],
     data_args: DataArguments,
-    training_args: Seq2SeqTrainingArguments,
+    training_args: TrainingArguments,
 ) -> Union[Dataset, IterableDataset]:
     if len(all_datasets) == 1:
         return all_datasets[0]
@@ -60,7 +60,7 @@ def merge_dataset(
 def split_dataset(
     dataset: Union[Dataset, IterableDataset],
     data_args: DataArguments,
-    training_args: Seq2SeqTrainingArguments,
+    training_args: TrainingArguments,
 ) -> Dict[str, Dataset]:
     if training_args.do_train:
         if data_args.eval_dataset_size > 1e-6:  # Split the dataset
