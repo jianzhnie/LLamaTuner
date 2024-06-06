@@ -260,8 +260,6 @@ def convert_sharegpt(
         outputs['images'].append(
             convert_images(examples[dataset_attr.images][i]) if dataset_attr.
             images else [])
-
-    logger.info('Conversion of share dataset completed.')
     return outputs
 
 

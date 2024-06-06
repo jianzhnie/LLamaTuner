@@ -120,17 +120,22 @@ def load_single_dataset(
         dataset = dataset.to_iterable_dataset()
 
     # Truncate dataset if max_train_samples is set
-    if data_args.max_train_samples is not None:
-        num_samples = min(data_args.max_train_samples, len(dataset))
+    if data_args.max_samples is not None:
+        num_samples = min(data_args.max_samples, len(dataset))
         dataset = dataset.select(range(num_samples))
 
+    logger.info('Successfully loaded dataset')
+    logger.info('Aligning the dataset to the Alpaca or ShareGPT template.')
     aligned_dataset = align_dataset(dataset, dataset_attr, data_args)
+    logger.info(
+        f'Successfully converted dataset {dataset_attr.dataset_name} to {dataset_attr.formatting} format.'
+    )
     return aligned_dataset
 
 
 def get_dataset(
-    model_args: ModelArguments,
     data_args: DataArguments,
+    model_args: ModelArguments,
     training_args: TrainingArguments,
     stage: Literal['pt', 'sft', 'rm', 'kto'],
     tokenizer: PreTrainedTokenizer,
@@ -140,8 +145,8 @@ def get_dataset(
     Retrieves and processes the dataset for training.
 
     Args:
-        model_args (ModelArguments): Arguments related to the model configuration.
         data_args (DataArguments): Arguments related to the dataset and data processing.
+        model_args (ModelArguments): Arguments related to the model configuration.
         training_args (TrainingArguments): Arguments for training configuration.
         stage (Literal['pt', 'sft', 'rm', 'kto']): The current training stage.
         tokenizer (PreTrainedTokenizer): Tokenizer to be used for preprocessing.
@@ -151,6 +156,7 @@ def get_dataset(
         Union[Dataset, IterableDataset]: The processed dataset ready for training.
     """
     # Adjust the template and tokenizer
+    logger.info('Get template and fix tokenizer')
     template = get_template_and_fix_tokenizer(tokenizer, data_args.template)
 
     if data_args.train_on_prompt and template.efficient_eos:
@@ -182,9 +188,11 @@ def get_dataset(
                 raise ValueError(
                     'The dataset is not applicable in the current training stage.'
                 )
-            all_datasets.append(
-                load_single_dataset(dataset_attr, model_args, data_args))
+            single_dataset = load_single_dataset(dataset_attr, model_args,
+                                                 data_args)
+            all_datasets.append(single_dataset)
 
+        logger.info('Merging datasets...')
         dataset = merge_dataset(all_datasets, data_args, training_args)
 
     # Preprocess the dataset
