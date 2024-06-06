@@ -25,9 +25,9 @@ class DatasetAttr:
     Attributes:
         dataset_name (Optional[str]): Name or URL of the dataset.
         load_from (Literal['hf_hub', 'ms_hub', 'script', 'file']): Source to load the dataset from.
+        ranking (bool): Whether the dataset involves ranking.
         subset (Optional[str]): Subset of the dataset.
         folder (Optional[str]): Folder containing the dataset.
-        ranking (bool): Whether the dataset involves ranking.
         formatting (Literal['alpaca', 'sharegpt']): Formatting style of the dataset.
         system (Optional[str]): System-related information column.
         tools (Optional[str]): Tools-related information column.
@@ -52,12 +52,13 @@ class DatasetAttr:
     # Basic configs
     dataset_name: Optional[str] = None
     load_from: Literal['hf_hub', 'ms_hub', 'script', 'file'] = 'hf_hub'
+    formatting: Literal['alpaca', 'sharegpt'] = 'alpaca'
 
     # Extra configs
+    ranking: bool = False
     subset: Optional[str] = None
     folder: Optional[str] = None
-    ranking: bool = False
-    formatting: Literal['alpaca', 'sharegpt'] = 'alpaca'
+    num_samples: Optional[int] = None
 
     # Common configs
     system: Optional[str] = None
@@ -98,7 +99,7 @@ class DatasetAttr:
         setattr(self, key, obj.get(key, default))
 
 
-def get_dataset_list(data_args: 'DataArguments') -> List[DatasetAttr]:
+def get_dataset_list(data_args: DataArguments) -> List[DatasetAttr]:
     """
     Get a list of dataset attributes based on the provided dataset arguments.
 
@@ -108,12 +109,16 @@ def get_dataset_list(data_args: 'DataArguments') -> List[DatasetAttr]:
     Returns:
         List[DatasetAttr]: A list of DatasetAttr objects with configured attributes.
     """
-    logger.info('You have set the --dataset with %s', data_args.dataset)
     file_path = os.path.join(data_args.dataset_dir, DATA_CONFIG)
-    logger.info('Loading dataset information from %s...', file_path)
-
     dataset_names = ([ds.strip() for ds in data_args.dataset.split(',')]
                      if data_args.dataset else [])
+    if not dataset_names:
+        raise ValueError(
+            'No dataset specified in the --dataset argument, please refer to the '
+            + '%s file for available datasets.' % file_path)
+
+    logger.info('You have set the --dataset with %s', data_args.dataset)
+
     if data_args.interleave_probs:
         data_args.interleave_probs = [
             float(prob.strip())
@@ -121,6 +126,8 @@ def get_dataset_list(data_args: 'DataArguments') -> List[DatasetAttr]:
         ]
 
     try:
+        logger.info('Loading dataset information config file from %s...',
+                    file_path)
         with open(file_path, 'r', encoding='utf-8') as file:
             dataset_infos = yaml.safe_load(file)
     except FileNotFoundError as err:
@@ -128,10 +135,11 @@ def get_dataset_list(data_args: 'DataArguments') -> List[DatasetAttr]:
         raise ValueError(error_message) from err
 
     dataset_list: List[DatasetAttr] = []
-
     for name in dataset_names:
         if name not in dataset_infos:
-            raise ValueError(f'Undefined dataset {name} in data_config.yaml.')
+            raise ValueError(
+                f'Undefined dataset {name} in dataset config file {file_path}.'
+            )
 
         dataset_info = dataset_infos[name]
         has_hf_url = 'hf_hub_url' in dataset_info
