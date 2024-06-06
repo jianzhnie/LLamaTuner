@@ -360,7 +360,14 @@ def get_train_args(args: Optional[Dict[str, Any]] = None) -> _TRAIN_CLS:
 
     transformers.set_seed(training_args.seed)
 
-    return model_args, data_args, training_args, finetuning_args, generating_args
+    return (
+        model_args,
+        data_args,
+        training_args,
+        finetuning_args,
+        generating_args,
+        quant_args,
+    )
 
 
 def get_infer_args(args: Optional[Dict[str, Any]] = None) -> _INFER_CLS:
