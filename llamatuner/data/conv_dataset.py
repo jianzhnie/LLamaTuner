@@ -7,8 +7,6 @@ import torch
 from torch.utils.data import Dataset
 from transformers import PreTrainedTokenizer
 
-from llamatuner.data.data_utils import make_data_module
-from llamatuner.data.sft_dataset import DataCollatorForSupervisedDataset
 from llamatuner.utils.constants import IGNORE_INDEX
 
 
@@ -291,47 +289,3 @@ class ConversationDataCollator(object):
             'attention_mask': batch_att_masks,
             'target_mask': batch_target_masks
         }
-
-
-def make_conversation_data_module(tokenizer: PreTrainedTokenizer,
-                                  args) -> Dict[str, Dataset]:
-    """Create dataset and collator for conversation modeling.
-
-    Args:
-        tokenizer (PreTrainedTokenizer): The tokenizer object.
-        use_vicuna_prompt (bool): Flag indicating whether to use vicuna_prompt.
-        data_path (str): The path to the data file or directory.
-
-    Returns:
-        dict: A dictionary containing the train_dataset and eval_dataset.
-    """
-    # Determine the appropriate dataset class based on dataset_type flag
-    dataset_cls = (VicunaDataset if args.conversation_template == 'vicuna' else
-                   ConversationDataset)
-
-    train_raw_data, eval_raw_data = make_data_module(args)
-
-    # Create train and eval datasets using the chosen dataset class
-    max_seq_length = tokenizer.model_max_length
-    train_dataset = dataset_cls(train_raw_data,
-                                tokenizer=tokenizer,
-                                max_seq_length=max_seq_length)
-    eval_dataset = dataset_cls(eval_raw_data,
-                               tokenizer=tokenizer,
-                               max_seq_length=max_seq_length)
-
-    print('train_dataset: ', train_dataset, type(train_dataset), '#length: ',
-          len(train_dataset))
-    print('eval_dataset: ', eval_dataset, type(eval_dataset), '#length: ',
-          len(eval_dataset))
-
-    # Create data collator
-    print('Adding data collator: ', DataCollatorForSupervisedDataset)
-    data_collator = DataCollatorForSupervisedDataset(tokenizer=tokenizer)
-    print('data_collator: ', type(data_collator))
-
-    return {
-        'train_dataset': train_dataset,
-        'eval_dataset': eval_dataset,
-        'data_collator': data_collator
-    }

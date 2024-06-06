@@ -114,8 +114,8 @@ def configure_quantization(
             quantization_config['bits'] = 2
 
         quant_bits = quantization_config.get('bits', '?')
-        logger.info('Loading {}-bit {}-quantized model.'.format(
-            quant_bits, quant_method.upper()))
+        logger.info('Loading %s-bit %s-quantized model.', quant_bits,
+                    quant_method.upper())
 
     elif model_args.export_quantization_bit is not None:  # auto-gptq
         require_version('optimum>=1.16.0',
@@ -134,8 +134,8 @@ def configure_quantization(
         )
         init_kwargs['device_map'] = 'auto'
         init_kwargs['max_memory'] = get_max_memory()
-        logger.info('Quantizing model to {} bit.'.format(
-            model_args.export_quantization_bit))
+        logger.info('Quantizing model to %s bit.',
+                    model_args.export_quantization_bit)
 
     elif model_args.quantization_bit is not None:  # bnb
         if model_args.quantization_bit == 8:
@@ -173,5 +173,4 @@ def configure_quantization(
         else:
             init_kwargs['device_map'] = {'': get_current_device()}
 
-        logger.info('Quantizing model to {} bit.'.format(
-            model_args.quantization_bit))
+        logger.info('Quantizing model to %s bit.', model_args.quantization_bit)

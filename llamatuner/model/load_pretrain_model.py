@@ -12,13 +12,10 @@ from transformers import (AutoModelForCausalLM, AutoTokenizer,
                           BitsAndBytesConfig)
 from transformers.modeling_utils import PreTrainedModel
 from transformers.tokenization_utils import PreTrainedTokenizer
-from transformers.utils import check_min_version
 from transformers.utils.versions import require_version
 
 from llamatuner.utils.model_utils import (add_special_tokens_if_missing,
                                           find_all_linear_names)
-
-check_min_version('4.29.1')
 
 
 def load_model_tokenizer(

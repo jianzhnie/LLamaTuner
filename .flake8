@@ -1,5 +1,5 @@
 [flake8]
-ignore = E501,E701,W504,W503,E722,E251,E402,E123, E126
+ignore = E501,E701,W504,W503,E722,E251,E402,E123, E126,E129, E125
 max-line-length = 79
 show-source = False
 application-import-names = llamatuner
