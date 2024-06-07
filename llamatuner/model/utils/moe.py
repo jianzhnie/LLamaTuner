@@ -5,7 +5,7 @@ from transformers.utils.versions import require_version
 from llamatuner.configs.model_args import ModelArguments
 from llamatuner.utils.logger_utils import get_logger
 
-logger = get_logger(__name__)
+logger = get_logger('llamatuner')
 
 
 def add_z3_leaf_module(model: 'PreTrainedModel') -> None:

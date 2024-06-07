@@ -8,7 +8,7 @@ from transformers import TrainingArguments
 from llamatuner.configs import DataArguments
 from llamatuner.utils.logger_utils import get_logger
 
-logger = get_logger(__name__)
+logger = get_logger('llamatuner')
 
 
 @unique

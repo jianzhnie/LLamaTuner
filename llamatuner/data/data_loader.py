@@ -16,7 +16,7 @@ from llamatuner.utils.constants import FILEEXT2TYPE
 from llamatuner.utils.logger_utils import get_logger
 from llamatuner.utils.misc import has_tokenized_data
 
-logger = get_logger(__name__)
+logger = get_logger('llamatuner')
 
 
 def load_single_dataset(

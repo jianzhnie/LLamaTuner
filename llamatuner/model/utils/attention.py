@@ -5,7 +5,7 @@ from llamatuner.utils.logger_utils import get_logger
 from llamatuner.utils.packages import (is_flash_attn2_available,
                                        is_sdpa_available)
 
-logger = get_logger(__name__)
+logger = get_logger('llamatuner')
 
 
 def configure_attn_implementation(config: 'PretrainedConfig',

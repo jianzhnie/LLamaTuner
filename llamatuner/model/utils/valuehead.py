@@ -9,7 +9,7 @@ from llamatuner.utils.constants import (V_HEAD_SAFE_WEIGHTS_NAME,
                                         V_HEAD_WEIGHTS_NAME)
 from llamatuner.utils.logger_utils import get_logger
 
-logger = get_logger(__name__)
+logger = get_logger('llamatuner')
 
 
 def load_valuehead_params(

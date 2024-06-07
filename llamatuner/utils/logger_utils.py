@@ -1,10 +1,31 @@
 import logging
 import os
 import sys
+from logging import Formatter
 
 import torch.distributed as dist
+from colorama import Fore, Style
 
 logger_initialized: dict = {}
+
+
+class ColorfulFormatter(Formatter):
+    """
+    Formatter to add coloring to log messages by log type
+    """
+
+    COLORS = {
+        'INFO': Fore.GREEN,
+        'WARNING': Fore.YELLOW,
+        'ERROR': Fore.RED,
+        'CRITICAL': Fore.RED + Style.BRIGHT,
+        'DEBUG': Fore.LIGHTGREEN_EX,
+    }
+
+    def format(self, record):
+        record.rank = int(os.getenv('LOCAL_RANK', '0'))
+        log_message = super().format(record)
+        return self.COLORS.get(record.levelname, '') + log_message + Fore.RESET
 
 
 def get_logger(name, log_file=None, log_level=logging.INFO, file_mode='w'):
@@ -66,9 +87,9 @@ def get_logger(name, log_file=None, log_level=logging.INFO, file_mode='w'):
         file_handler = logging.FileHandler(log_file, file_mode)
         handlers.append(file_handler)
 
-    formatter = logging.Formatter(
-        fmt=
-        '%(asctime)s, %(name)s [%(filename)s:%(lineno)d] %(levelname)s - %(message)s',
+    formatter = ColorfulFormatter(
+        '%(asctime)s, %(name)s [%(name)s.%(funcName)s:%(lineno)d] '
+        '[RANK:%(rank)d] %(levelname)s - %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S',
     )
     for handler in handlers:

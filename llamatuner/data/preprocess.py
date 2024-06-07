@@ -16,7 +16,7 @@ from llamatuner.data.utils import Role
 from llamatuner.utils.constants import IGNORE_INDEX, IMAGE_TOKEN
 from llamatuner.utils.logger_utils import get_logger
 
-logger = get_logger(__name__)
+logger = get_logger('llamatuner')
 
 
 def _preprocess_visual_inputs(images: Sequence[ImageObject],

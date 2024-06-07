@@ -7,7 +7,7 @@ from transformers.integrations import is_deepspeed_zero3_enabled
 
 from llamatuner.utils.logger_utils import get_logger
 
-logger = get_logger(__name__)
+logger = get_logger('llamatuner')
 
 
 def _noisy_mean_initialization(embed_weight: torch.Tensor,
