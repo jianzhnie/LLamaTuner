@@ -169,8 +169,14 @@ class StringFormatter(Formatter):
     StringFormatter类 用于替换插槽中的占位符。
     """
 
-    def __post_init__(self):
-        # Ensure at least one placeholder is present in the slots
+    def __post_init__(self) -> None:
+        """
+        Post-initialization method to ensure that at least one placeholder is present
+        in the slots. If no placeholder is found, an error is raised.
+
+        Raises:
+            ValueError: If no slot contains a placeholder.
+        """
         has_placeholder = any(
             isinstance(slot, str)
             and re.search(r'\{\{[a-zA-Z_][a-zA-Z0-9_]*\}\}', slot)
