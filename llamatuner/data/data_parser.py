@@ -198,8 +198,5 @@ def get_dataset_list(data_args: DataArguments) -> List[DatasetAttr]:
             for tag in tag_names:
                 dataset_attr.set_attr(tag, dataset_info['tags'])
 
-        attr = get_attrs(dataset_attr)
-        logger.info('Dataset %s has the following attributes: %s', name, attr)
         dataset_list.append(dataset_attr)
-
     return dataset_list

@@ -128,7 +128,9 @@ def load_single_dataset(
     logger.info('Aligning the dataset to the Alpaca or ShareGPT template.')
     aligned_dataset = align_dataset(dataset, dataset_attr, data_args)
     logger.info(
-        f'Successfully converted dataset {dataset_attr.dataset_name} to {dataset_attr.formatting} format.'
+        'Successfully converted dataset %s to %s format.',
+        dataset_attr.dataset_name,
+        dataset_attr.formatting,
     )
     return aligned_dataset
 
@@ -158,6 +160,7 @@ def get_dataset(
     # Adjust the template and tokenizer
     logger.info('Get template and fix tokenizer')
     template = get_template_and_fix_tokenizer(tokenizer, data_args.template)
+    logger.info('Template: %s', template)
 
     if data_args.train_on_prompt and template.efficient_eos:
         raise ValueError(
@@ -192,7 +195,7 @@ def get_dataset(
                                                  data_args)
             all_datasets.append(single_dataset)
 
-        logger.info('Merging datasets...')
+        logger.info(f'Merging {data_args.dataset} datasets together...')
         dataset = merge_dataset(all_datasets, data_args, training_args)
 
     # Preprocess the dataset
