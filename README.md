@@ -7,6 +7,8 @@
 ![GitHub Code License](https://img.shields.io/github/license/jianzhnie/Chinese-Guanaco)
 ![GitHub last commit](https://img.shields.io/github/last-commit/jianzhnie/Chinese-Guanaco)
 ![GitHub pull request](https://img.shields.io/badge/PRs-welcome-blue)
+![issue resolution](https://img.shields.io/github/issues-closed-raw/jianzhnie/LLamaTuner)
+![open issues](https://img.shields.io/github/issues-raw/jianzhnie/LLamaTuner)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/release/python-390/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
@@ -24,8 +26,31 @@
 
 </div>
 
+## Introduction
+
+LLamaTuner is an efficient, flexible and full-featured toolkit for fine-tuning LLM (Llama3, Phi3, Qwen, Mistral, ...)
+
+**Efficient**
+
+- Support LLM, VLM pre-training / fine-tuning on almost all GPUs. LLamaTuner is capable of fine-tuning 7B LLM on a single 8GB GPU, as well as multi-node fine-tuning of models exceeding 70B.
+- Automatically dispatch high-performance operators such as FlashAttention and Triton kernels to increase training throughput.
+- Compatible with [DeepSpeed](https://github.com/microsoft/DeepSpeed) 🚀, easily utilizing a variety of ZeRO optimization techniques.
+
+**Flexible**
+
+- Support various LLMs ([Llama 3](https://huggingface.co/meta-llama), [Mixtral](https://huggingface.co/mistralai), [Llama 2](https://huggingface.co/meta-llama), [ChatGLM](https://huggingface.co/THUDM), [Qwen](https://huggingface.co/Qwen), [Baichuan](https://huggingface.co/baichuan-inc), ...).
+- Support VLM ([LLaVA](https://github.com/haotian-liu/LLaVA)).
+- Well-designed data pipeline, accommodating datasets in any format, including but not limited to open-source and custom formats.
+- Support various training algorithms ([QLoRA](http://arxiv.org/abs/2305.14314), [LoRA](http://arxiv.org/abs/2106.09685), full-parameter fune-tune), allowing users to choose the most suitable solution for their requirements.
+
+**Full-featured**
+
+- Support continuous pre-training, instruction fine-tuning, and agent fine-tuning.
+- Support chatting with large models with pre-defined templates.
+
 ## Table of Contents
 - [Easy and Efficient Fine-tuning LLMs  --- 简单高效的大语言模型训练/部署](#easy-and-efficient-fine-tuning-llms------简单高效的大语言模型训练部署)
+  - [Introduction](#introduction)
   - [Table of Contents](#table-of-contents)
   - [Supported Models](#supported-models)
   - [Supported Training Approaches](#supported-training-approaches)
@@ -42,8 +67,6 @@
   - [License](#license)
   - [Acknowledgements](#acknowledgements)
   - [Some lmm fine-tuning repos](#some-lmm-fine-tuning-repos)
-    - [崔一鸣](#崔一鸣)
-    - [Qwen](#qwen)
   - [Citation](#citation)
 
 
@@ -271,13 +294,13 @@ We appreciate the work by many open-source contributors, especially:
 
 ## Some lmm fine-tuning repos
 
-### 崔一鸣
+- https://github.com/QwenLM
+- https://github.com/InternLM
 - https://github.com/ymcui/Chinese-LLaMA-Alpaca-3
 - https://github.com/ymcui/Chinese-Mixtral
-
-### Qwen
-- https://github.com/QwenLM
-
+- https://github.com/SmartFlowAI/EmoLLM
+- https://github.com/yangjianxin1/Firefly
+- https://github.com/LiuHC0428/LAW-GPT
 
 ## Citation
 
