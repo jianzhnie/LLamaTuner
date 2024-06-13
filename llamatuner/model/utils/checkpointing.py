@@ -10,7 +10,7 @@ from llamatuner.configs.model_args import ModelArguments
 from llamatuner.utils.constants import LAYERNORM_NAMES
 from llamatuner.utils.logger_utils import get_logger
 
-logger = get_logger(__name__)
+logger = get_logger('llamatuner')
 
 
 def _gradient_checkpointing_enable(

@@ -20,7 +20,7 @@ from llamatuner.model.utils import (
 from llamatuner.utils.logger_utils import get_logger
 from llamatuner.utils.misc import infer_optim_dtype
 
-logger = get_logger(__name__)
+logger = get_logger('llamatuner')
 
 
 def patch_tokenizer(tokenizer: PreTrainedTokenizer) -> None:
@@ -123,18 +123,19 @@ def patch_model(
 
 
 def patch_valuehead_model(model: AutoModelForCausalLMWithValueHead) -> None:
-
     def tie_weights(self: AutoModelForCausalLMWithValueHead) -> None:
         if isinstance(self.pretrained_model, PreTrainedModel):
             self.pretrained_model.tie_weights()
 
     def get_input_embeddings(
-        self: AutoModelForCausalLMWithValueHead, ) -> torch.nn.Module:
+        self: AutoModelForCausalLMWithValueHead,
+    ) -> torch.nn.Module:
         if isinstance(self.pretrained_model, PreTrainedModel):
             return self.pretrained_model.get_input_embeddings()
 
-    def create_or_update_model_card(self: AutoModelForCausalLMWithValueHead,
-                                    output_dir: str) -> None:
+    def create_or_update_model_card(
+        self: AutoModelForCausalLMWithValueHead, output_dir: str
+    ) -> None:
         if isinstance(self.pretrained_model, PeftModel):
             self.pretrained_model.create_or_update_model_card(output_dir)
 

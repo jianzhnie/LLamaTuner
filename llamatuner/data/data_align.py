@@ -9,7 +9,7 @@ from llamatuner.data.data_parser import DatasetAttr
 from llamatuner.data.utils import Role
 from llamatuner.utils.logger_utils import get_logger
 
-logger = get_logger(__name__)
+logger = get_logger('llamatuner')
 
 
 def _convert_images(images: List[Any], dataset_attr: DatasetAttr,

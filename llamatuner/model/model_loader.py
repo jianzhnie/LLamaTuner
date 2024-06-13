@@ -13,7 +13,7 @@ from llamatuner.model.utils import load_valuehead_params, register_autoclass
 from llamatuner.utils.logger_utils import get_logger
 from llamatuner.utils.misc import count_parameters, try_download_model_from_ms
 
-logger = get_logger(__name__)
+logger = get_logger('llamatuner')
 
 
 def get_init_kwargs(model_args: ModelArguments) -> Dict[str, Any]:

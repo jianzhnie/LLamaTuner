@@ -15,7 +15,7 @@ from llamatuner.configs.model_args import ModelArguments
 from llamatuner.utils.constants import SUPPORTED_CLASS_FOR_S2ATTN
 from llamatuner.utils.logger_utils import get_logger
 
-logger = get_logger(__name__)
+logger = get_logger('llamatuner')
 
 
 # Modified from:
@@ -391,7 +391,7 @@ def configure_longlora(config: 'PretrainedConfig',
     if not is_trainable or not model_args.shift_attn:
         return
 
-    logger = get_logger(__name__)
+    logger = get_logger('llamatuner')
 
     if getattr(config, 'model_type', None) in SUPPORTED_CLASS_FOR_S2ATTN:
         setattr(config, 'group_size_ratio', 0.25)

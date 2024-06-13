@@ -4,7 +4,7 @@ from transformers import PretrainedConfig, PreTrainedModel, PreTrainedTokenizer
 
 from llamatuner.utils.logger_utils import get_logger
 
-logger = get_logger(__name__)
+logger = get_logger('llamatuner')
 
 
 def find_all_linear_modules(model: 'PreTrainedModel',

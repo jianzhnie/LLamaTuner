@@ -5,7 +5,7 @@ from transformers import PretrainedConfig
 from llamatuner.configs.model_args import ModelArguments
 from llamatuner.utils.logger_utils import get_logger
 
-logger = get_logger(__name__)
+logger = get_logger('llamatuner')
 
 
 def configure_rope(config: 'PretrainedConfig', model_args: 'ModelArguments',

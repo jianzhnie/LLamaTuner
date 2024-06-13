@@ -1,21 +1,19 @@
 python tools/train.py \
-    --model_name_or_path  facebook/opt-125m \
+    --model_name_or_path facebook/opt-125m \
     --dataset alpaca \
     --output_dir work_dir/full-finetune \
     --wandb_project llamatuner \
     --wandb_run_name alpaca_opt-125m_full-finetune \
     --num_train_epochs 3 \
-    --max_train_samples 200 \
-    --max_eval_samples 200 \
     --per_device_train_batch_size 4 \
     --per_device_eval_batch_size 4 \
     --gradient_accumulation_steps 8 \
     --eval_strategy "steps" \
     --save_strategy "steps" \
-    --eval_steps 1 \
-    --save_steps 1 \
+    --eval_steps 100 \
+    --save_steps 500 \
     --save_total_limit 5 \
-    --logging_steps 1 \
+    --logging_steps 10 \
     --learning_rate 2e-5 \
     --weight_decay 0. \
     --warmup_ratio 0.03 \

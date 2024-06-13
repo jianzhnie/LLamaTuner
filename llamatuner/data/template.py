@@ -9,7 +9,7 @@ from llamatuner.data.formatter import (EmptyFormatter, Formatter,
 from llamatuner.data.utils import Role, infer_max_len
 from llamatuner.utils.logger_utils import get_logger
 
-logger = get_logger(__name__)
+logger = get_logger('llamatuner')
 
 DEFAULT_PROMPT_DICT = {
     'prompt_input': ('{instruction}{input}'),

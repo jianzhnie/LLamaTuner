@@ -12,7 +12,7 @@ from llamatuner.model.utils.misc import (find_all_linear_modules,
 from llamatuner.model.utils.quantization import QuantizationMethod
 from llamatuner.utils.logger_utils import get_logger
 
-logger = get_logger(__name__)
+logger = get_logger('llamatuner')
 
 
 def init_adapter(

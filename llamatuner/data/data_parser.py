@@ -9,7 +9,7 @@ from llamatuner.utils.constants import DATA_CONFIG
 from llamatuner.utils.logger_utils import get_logger
 from llamatuner.utils.misc import use_modelscope
 
-logger = get_logger(__name__)
+logger = get_logger('llamatuner')
 
 
 def get_attrs(cls):

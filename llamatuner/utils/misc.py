@@ -27,7 +27,7 @@ from trl import AutoModelForCausalLMWithValueHead
 
 from llamatuner.configs.model_args import ModelArguments
 
-logger = get_logger(__name__)
+logger = get_logger('llamatuner')
 
 
 class AverageMeter:
