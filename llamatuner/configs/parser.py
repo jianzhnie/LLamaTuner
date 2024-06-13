@@ -20,7 +20,7 @@ from llamatuner.utils.constants import TRAINER_CONFIG
 from llamatuner.utils.logger_utils import get_logger
 from llamatuner.utils.misc import check_dependencies, get_current_device
 
-logger = get_logger(__name__)
+logger = get_logger('llamatuner')
 
 check_dependencies()
 
