@@ -167,3 +167,4 @@ work_dirs/
 output/
 outputs/
 *.jso
+llamatuner/model/patcher.py
