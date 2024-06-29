@@ -6,6 +6,7 @@ from datasets import Dataset, Features, IterableDataset
 
 from llamatuner.configs import DataArguments
 from llamatuner.data.data_parser import DatasetAttr
+from llamatuner.data.template import SYSTEM_TEMPLATE
 from llamatuner.data.utils import Role
 from llamatuner.utils.logger_utils import get_logger
 
@@ -27,6 +28,64 @@ def _convert_images(images: List[Any], dataset_attr: DatasetAttr,
                 outputs.append(image)
 
     return outputs
+
+
+def alpaca_map_fn(example: Dict[str, List[Any]], dataset_attr: DatasetAttr):
+    prompt = []
+    # Process the conversation history if available
+    if dataset_attr.history and isinstance(example[dataset_attr.history], list):
+        for old_prompt, old_response in example[dataset_attr.history]:
+            prompt.append({"role": Role.USER, "content": old_prompt})
+            prompt.append({"role": Role.ASSISTANT, "content": old_response})
+
+    content = []
+    # Add prompt and query to the content list
+    if dataset_attr.prompt and example[dataset_attr.prompt]:
+        content.append(example[dataset_attr.prompt])
+    if dataset_attr.query and example[dataset_attr.query]:
+        content.append(example[dataset_attr.query])
+
+    # Append the final prompt content
+    prompt.append({"role": Role.USER, "content": "\n".join(content)})
+
+    # Determine the response format based on dataset attributes
+    # Example: kto_tag, ranking, response
+    if dataset_attr.kto_tag and isinstance(example[dataset_attr.kto_tag], bool):
+        response = [
+            {"role": Role.ASSISTANT, "content": example[dataset_attr.response]},
+        ]
+        if example[dataset_attr.kto_tag]:
+            response = response + [{"role": Role.ASSISTANT, "content": ""}]
+        else:
+            response = [{"role": Role.ASSISTANT, "content": ""}] + response
+    # Example: ranking, chosen, rejected
+    elif (
+        dataset_attr.ranking
+        and isinstance(example[dataset_attr.chosen], str)
+        and isinstance(example[dataset_attr.rejected], str)
+    ):
+        response = [
+            {"role": Role.ASSISTANT, "content": example[dataset_attr.chosen]},
+            {"role": Role.ASSISTANT, "content": example[dataset_attr.rejected]},
+        ]
+    # Normal alpaca example
+    elif dataset_attr.response and isinstance(example[dataset_attr.response], str):
+        response = [{"role": Role.ASSISTANT, "content": example[dataset_attr.response]}]
+    else:
+        # Unsupervised example
+        response = []
+
+    output = {
+        "conversation": [
+            {
+                "prompt": prompt,
+                "response": response,
+                "system": example[dataset_attr.system] if dataset_attr.system else "",
+                "tools": example[dataset_attr.tools] if dataset_attr.tools else "",
+            }
+        ]
+    }
+    return output
 
 
 def convert_alpaca(
