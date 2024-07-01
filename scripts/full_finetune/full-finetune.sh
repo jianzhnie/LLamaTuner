@@ -1,6 +1,7 @@
 python tools/train.py \
     --model_name_or_path facebook/opt-125m \
     --dataset alpaca \
+    --lora_target 'q_proj', 'v_proj' \
     --output_dir work_dir/full-finetune \
     --wandb_project llamatuner \
     --wandb_run_name alpaca_opt-125m_full-finetune \

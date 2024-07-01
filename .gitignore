@@ -160,12 +160,11 @@ cython_debug/
 #.idea/
 wandb/
 logs/
-rm_checkpoint/
+docs/
+checkpoints/
 work_dir/
 work_dirs/
-prompt_data/
-prompt_data
-work_dir_lora/
 output/
 outputs/
-*.json
+*.jso
+llamatuner/model/patcher.py

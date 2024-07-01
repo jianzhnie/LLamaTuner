@@ -1,9 +1,12 @@
 from llamatuner.configs.data_args import DataArguments
 from llamatuner.configs.eval_args import EvaluationArguments
-from llamatuner.configs.finetune_args import FinetuningArguments
+from llamatuner.configs.finetune_args import (BAdamArgument,
+                                              FinetuningArguments,
+                                              FreezeArguments, GaloreArguments,
+                                              LoraArguments, QuantArguments,
+                                              RLHFArguments)
 from llamatuner.configs.gen_args import GeneratingArguments
 from llamatuner.configs.model_args import ModelArguments
-from llamatuner.configs.quant_args import QuantArguments
 
 __all__ = [
     'DataArguments',
@@ -12,4 +15,9 @@ __all__ = [
     'QuantArguments',
     'FinetuningArguments',
     'EvaluationArguments',
+    'FreezeArguments',
+    'LoraArguments',
+    'RLHFArguments',
+    'GaloreArguments',
+    'BAdamArgument',
 ]

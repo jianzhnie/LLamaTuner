@@ -11,6 +11,17 @@ from llamatuner.utils.logger_utils import get_logger
 
 logger = get_logger('llamatuner')
 
+SYSTEM_TEMPLATE = dict(
+    alpaca=('Below is an instruction that describes a task. '
+            'Write a response that appropriately completes the request.\n'),
+    coder=('You are a professional programer. Please provide the '
+           'corresponding code based on the description of Human.\n'),
+    lawyer='你现在是一名专业的中国律师，请根据用户的问题给出准确、有理有据的回复。\n',
+    medical='如果你是一名医生，请根据患者的描述回答医学问题。\n',
+    sql=('If you are an expert in SQL, please generate a good SQL Query '
+         'for Question based on the CREATE TABLE statement.\n'),
+)
+
 DEFAULT_PROMPT_DICT = {
     'prompt_input': ('{instruction}{input}'),
     'prompt_no_input': ('{instruction}'),

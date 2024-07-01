@@ -88,9 +88,9 @@ def get_logger(name, log_file=None, log_level=logging.INFO, file_mode='w'):
         handlers.append(file_handler)
 
     formatter = ColorfulFormatter(
-        "%(asctime)s, %(name)s [%(name)s.%(funcName)s:%(lineno)d] "
-        "%(levelname)s - %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
+        '%(asctime)s, %(name)s [%(name)s.%(funcName)s:%(lineno)d] '
+        '%(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S',
     )
     for handler in handlers:
         handler.setFormatter(formatter)

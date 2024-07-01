@@ -6,12 +6,6 @@ from typing import Any, Dict, Literal, Optional
 class ModelArguments:
     """Arguments pertaining to which model/config/tokenizer we are going to fine-tune or infer."""
 
-    torch_dtype: Literal['float16', 'bf16', 'float32'] = field(
-        default='float16',
-        metadata={
-            'help': 'The data type used in the model (float16 or float32).'
-        },
-    )
     model_name_or_path: Optional[str] = field(
         default='facebook/opt-125m',
         metadata={
@@ -140,10 +134,6 @@ class ModelArguments:
             'help':
             'Coefficient of the auxiliary router loss in mixture-of-experts model.'
         },
-    )
-    disable_gradient_checkpointing: bool = field(
-        default=False,
-        metadata={'help': 'Whether or not to disable gradient checkpointing.'},
     )
     upcast_layernorm: bool = field(
         default=False,
