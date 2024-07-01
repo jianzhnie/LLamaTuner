@@ -1,11 +1,11 @@
 import argparse
 import logging
+import math
 import os
 import pathlib
 import sys
 import time
-from dataclasses import dataclass, field
-from typing import List, Tuple, Union
+from typing import Tuple, Union
 
 import torch
 import wandb
@@ -26,21 +26,10 @@ from llamatuner.model.callbacks import ComputeMetrics
 from llamatuner.model.utils.misc import find_all_linear_modules
 from llamatuner.utils.constants import IGNORE_INDEX
 from llamatuner.utils.logger_utils import get_outdir, get_root_logger
-from llamatuner.utils.model_utils import get_peft_state_maybe_zero_3
+from llamatuner.utils.model_utils import (get_logits_processor,
+                                          get_peft_state_maybe_zero_3)
 
 os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
-
-
-@dataclass
-class LoraArguments:
-    lora_r: int = 8
-    lora_alpha: int = 16
-    lora_dropout: float = 0.05
-    lora_target_modules: List[str] = field(
-        default_factory=lambda: ['q_proj', 'v_proj'])
-    lora_weight_path: str = ''
-    lora_bias: str = 'none'
-    q_lora: bool = False
 
 
 # Borrowed from peft.utils.get_peft_model_state_dict
@@ -74,7 +63,7 @@ def load_model_tokenizer(
         device_map = ({
             '': int(os.environ.get('LOCAL_RANK') or 0)
         } if world_size != 1 else None)
-        if len(finetune_args.fsdp) > 0 or deepspeed.is_deepspeed_zero3_enabled(
+        if len(training_args.fsdp) > 0 or deepspeed.is_deepspeed_zero3_enabled(
         ):
             logger.info(
                 'FSDP and ZeRO3 are both currently incompatible with QLoRA.')
@@ -129,7 +118,7 @@ def load_model_tokenizer(
         logger.info('Preparemodel for kbit training!!!')
         model = prepare_model_for_kbit_training(
             model,
-            use_gradient_checkpointing=model_args.use_gradient_checkpointing)
+            use_gradient_checkpointing=training_args.gradient_checkpointing)
 
         if torch.cuda.device_count() > 1:
             # Keeps Trainer from trying its own DataParallelism when more than 1 GPU is available
@@ -139,7 +128,7 @@ def load_model_tokenizer(
     logger.info('Get the get peft model...')
     model = get_peft_model(model, lora_config)
 
-    if model_args.use_gradient_checkpointing:
+    if training_args.gradient_checkpointing:
         logger.info('Using gradient checkpointing...')
         model.enable_input_require_grads()
         model.config.use_cache = False  # Turn off when gradient checkpointing is enabled
@@ -148,12 +137,14 @@ def load_model_tokenizer(
     logger.info(f'Loading tokenizer from {model_args.model_name_or_path}...')
     tokenizer = AutoTokenizer.from_pretrained(
         model_args.model_name_or_path,
-        padding_side='right',
-        use_fast=False,
+        padding_side=model_args.padding_side,
         model_max_length=model_args.model_max_length,
+        use_fast=False,
         **config_kwargs,
     )
-    tokenizer.pad_token = tokenizer.unk_token
+    # Add special tokens if they are missing
+    if tokenizer.pad_token != tokenizer.unk_token:
+        tokenizer.pad_token = tokenizer.unk_token
 
     return model, tokenizer
 
@@ -204,6 +195,7 @@ def train(
         f'distributed training: {bool(training_args.local_rank != -1)}, 16-bits training: {training_args.fp16}'
     )
     # load model and tokenizer
+    logger.info('Loading model and tokenizer...')
     model, tokenizer = load_model_tokenizer(model_args,
                                             training_args,
                                             finetune_args,
@@ -231,6 +223,20 @@ def train(
         label_pad_token_id=IGNORE_INDEX
         if data_args.ignore_pad_token_for_loss else tokenizer.pad_token_id,
     )
+    # Override the decoding parameters of Seq2SeqTrainer
+    training_args.generation_max_length = (training_args.generation_max_length
+                                           or data_args.cutoff_len)
+    training_args.generation_num_beams = (data_args.eval_num_beams or
+                                          training_args.generation_num_beams)
+    training_args.remove_unused_columns = (False
+                                           if model_args.visual_inputs else
+                                           training_args.remove_unused_columns)
+    # Keyword arguments for `model.generate`
+    gen_kwargs = generating_args.to_dict()
+    gen_kwargs['eos_token_id'] = [tokenizer.eos_token_id
+                                  ] + tokenizer.additional_special_tokens_ids
+    gen_kwargs['pad_token_id'] = tokenizer.pad_token_id
+    gen_kwargs['logits_processor'] = get_logits_processor()
 
     # Init the wandb
     logger.info('Initializing wandb...')
@@ -256,33 +262,54 @@ def train(
     )
 
     logger.info('Starting training...')
-    if training_args.resume_from_checkpoint and list(
-            pathlib.Path(training_args.output_dir).glob('checkpoint-*')):
-        logger.info('Resuming from checkpoint...')
-        trainer.train(resume_from_checkpoint=True)
-    else:
-        trainer.train()
+    if training_args.do_train:
+        if training_args.resume_from_checkpoint and list(
+                pathlib.Path(training_args.output_dir).glob('checkpoint-*')):
+            logger.info('Resuming training from checkpoint %s' %
+                        (training_args.resume_from_checkpoint))
+            train_result = trainer.train(resume_from_checkpoint=True)
+        else:
+            logger.info('Starting training from scratch...')
+            train_result = trainer.train()
 
-    trainer.save_state()
-    # Save the trained model
-    # check if zero3 mode enabled
-    if deepspeed.is_deepspeed_zero3_enabled():
-        # use deepspeed engine internal function to gather state dict
-        # state_dict_zero3 contains whole parameters of base and lora adapters
-        # we will not extract lora parameters since peft save_pretrained will do that
-        # https://github.com/huggingface/peft/blob/3714aa2fff158fdfa637b2b65952580801d890b2/src/peft/peft_model.py#L125
-        # https://github.com/huggingface/peft/blob/3714aa2fff158fdfa637b2b65952580801d890b2/src/peft/utils/save_and_load.py#L19
-        state_dict_zero3 = trainer.model_wrapped._zero3_consolidated_16bit_state_dict(
-        )
+        # Save the trained model
+        # check if zero3 mode enabled
+        if deepspeed.is_deepspeed_zero3_enabled():
+            # use deepspeed engine internal function to gather state dict
+            # state_dict_zero3 contains whole parameters of base and lora adapters
+            # we will not extract lora parameters since peft save_pretrained will do that
+            # https://github.com/huggingface/peft/blob/3714aa2fff158fdfa637b2b65952580801d890b2/src/peft/peft_model.py#L125
+            # https://github.com/huggingface/peft/blob/3714aa2fff158fdfa637b2b65952580801d890b2/src/peft/utils/save_and_load.py#L19
+            state_dict_zero3 = (
+                trainer.model_wrapped._zero3_consolidated_16bit_state_dict())
+            if training_args.local_rank == 0:
+                state_dict = state_dict_zero3
+        else:
+            # in other mode we use original code from fastchat team, to make sure our change is minimum
+            state_dict = get_peft_state_maybe_zero_3(model.named_parameters(),
+                                                     finetune_args.lora_bias)
+
         if training_args.local_rank == 0:
-            state_dict = state_dict_zero3
-    else:
-        # in other mode we use original code from fastchat team, to make sure our change is minimum
-        state_dict = get_peft_state_maybe_zero_3(model.named_parameters(),
-                                                 finetune_args.lora_bias)
+            model.save_pretrained(training_args.output_dir,
+                                  state_dict=state_dict)
 
-    if training_args.local_rank == 0:
-        model.save_pretrained(training_args.output_dir, state_dict=state_dict)
+        trainer.log_metrics('train', train_result.metrics)
+        trainer.save_metrics('train', train_result.metrics)
+        trainer.save_state()
+
+    # Evaluation
+    if training_args.do_eval:
+        metrics = trainer.evaluate(metric_key_prefix='eval')
+        try:
+            perplexity = math.exp(metrics['eval_loss'])
+        except OverflowError:
+            perplexity = float('inf')
+
+        metrics['perplexity'] = perplexity
+        trainer.log_metrics('eval', metrics)
+        trainer.save_metrics('eval', metrics)
+
+    logger.info('Done.')
 
 
 if __name__ == '__main__':

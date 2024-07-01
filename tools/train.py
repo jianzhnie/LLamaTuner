@@ -29,6 +29,7 @@ os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
 
 def load_model_tokenizer(
     model_args: ModelArguments,
+    training_args: TrainingArguments,
     logger: logging.Logger,
 ) -> Tuple[PreTrainedModel, PreTrainedTokenizer]:
     """Load a pre-trained model and tokenizer for natural language processing
@@ -66,7 +67,7 @@ def load_model_tokenizer(
     setattr(model, 'model_parallel', True)
     setattr(model, 'is_parallelizable', True)
 
-    if not model_args.disable_gradient_checkpointing:
+    if not training_args.gradient_checkpointing:
         logger.info('Using gradient checkpointing...')
         model.enable_input_require_grads()
         model.config.use_cache = (
@@ -188,7 +189,6 @@ def train(
         **data_module,
     )
     # Training
-    training_args: TrainingArguments = trainer.args
     if training_args.do_train:
         if (list(pathlib.Path(training_args.output_dir).glob('checkpoint-*'))
                 and training_args.resume_from_checkpoint):
