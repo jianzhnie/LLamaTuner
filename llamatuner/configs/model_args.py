@@ -135,10 +135,6 @@ class ModelArguments:
             'Coefficient of the auxiliary router loss in mixture-of-experts model.'
         },
     )
-    use_gradient_checkpointing: bool = field(
-        default=False,
-        metadata={'help': 'Whether or not to disable gradient checkpointing.'},
-    )
     upcast_layernorm: bool = field(
         default=False,
         metadata={

@@ -73,7 +73,7 @@ class LoraArguments:
         metadata={'help': 'Dropout rate for the LoRA fine-tuning.'},
     )
     lora_target: str = field(
-        default='all',
+        default='q_proj',
         metadata={
             'help':
             ('Name(s) of target modules to apply LoRA. '
