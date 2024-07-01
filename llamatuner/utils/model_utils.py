@@ -3,7 +3,6 @@ import os
 from os.path import exists, isdir, join
 from typing import Any, Dict, List, Tuple, Union
 
-import bitsandbytes as bnb
 import torch
 from deepspeed import zero
 from deepspeed.runtime.zero.partition_parameters import ZeroParamStatus
@@ -97,59 +96,6 @@ def smart_tokenizer_and_embedding_resize(
         # 分别给input_embeddings和output_embeddings的新token对应的embedding赋值
         input_embeddings_data[-num_new_tokens:] = input_embeddings_avg
         output_embeddings_data[-num_new_tokens:] = output_embeddings_avg
-
-
-def find_all_linear_names(args: argparse.Namespace,
-                          model: torch.nn.Module) -> List[str]:
-    """Returns a list of names of all linear layers present in the given model.
-    如果args.bits是4，使用bitsandbytes库中的bnb.nn.Linear4bit层；
-    如果args.bits是8，使用bitsandbytes库中的bnb.nn.Linear8bitLt层； 否则，使用torch.nn.Linear层；
-    并记录下这些层的名称，保存在lora_module_names集合中。
-
-    Args:
-        args (argparse.Namespace): A namespace containing arguments of the script.
-        model (torch.nn.Module): The PyTorch model to extract linear layer names from.
-
-    Returns:
-        List[str]: A list of names of all linear layers present in the given model.
-
-    Raises:
-        TypeError: If `args` is not an instance of `argparse.Namespace`, or if `model` is not an instance \
-            of `torch.nn.Module`.
-        ValueError: If `args.bits` is not 4 or 8.
-
-    Example Usage:
-        >>> import argparse
-        >>> parser = argparse.ArgumentParser()
-        >>> parser.add_argument('--bits', type=int)
-        >>> args = parser.parse_args(['--bits', '4'])
-        >>> model = torch.nn.Sequential(torch.nn.Linear(10, 5), torch.nn.Linear(5, 1))
-        >>> find_all_linear_names(args, model)
-        ['0', '1']
-    """
-    # Determine the correct linear layer class based on the value of `args.bits`
-    if args.bits == 4:
-        cls = bnb.nn.Linear4bit
-    elif args.bits == 8:
-        cls = bnb.nn.Linear8bitLt
-    else:
-        torch.nn.Linear
-
-    lora_module_names = set()
-    for name, module in model.named_modules():
-        # Check if the current module is an instance of the linear layer class
-        if isinstance(module, cls):
-            # If yes, split the name of the module into its component parts and add the first or last part to the set
-            names = name.split('.')
-            # 只保留最后的名称，前缀不保留
-            lora_module_names.add(names[0] if len(names) == 1 else names[-1])
-
-    # Remove 'lm_head' from the set if present (needed for 16-bit)
-    if 'lm_head' in lora_module_names:
-        lora_module_names.remove('lm_head')
-
-    # Convert the set into a list and return it
-    return list(lora_module_names)
 
 
 def print_trainable_parameters(args: argparse.Namespace,
