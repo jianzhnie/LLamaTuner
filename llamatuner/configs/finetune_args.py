@@ -62,14 +62,14 @@ class LoraArguments:
         metadata={'help': 'The intrinsic dimension for LoRA fine-tuning.'},
     )
     lora_alpha: Optional[int] = field(
-        default=None,
+        default=16,
         metadata={
             'help':
             'The scale factor for LoRA fine-tuning (default: lora_rank * 2).'
         },
     )
     lora_dropout: float = field(
-        default=0.0,
+        default=0.05,
         metadata={'help': 'Dropout rate for the LoRA fine-tuning.'},
     )
     lora_target: str = field(
@@ -141,6 +141,20 @@ class QuantArguments:
         metadata={
             'help':
             'The number of bits to quantize the model using bitsandbytes.'
+        },
+    )
+    llm_int8_threshold: Optional[float] = field(
+        default=6,
+        metadata={
+            'help':
+            'The threshold for int8 quantization. Only applicable for LLMs with int8 weights.'
+        },
+    )
+    llm_int8_has_fp16_weight: Optional[bool] = field(
+        default=False,
+        metadata={
+            'help':
+            'Whether to use fp16 weights for int8 training. Only applicable for LLMs with fp16 weights.'
         },
     )
     # 量化类型，可以选择`fp4`或`nf4`
