@@ -130,7 +130,9 @@ def train(
 
     # Load model and tokenizer
     logger.info('Loading model and tokenizer...')
-    model, tokenizer = load_model_tokenizer(model_args, training_args, logger=logger)
+    model, tokenizer = load_model_tokenizer(model_args,
+                                            training_args,
+                                            logger=logger)
     logger.info('Successfully loaded model and tokenizer.')
 
     # Create a supervised dataset and Trainer, then train the model
