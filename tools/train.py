@@ -32,14 +32,15 @@ def load_model_tokenizer(
     training_args: TrainingArguments,
     logger: logging.Logger,
 ) -> Tuple[PreTrainedModel, PreTrainedTokenizer]:
-    """Load a pre-trained model and tokenizer for natural language processing
-    tasks.
+    """Load a pre-trained model and tokenizer for natural language processing tasks.
 
     Args:
-        args: An object containing the input arguments.
+        model_args (ModelArguments): Arguments for the model configuration.
+        training_args (TrainingArguments): Arguments for the training configuration.
+        logger (logging.Logger): Logger instance for logging messages.
 
     Returns:
-        A tuple containing the loaded model and tokenizer.
+        Tuple[PreTrainedModel, PreTrainedTokenizer]: A tuple containing the loaded model and tokenizer.
     """
     config_kwargs = {
         'cache_dir': model_args.cache_dir,
@@ -67,7 +68,7 @@ def load_model_tokenizer(
     setattr(model, 'model_parallel', True)
     setattr(model, 'is_parallelizable', True)
 
-    if not training_args.gradient_checkpointing:
+    if training_args.gradient_checkpointing:
         logger.info('Using gradient checkpointing...')
         model.enable_input_require_grads()
         model.config.use_cache = (
@@ -103,6 +104,8 @@ def train(
         model_args (ModelArguments): The arguments for the model configuration.
         data_args (DataArguments): The arguments for the data configuration.
         training_args (TrainingArguments): The arguments for the training configuration.
+        finetune_args (FinetuningArguments): The arguments for the fine-tuning configuration.
+        generating_args (GeneratingArguments): The arguments for the generating configuration.
 
     Returns:
         None
@@ -114,7 +117,7 @@ def train(
         **vars(finetune_args),
         **vars(generating_args),
     )
-    # init the logger before other steps
+    # Initialize the logger before other steps
     timestamp = time.strftime('%Y%m%d_%H%M%S', time.localtime())
     # Set up the output directory
     output_dir = get_outdir(training_args.output_dir,
@@ -125,9 +128,11 @@ def train(
     log_file = os.path.join(output_dir, log_name + '.log')
     logger = get_logger(name='llamatuner', log_file=log_file, log_level='INFO')
 
-    # load model and tokenizer
+    # Load model and tokenizer
     logger.info('Loading model and tokenizer...')
-    model, tokenizer = load_model_tokenizer(model_args, logger=logger)
+    model, tokenizer = load_model_tokenizer(model_args,
+                                            training_args,
+                                            logger=logger)
     logger.info('Successfully loaded model and tokenizer.')
 
     # Create a supervised dataset and Trainer, then train the model
@@ -167,7 +172,7 @@ def train(
     gen_kwargs['pad_token_id'] = tokenizer.pad_token_id
     gen_kwargs['logits_processor'] = get_logits_processor()
 
-    # Init the wandb
+    # Initialize wandb
     logger.info('Initializing wandb project...')
     wandb.init(
         dir=output_dir,

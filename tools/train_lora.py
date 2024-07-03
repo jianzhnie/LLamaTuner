@@ -34,21 +34,23 @@ from llamatuner.utils.model_utils import (get_logits_processor,
 os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
 
 
-# Borrowed from peft.utils.get_peft_model_state_dict
 def load_model_tokenizer(
     model_args: ModelArguments,
     training_args: TrainingArguments,
     finetune_args: FinetuningArguments,
     logger: logging.Logger,
 ) -> Tuple[PreTrainedModel, PreTrainedTokenizer]:
-    """Load a pre-trained model and tokenizer for natural language processing
-    tasks.
+    """
+    Load a pre-trained model and tokenizer for natural language processing tasks.
 
     Args:
-        args: An object containing the input arguments.
+        model_args (ModelArguments): Arguments for the model configuration.
+        training_args (TrainingArguments): Arguments for the training configuration.
+        finetune_args (FinetuningArguments): Arguments for the finetuning configuration.
+        logger (logging.Logger): Logger object for logging information.
 
     Returns:
-        A tuple containing the loaded model and tokenizer.
+        Tuple[PreTrainedModel, PreTrainedTokenizer]: Loaded model and tokenizer.
     """
 
     # Determine torch dtype for model based on arguments
@@ -66,18 +68,15 @@ def load_model_tokenizer(
             logger.info(
                 'FSDP and ZeRO3 are both currently incompatible with QLoRA.')
 
-    # Set configuration kwargs for tokenizer.
     config_kwargs = {
         'cache_dir': model_args.cache_dir,
         'trust_remote_code': model_args.trust_remote_code,
     }
 
-    # Load the pre-trained model
     logger.info(f'Loading Model from {model_args.model_name_or_path}...')
-    if finetune_args.quant_bit == 4:
-        load_in_4bit = True
-    elif finetune_args.quant_bit == 8:
-        load_in_8bit = True
+
+    load_in_4bit = finetune_args.quant_bit == 4
+    load_in_8bit = finetune_args.quant_bit == 8
 
     model = AutoModelForCausalLM.from_pretrained(
         model_args.model_name_or_path,
@@ -139,16 +138,15 @@ def load_model_tokenizer(
         task_type='CAUSAL_LM',  # 模型名称，一种标记
     )
 
-    logger.info('Get the get peft model...')
+    logger.info('Getting the PEFT model...')
     model = get_peft_model(model, lora_config)
 
     # Enable gradient checkpointing if specified
     if training_args.gradient_checkpointing:
         logger.info('Using gradient checkpointing...')
         model.enable_input_require_grads()
-        model.config.use_cache = False  # Turn off when gradient checkpointing is enabled
+        model.config.use_cache = False
 
-    # Load the tokenizer
     logger.info(f'Loading tokenizer from {model_args.model_name_or_path}...')
     tokenizer = AutoTokenizer.from_pretrained(
         model_args.model_name_or_path,
@@ -157,7 +155,7 @@ def load_model_tokenizer(
         use_fast=False,
         **config_kwargs,
     )
-    # Add special tokens if they are missing
+
     if tokenizer.pad_token != tokenizer.unk_token:
         tokenizer.pad_token = tokenizer.unk_token
 
@@ -171,13 +169,15 @@ def train(
     finetune_args: FinetuningArguments,
     generating_args: GeneratingArguments,
 ) -> None:
-    """Trains a language model using Hugging Face's Transformers library.
+    """
+    Trains a language model using Hugging Face's Transformers library.
 
     Args:
         model_args (ModelArguments): The arguments for the model configuration.
         data_args (DataArguments): The arguments for the data configuration.
         training_args (TrainingArguments): The arguments for the training configuration.
-        lora_args (LoraArguments): The arguments for the LoRA configuration.
+        finetune_args (FinetuningArguments): The arguments for the finetuning configuration.
+        generating_args (GeneratingArguments): The arguments for the generating configuration.
 
     Returns:
         None
@@ -191,9 +191,7 @@ def train(
         **vars(generating_args),
     )
 
-    # init the logger before other steps
     timestamp = time.strftime('%Y%m%d_%H%M%S', time.localtime())
-    # log
     output_dir = get_outdir(training_args.output_dir,
                             finetune_args.wandb_run_name)
     training_args.output_dir = get_outdir(output_dir, 'checkpoints')
@@ -202,14 +200,13 @@ def train(
     log_file = os.path.join(output_dir, log_name + '.log')
     logger = get_root_logger(log_file=log_file, log_level='INFO')
 
-    # Log on each process the small summary:
     logger.info(
         f'Process rank: {training_args.local_rank}, device: {training_args.device}, n_gpu: {training_args.n_gpu}'
     )
     logger.info(
         f'distributed training: {bool(training_args.local_rank != -1)}, 16-bits training: {training_args.fp16}'
     )
-    # load model and tokenizer
+
     logger.info('Loading model and tokenizer...')
     model, tokenizer = load_model_tokenizer(model_args,
                                             training_args,
@@ -245,7 +242,7 @@ def train(
         label_pad_token_id=IGNORE_INDEX
         if data_args.ignore_pad_token_for_loss else tokenizer.pad_token_id,
     )
-    # Override the decoding parameters of Seq2SeqTrainer
+
     training_args.generation_max_length = (training_args.generation_max_length
                                            or data_args.cutoff_len)
     training_args.generation_num_beams = (data_args.eval_num_beams or
@@ -253,14 +250,13 @@ def train(
     training_args.remove_unused_columns = (False
                                            if model_args.visual_inputs else
                                            training_args.remove_unused_columns)
-    # Keyword arguments for `model.generate`
+
     gen_kwargs = generating_args.to_dict()
     gen_kwargs['eos_token_id'] = [tokenizer.eos_token_id
                                   ] + tokenizer.additional_special_tokens_ids
     gen_kwargs['pad_token_id'] = tokenizer.pad_token_id
     gen_kwargs['logits_processor'] = get_logits_processor()
 
-    # Init the wandb
     logger.info('Initializing wandb...')
     wandb.init(
         dir=output_dir,
@@ -271,7 +267,6 @@ def train(
         config=args,
     )
 
-    # Create a Trainer object and start training
     logger.info('Creating a Trainer...')
     trainer = Trainer(
         model=model,
@@ -287,27 +282,20 @@ def train(
     if training_args.do_train:
         if training_args.resume_from_checkpoint and list(
                 pathlib.Path(training_args.output_dir).glob('checkpoint-*')):
-            logger.info('Resuming training from checkpoint %s' %
-                        (training_args.resume_from_checkpoint))
+            logger.info(
+                f'Resuming training from checkpoint {training_args.resume_from_checkpoint}'
+            )
             train_result = trainer.train(resume_from_checkpoint=True)
         else:
             logger.info('Starting training from scratch...')
             train_result = trainer.train()
 
-        # Save the trained model
-        # check if zero3 mode enabled
         if deepspeed.is_deepspeed_zero3_enabled():
-            # use deepspeed engine internal function to gather state dict
-            # state_dict_zero3 contains whole parameters of base and lora adapters
-            # we will not extract lora parameters since peft save_pretrained will do that
-            # https://github.com/huggingface/peft/blob/3714aa2fff158fdfa637b2b65952580801d890b2/src/peft/peft_model.py#L125
-            # https://github.com/huggingface/peft/blob/3714aa2fff158fdfa637b2b65952580801d890b2/src/peft/utils/save_and_load.py#L19
             state_dict_zero3 = (
                 trainer.model_wrapped._zero3_consolidated_16bit_state_dict())
             if training_args.local_rank == 0:
                 state_dict = state_dict_zero3
         else:
-            # in other mode we use original code from fastchat team, to make sure our change is minimum
             state_dict = get_peft_state_maybe_zero_3(model.named_parameters(),
                                                      finetune_args.lora_bias)
 
@@ -321,7 +309,6 @@ def train(
         trainer.save_metrics('train', metrics)
         trainer.save_state()
 
-    # Evaluation
     if training_args.do_eval:
         metrics = trainer.evaluate(metric_key_prefix='eval')
         try:
@@ -345,6 +332,6 @@ if __name__ == '__main__':
         FinetuningArguments,
         GeneratingArguments,
     ))
-    (model_args, data_args, training_args, finetune_args,
-     generating_args) = (parser.parse_args_into_dataclasses())
+    model_args, data_args, training_args, finetune_args, generating_args = (
+        parser.parse_args_into_dataclasses())
     train(model_args, data_args, training_args, finetune_args, generating_args)
