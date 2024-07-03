@@ -98,12 +98,10 @@ def smart_tokenizer_and_embedding_resize(
         output_embeddings_data[-num_new_tokens:] = output_embeddings_avg
 
 
-def print_trainable_parameters(args: argparse.Namespace,
-                               model: torch.nn.Module) -> None:
+def print_trainable_parameters(model: torch.nn.Module, kbit: int = 8) -> None:
     """Prints the number of trainable parameters in the given model.
 
     Args:
-        args (argparse.Namespace): A namespace containing arguments of the script. Must contain the 'bits' argument.
         model (torch.nn.Module): The PyTorch model to count trainable parameters in.
 
     Raises:
@@ -111,12 +109,8 @@ def print_trainable_parameters(args: argparse.Namespace,
             of `torch.nn.Module`.
 
     Example Usage:
-        >>> import argparse
-        >>> parser = argparse.ArgumentParser()
-        >>> parser.add_argument('--bits', type=int)
-        >>> args = parser.parse_args(['--bits', '4'])
         >>> model = torch.nn.Sequential(torch.nn.Linear(10, 5), torch.nn.Linear(5, 1))
-        >>> print_trainable_parameters(args, model)
+        >>> print_trainable_parameters(model, kbit=4)
         trainable params: 13.0 || all params: 61 || trainable: 21.311475409836067%
     """
     trainable_params = 0
@@ -134,7 +128,7 @@ def print_trainable_parameters(args: argparse.Namespace,
 
     # If args.bits is 4, divide the trainable params count by 2 \
     # (since each 4-bit element requires only 2 bits for storage)
-    if args.bits == 4:
+    if kbit == 4:
         trainable_params /= 2
 
     # Compute and print the percentage of trainable vs all parameters
@@ -144,7 +138,7 @@ def print_trainable_parameters(args: argparse.Namespace,
           f'trainable: {trainable_percent}%')
 
 
-def verify_dtypes(model: torch.nn.Module) -> None:
+def print_model_dtypes(model: torch.nn.Module) -> None:
     """检查模型参数的数据类型，并输出各个数据类型在这些张量中所占的比例.
 
     :param model: 待检查的模型.
