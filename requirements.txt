@@ -1,10 +1,9 @@
-
-accelerate
 accelerate @ git+https://github.com/huggingface/accelerate.git
-bitsandbytes==0.39.0
+bitsandbytes
+colorama
 datasets
 deepspeed
-einops==0.6.1
+einops
 evaluate>=0.4.0
 gradio
 jieba
@@ -13,10 +12,9 @@ numpy
 peft
 peft @ git+https://github.com/huggingface/peft.git
 rouge-chinese
-rouge-score>=0.1.2
 sentencepiece
 tokenizers
 torch
 transformers>=4.28.0
 transformers @ git+https://github.com/huggingface/transformers.git
-wandb==0.15.3
+wandb
