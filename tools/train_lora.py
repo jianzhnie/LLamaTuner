@@ -27,7 +27,9 @@ from llamatuner.model.utils.misc import find_all_linear_modules
 from llamatuner.utils.constants import IGNORE_INDEX
 from llamatuner.utils.logger_utils import get_outdir, get_root_logger
 from llamatuner.utils.model_utils import (get_logits_processor,
-                                          get_peft_state_maybe_zero_3)
+                                          get_peft_state_maybe_zero_3,
+                                          print_model_dtypes,
+                                          print_trainable_parameters)
 
 os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
 
@@ -50,12 +52,8 @@ def load_model_tokenizer(
     """
 
     # Determine torch dtype for model based on arguments
-    if training_args.fp16:
-        torch_dtype = torch.float16
-    elif training_args.bf16:
-        torch_dtype = torch.bfloat16
-    else:
-        torch_dtype = torch.float32
+    torch_dtype = (torch.float32 if training_args.fp16 else
+                   (torch.bfloat16 if training_args.bf16 else torch.float32))
 
     device_map: Union[str, None] = 'auto'
     if finetune_args.use_qlora:
@@ -84,18 +82,44 @@ def load_model_tokenizer(
     model = AutoModelForCausalLM.from_pretrained(
         model_args.model_name_or_path,
         device_map=device_map,
+        # BitsAndBytesConfig设置存储格式和计算格式，以及优化方式
         quantization_config=BitsAndBytesConfig(
             load_in_4bit=load_in_4bit,
             load_in_8bit=load_in_8bit,
-            llm_int8_threshold=finetune_args.llm_int8_threshold,
-            llm_int8_has_fp16_weight=finetune_args.llm_int8_has_fp16_weight,
-            bnb_4bit_use_double_quant=finetune_args.double_quant,
-            bnb_4bit_quant_type=finetune_args.quant_type,
-            bnb_4bit_compute_dtype=torch_dtype,
+            llm_int8_threshold=finetune_args.llm_int8_threshold,  # int8的门限
+            llm_int8_has_fp16_weight=finetune_args.
+            llm_int8_has_fp16_weight,  # int8的LLM，是否包含fp16的权重
+            bnb_4bit_use_double_quant=finetune_args.double_quant,  # 是否进行双重量化
+            bnb_4bit_quant_type=finetune_args.quant_type,  # {'fp4', 'nf4'}
+            bnb_4bit_compute_dtype=torch_dtype,  # 计算时使用的数据类型
         ) if finetune_args.use_qlora else None,
         torch_dtype=torch_dtype,
         **config_kwargs,
     )
+
+    # Enable model parallelism.
+    # 设置两个和并行操作相关的参数
+    if torch.cuda.device_count() > 1:
+        # Keeps Trainer from trying its own DataParallelism when more than 1 GPU is available
+        setattr(model, 'model_parallel', True)
+        setattr(model, 'is_parallelizable', True)
+
+    # Prepare the model for k-bit training if specified.
+    if finetune_args.use_qlora:
+        logger.info('Preparemodel for kbit training!!!')
+        model = prepare_model_for_kbit_training(
+            model,
+            use_gradient_checkpointing=training_args.gradient_checkpointing)
+    # Print a message if the GPU supports bfloat16.
+    # 如果计算类型为 torch.float16 并且 args.bits==4，也就是4bit量化模型时，进行如下操作。
+    if torch_dtype == torch.float16 and finetune_args.quant_bit.bits == 4:
+        # 得到显卡的计算能力的最大值和最小值，分别对应major和minor
+        # 只有major >= 8时的GPU才支持bfloat16格式，可以使用参数--bf16来加速训练
+        major, minor = torch.cuda.get_device_capability()
+        if major >= 8:
+            logger.info(
+                'Your GPU supports bfloat16, you can accelerate training with the argument --bf16'
+            )
 
     # Add LoRA sparsity if specified
     logger.info('Adding LoRA modules...')
@@ -107,27 +131,18 @@ def load_model_tokenizer(
         target_modules = finetune_args.lora_target
 
     lora_config = LoraConfig(
-        r=finetune_args.lora_rank,
-        lora_alpha=finetune_args.lora_alpha,
-        target_modules=target_modules,
-        lora_dropout=finetune_args.lora_dropout,
-        bias=finetune_args.lora_bias,
-        task_type='CAUSAL_LM',
+        r=finetune_args.lora_rank,  # lora层A矩阵的列大小和B矩阵的行大小
+        lora_alpha=finetune_args.lora_alpha,  # 缩放因子
+        target_modules=target_modules,  # 需要进行lora网络操作的模块名称列表
+        lora_dropout=finetune_args.lora_dropout,  # 是否使用dropout, 正则化操作
+        bias=finetune_args.lora_bias,  # 是否对偏差参数进行处理
+        task_type='CAUSAL_LM',  # 模型名称，一种标记
     )
-    if finetune_args.use_qlora:
-        logger.info('Preparemodel for kbit training!!!')
-        model = prepare_model_for_kbit_training(
-            model,
-            use_gradient_checkpointing=training_args.gradient_checkpointing)
-
-        if torch.cuda.device_count() > 1:
-            # Keeps Trainer from trying its own DataParallelism when more than 1 GPU is available
-            setattr(model, 'model_parallel', True)
-            setattr(model, 'is_parallelizable', True)
 
     logger.info('Get the get peft model...')
     model = get_peft_model(model, lora_config)
 
+    # Enable gradient checkpointing if specified
     if training_args.gradient_checkpointing:
         logger.info('Using gradient checkpointing...')
         model.enable_input_require_grads()
@@ -201,6 +216,13 @@ def train(
                                             finetune_args,
                                             logger=logger)
     logger.info('Successfully loaded model and tokenizer.')
+
+    logger.info('Printing trainable parameters...')
+    print_trainable_parameters(model, kbit=finetune_args.quant_bit)
+
+    # Verify dtypes
+    logger.info('Print model dtypes...')
+    print_model_dtypes(model)
 
     # Create a supervised dataset and Trainer, then train the model
     logger.info('Creating a supervised dataset and DataCollator...')
@@ -293,8 +315,10 @@ def train(
             model.save_pretrained(training_args.output_dir,
                                   state_dict=state_dict)
 
-        trainer.log_metrics('train', train_result.metrics)
-        trainer.save_metrics('train', train_result.metrics)
+        metrics = train_result.metrics
+        metrics['train_samples'] = len(trainer.train_dataset)
+        trainer.log_metrics('train', metrics)
+        trainer.save_metrics('train', metrics)
         trainer.save_state()
 
     # Evaluation
@@ -306,6 +330,7 @@ def train(
             perplexity = float('inf')
 
         metrics['perplexity'] = perplexity
+        metrics['eval_samples'] = len(trainer.eval_dataset)
         trainer.log_metrics('eval', metrics)
         trainer.save_metrics('eval', metrics)
 
