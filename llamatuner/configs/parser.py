@@ -5,8 +5,11 @@ from typing import Any, Dict, Optional, Tuple
 
 import torch
 import transformers
-from transformers import HfArgumentParser, Seq2SeqTrainingArguments
+from transformers import HfArgumentParser
+from transformers import Seq2SeqTrainingArguments as TrainingArguments
+from transformers.integrations import is_deepspeed_zero3_enabled
 from transformers.trainer_utils import get_last_checkpoint
+from transformers.training_args import ParallelMode
 from transformers.utils import is_torch_bf16_gpu_available
 from transformers.utils.versions import require_version
 
@@ -15,8 +18,7 @@ from llamatuner.configs.eval_args import EvaluationArguments
 from llamatuner.configs.finetune_args import FinetuningArguments
 from llamatuner.configs.gen_args import GeneratingArguments
 from llamatuner.configs.model_args import ModelArguments
-from llamatuner.configs.quant_args import QuantArguments
-from llamatuner.utils.constants import TRAINER_CONFIG
+from llamatuner.utils.constants import CHECKPOINT_NAMES
 from llamatuner.utils.logger_utils import get_logger
 from llamatuner.utils.misc import check_dependencies, get_current_device
 
@@ -27,31 +29,28 @@ check_dependencies()
 _TRAIN_ARGS = [
     ModelArguments,
     DataArguments,
-    Seq2SeqTrainingArguments,
+    TrainingArguments,
     FinetuningArguments,
     GeneratingArguments,
-    QuantArguments,
 ]
-_TRAIN_CLS = Tuple[ModelArguments, DataArguments, Seq2SeqTrainingArguments,
-                   FinetuningArguments, GeneratingArguments, QuantArguments, ]
+_TRAIN_CLS = Tuple[ModelArguments, DataArguments, TrainingArguments,
+                   FinetuningArguments, GeneratingArguments, ]
 _INFER_ARGS = [
     ModelArguments,
     DataArguments,
     FinetuningArguments,
     GeneratingArguments,
-    QuantArguments,
 ]
 _INFER_CLS = Tuple[ModelArguments, DataArguments, FinetuningArguments,
-                   GeneratingArguments, QuantArguments, ]
+                   GeneratingArguments]
 _EVAL_ARGS = [
     ModelArguments,
     DataArguments,
     EvaluationArguments,
     FinetuningArguments,
-    QuantArguments,
 ]
 _EVAL_CLS = Tuple[ModelArguments, DataArguments, EvaluationArguments,
-                  FinetuningArguments, QuantArguments, ]
+                  FinetuningArguments, ]
 
 
 def parse_args(parser: HfArgumentParser,
@@ -88,16 +87,20 @@ def set_transformers_logging(log_level: Optional[int] = logging.INFO) -> None:
 
 def verify_model_args(
     model_args: ModelArguments,
-    quant_args: QuantArguments,
     finetuning_args: FinetuningArguments,
 ) -> None:
     if (model_args.adapter_name_or_path is not None
             and finetuning_args.finetuning_type != 'lora'):
         raise ValueError('Adapter is only valid for the LoRA method.')
 
-    if quant_args.quant_bit is not None:
+    if finetuning_args.quant_bit is not None:
         if finetuning_args.finetuning_type != 'lora':
             raise ValueError('Quant is only compatible with the LoRA method.')
+
+        if finetuning_args.pissa_init:
+            raise ValueError(
+                'Please use scripts/pissa_init.py to initialize PiSSA for a quantized model.'
+            )
 
         if model_args.resize_vocab:
             raise ValueError(
@@ -118,7 +121,7 @@ def verify_model_args(
 def check_extra_dependencies(
     model_args: ModelArguments,
     finetuning_args: FinetuningArguments,
-    training_args: Optional[Seq2SeqTrainingArguments] = None,
+    training_args: Optional[TrainingArguments] = None,
 ) -> None:
     if model_args.use_unsloth:
         require_version(
@@ -130,13 +133,13 @@ def check_extra_dependencies(
                         'To fix: pip install mixture-of-depth>=1.1.6')
 
     if model_args.infer_backend == 'vllm':
-        require_version('vllm>=0.4.0', 'To fix: pip install vllm>=0.4.0')
+        require_version('vllm>=0.4.3', 'To fix: pip install vllm>=0.4.3')
 
     if finetuning_args.use_galore:
         require_version('galore_torch', 'To fix: pip install galore_torch')
 
     if finetuning_args.use_badam:
-        require_version('badam', 'To fix: pip install badam')
+        require_version('badam>=1.2.1', 'To fix: pip install badam>=1.2.1')
 
     if finetuning_args.plot_loss:
         require_version('matplotlib', 'To fix: pip install matplotlib')
@@ -169,7 +172,6 @@ def get_train_args(args: Optional[Dict[str, Any]] = None) -> _TRAIN_CLS:
         training_args,
         finetuning_args,
         generating_args,
-        quant_args,
     ) = parse_train_args(args)
 
     # Setup logging
@@ -183,6 +185,9 @@ def get_train_args(args: Optional[Dict[str, Any]] = None) -> _TRAIN_CLS:
     if finetuning_args.stage != 'sft' and training_args.predict_with_generate:
         raise ValueError(
             '`predict_with_generate` cannot be set as True except SFT.')
+
+    if finetuning_args.stage != 'sft' and data_args.neat_packing:
+        raise ValueError('`neat_packing` cannot be set as True except SFT.')
 
     if (finetuning_args.stage == 'sft' and training_args.do_predict
             and not training_args.predict_with_generate):
@@ -211,6 +216,16 @@ def get_train_args(args: Optional[Dict[str, Any]] = None) -> _TRAIN_CLS:
             and training_args.report_to[0] not in ['wandb', 'tensorboard']):
         raise ValueError('PPO only accepts wandb or tensorboard logger.')
 
+    if training_args.parallel_mode == ParallelMode.NOT_DISTRIBUTED:
+        raise ValueError(
+            'Please launch distributed training with `llamafactory-cli` or `torchrun`.'
+        )
+
+    if (training_args.deepspeed
+            and training_args.parallel_mode != ParallelMode.DISTRIBUTED):
+        raise ValueError(
+            'Please use `FORCE_TORCHRUN=1` to launch DeepSpeed training.')
+
     if training_args.max_steps == -1 and data_args.streaming:
         raise ValueError('Please specify `max_steps` in streaming mode.')
 
@@ -218,36 +233,38 @@ def get_train_args(args: Optional[Dict[str, Any]] = None) -> _TRAIN_CLS:
         raise ValueError(
             '`predict_with_generate` cannot be set as True while training.')
 
-    if training_args.do_train and quant_args.quant_device_map == 'auto':
+    if training_args.do_train and finetuning_args.quant_device_map == 'auto':
         raise ValueError(
             'Cannot use device map for quantized models in training.')
 
-    if finetuning_args.use_dora and model_args.use_unsloth:
-        raise ValueError('Unsloth does not support DoRA.')
+    if finetuning_args.pissa_init and is_deepspeed_zero3_enabled():
+        raise ValueError('PiSSA is incompatible with DeepSpeed ZeRO-3.')
 
     if finetuning_args.pure_bf16:
         if not is_torch_bf16_gpu_available():
             raise ValueError('This device does not support `pure_bf16`.')
 
-        if training_args.fp16 or training_args.bf16:
+        if is_deepspeed_zero3_enabled():
             raise ValueError(
-                'Turn off mixed precision training when using `pure_bf16`.')
+                '`pure_bf16` is incompatible with DeepSpeed ZeRO-3.')
 
     if (finetuning_args.use_galore and finetuning_args.galore_layerwise
-            and training_args.parallel_mode.value == 'distributed'):
+            and training_args.parallel_mode == ParallelMode.DISTRIBUTED):
         raise ValueError(
             'Distributed training does not support layer-wise GaLore.')
 
-    if (finetuning_args.use_badam and finetuning_args.badam_mode == 'layer'
-            and training_args.parallel_mode.value == 'distributed'):
-        raise ValueError(
-            'Layer-wise BAdam does not yet support distributed training, use ratio-wise BAdam.'
-        )
+    if (finetuning_args.use_badam
+            and training_args.parallel_mode == ParallelMode.DISTRIBUTED):
+        if finetuning_args.badam_mode == 'ratio':
+            raise ValueError(
+                'Radio-based BAdam does not yet support distributed training, use layer-wise BAdam.'
+            )
+        elif not is_deepspeed_zero3_enabled():
+            raise ValueError(
+                'Layer-wise BAdam only supports DeepSpeed ZeRO-3 training.')
 
-    if (finetuning_args.use_galore or
-            finetuning_args.use_badam) and training_args.deepspeed is not None:
-        raise ValueError(
-            'GaLore and BAdam are incompatible with DeepSpeed yet.')
+    if finetuning_args.use_galore and training_args.deepspeed is not None:
+        raise ValueError('GaLore is incompatible with DeepSpeed yet.')
 
     if model_args.infer_backend == 'vllm':
         raise ValueError(
@@ -255,18 +272,25 @@ def get_train_args(args: Optional[Dict[str, Any]] = None) -> _TRAIN_CLS:
 
     if model_args.visual_inputs and data_args.packing:
         raise ValueError('Cannot use packing in MLLM fine-tuning.')
+    if model_args.use_unsloth and is_deepspeed_zero3_enabled():
+        raise ValueError('Unsloth is incompatible with DeepSpeed ZeRO-3.')
 
-    verify_model_args(model_args, quant_args, finetuning_args)
+    if data_args.neat_packing and not data_args.packing:
+        logger.warning(
+            '`neat_packing` requires `packing` is True. Change it to True.')
+        data_args.packing = True
+
+    verify_model_args(model_args, finetuning_args)
     check_extra_dependencies(model_args, finetuning_args, training_args)
 
     if (training_args.do_train and finetuning_args.finetuning_type == 'lora'
-            and quant_args.quant_bit is None and model_args.resize_vocab
+            and finetuning_args.quant_bit is None and model_args.resize_vocab
             and finetuning_args.additional_target is None):
         logger.warning(
             'Remember to add embedding layers to `additional_target` to make the added tokens trainable.'
         )
 
-    if (training_args.do_train and quant_args.quant_bit is not None
+    if (training_args.do_train and finetuning_args.quant_bit is not None
             and (not model_args.upcast_layernorm)):
         logger.warning(
             'We recommend enable `upcast_layernorm` in quantized training.')
@@ -281,7 +305,7 @@ def get_train_args(args: Optional[Dict[str, Any]] = None) -> _TRAIN_CLS:
             'Using GaLore with mixed precision training may significantly increases GPU memory usage.'
         )
 
-    if (not training_args.do_train) and quant_args.quant_bit is not None:
+    if (not training_args.do_train) and finetuning_args.quant_bit is not None:
         logger.warning(
             'Evaluating model in 4/8-bit mode may cause lower scores.')
 
@@ -291,7 +315,7 @@ def get_train_args(args: Optional[Dict[str, Any]] = None) -> _TRAIN_CLS:
             'Specify `ref_model` for computing rewards at evaluation.')
 
     # Post-process training arguments
-    if (training_args.parallel_mode.value == 'distributed'
+    if (training_args.parallel_mode == ParallelMode.DISTRIBUTED
             and training_args.ddp_find_unused_parameters is None
             and finetuning_args.finetuning_type == 'lora'):
         logger.warning(
@@ -316,18 +340,19 @@ def get_train_args(args: Optional[Dict[str, Any]] = None) -> _TRAIN_CLS:
             and not training_args.overwrite_output_dir
             and can_resume_from_checkpoint):
         last_checkpoint = get_last_checkpoint(training_args.output_dir)
-        files = os.listdir(training_args.output_dir)
-        if (last_checkpoint is None and len(files) > 0
-                and (len(files) != 1 or files[0] != TRAINER_CONFIG)):
+        if last_checkpoint is None and any(
+                os.path.isfile(os.path.join(training_args.output_dir, name))
+                for name in CHECKPOINT_NAMES):
             raise ValueError(
                 'Output directory already exists and is not empty. Please set `overwrite_output_dir`.'
             )
 
         if last_checkpoint is not None:
             training_args.resume_from_checkpoint = last_checkpoint
+            logger.info('Resuming training from {}.'.format(
+                training_args.resume_from_checkpoint))
             logger.info(
-                'Resuming training from {}. Change `output_dir` or use `overwrite_output_dir` to avoid.'
-                .format(training_args.resume_from_checkpoint))
+                'Change `output_dir` or use `overwrite_output_dir` to avoid.')
 
     if (finetuning_args.stage in ['rm', 'ppo']
             and finetuning_args.finetuning_type == 'lora'
@@ -344,6 +369,7 @@ def get_train_args(args: Optional[Dict[str, Any]] = None) -> _TRAIN_CLS:
 
     model_args.device_map = {'': get_current_device()}
     model_args.model_max_length = data_args.cutoff_len
+    model_args.block_diag_attn = data_args.neat_packing
     data_args.packing = (data_args.packing if data_args.packing is not None
                          else finetuning_args.stage == 'pt')
 
@@ -354,7 +380,7 @@ def get_train_args(args: Optional[Dict[str, Any]] = None) -> _TRAIN_CLS:
             training_args.local_rank,
             training_args.device,
             training_args.n_gpu,
-            training_args.parallel_mode.value == 'distributed',
+            training_args.parallel_mode == ParallelMode.DISTRIBUTED,
             str(model_args.compute_dtype),
         ))
 
@@ -366,13 +392,12 @@ def get_train_args(args: Optional[Dict[str, Any]] = None) -> _TRAIN_CLS:
         training_args,
         finetuning_args,
         generating_args,
-        quant_args,
     )
 
 
 def get_infer_args(args: Optional[Dict[str, Any]] = None) -> _INFER_CLS:
-    model_args, data_args, finetuning_args, generating_args, quant_args = (
-        parse_infer_args(args))
+    model_args, data_args, finetuning_args, generating_args = parse_infer_args(
+        args)
 
     set_transformers_logging()
 
@@ -384,7 +409,7 @@ def get_infer_args(args: Optional[Dict[str, Any]] = None) -> _INFER_CLS:
             raise ValueError(
                 'vLLM engine only supports auto-regressive models.')
 
-        if quant_args.quant_bit is not None:
+        if finetuning_args.quant_bit is not None:
             raise ValueError(
                 'vLLM engine does not support bnb quant (GPTQ and AWQ are supported).'
             )
@@ -401,7 +426,7 @@ def get_infer_args(args: Optional[Dict[str, Any]] = None) -> _INFER_CLS:
         raise ValueError(
             'Reward server does not support MLLM yet. Stay tuned.')
 
-    verify_model_args(model_args, quant_args, finetuning_args)
+    verify_model_args(model_args, finetuning_args)
     check_extra_dependencies(model_args, finetuning_args)
 
     if model_args.export_dir is not None:
@@ -413,8 +438,7 @@ def get_infer_args(args: Optional[Dict[str, Any]] = None) -> _INFER_CLS:
 
 
 def get_eval_args(args: Optional[Dict[str, Any]] = None) -> _EVAL_CLS:
-    model_args, data_args, eval_args, finetuning_args, quant_args = parse_eval_args(
-        args)
+    model_args, data_args, eval_args, finetuning_args = parse_eval_args(args)
 
     set_transformers_logging()
 
@@ -425,7 +449,7 @@ def get_eval_args(args: Optional[Dict[str, Any]] = None) -> _EVAL_CLS:
         raise ValueError(
             'vLLM backend is only available for API, CLI and Web.')
 
-    verify_model_args(model_args, quant_args, finetuning_args)
+    verify_model_args(model_args, finetuning_args)
     check_extra_dependencies(model_args, finetuning_args)
 
     model_args.device_map = 'auto'

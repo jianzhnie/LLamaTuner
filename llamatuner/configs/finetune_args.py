@@ -144,7 +144,7 @@ class QuantArguments:
         },
     )
     llm_int8_threshold: Optional[float] = field(
-        default=6,
+        default=6.0,
         metadata={
             'help':
             'The threshold for int8 quantization. Only applicable for LLMs with int8 weights.'
