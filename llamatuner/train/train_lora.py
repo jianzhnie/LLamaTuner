@@ -81,6 +81,7 @@ def load_model_tokenizer(
     model = AutoModelForCausalLM.from_pretrained(
         model_args.model_name_or_path,
         device_map=device_map,
+        low_cpu_mem_usage=True,
         # BitsAndBytesConfig设置存储格式和计算格式，以及优化方式
         quantization_config=BitsAndBytesConfig(
             load_in_4bit=load_in_4bit,
@@ -162,7 +163,7 @@ def load_model_tokenizer(
     return model, tokenizer
 
 
-def train(
+def run_lora_sft(
     model_args: ModelArguments,
     data_args: DataArguments,
     training_args: TrainingArguments,
@@ -334,4 +335,5 @@ if __name__ == '__main__':
     ))
     model_args, data_args, training_args, finetune_args, generating_args = (
         parser.parse_args_into_dataclasses())
-    train(model_args, data_args, training_args, finetune_args, generating_args)
+    run_lora_sft(model_args, data_args, training_args, finetune_args,
+                 generating_args)
