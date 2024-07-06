@@ -509,10 +509,13 @@ class FinetuningArguments(
             'Whether or not to train model in purely bf16 precision (without AMP).'
         },
     )
-    stage: Literal['pt', 'sft', 'rm', 'ppo', 'dpo', 'kto', 'orpo'] = field(
-        default='sft',
-        metadata={'help': 'Which stage will be performed in training.'},
-    )
+    stage: Literal['full', 'pt', 'sft', 'rm', 'ppo', 'dpo', 'kto',
+                   'orpo'] = field(
+                       default='sft',
+                       metadata={
+                           'help': 'Which stage will be performed in training.'
+                       },
+                   )
     finetuning_type: Literal['lora', 'freeze', 'full'] = field(
         default='lora',
         metadata={'help': 'Which fine-tuning method to use.'},

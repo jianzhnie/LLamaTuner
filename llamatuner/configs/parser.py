@@ -97,11 +97,6 @@ def verify_model_args(
         if finetuning_args.finetuning_type != 'lora':
             raise ValueError('Quant is only compatible with the LoRA method.')
 
-        if finetuning_args.pissa_init:
-            raise ValueError(
-                'Please use scripts/pissa_init.py to initialize PiSSA for a quantized model.'
-            )
-
         if model_args.resize_vocab:
             raise ValueError(
                 'Cannot resize embedding layers of a quantized model.')
@@ -237,9 +232,6 @@ def get_train_args(args: Optional[Dict[str, Any]] = None) -> TRAIN_CLS:
         raise ValueError(
             'Cannot use device map for quantized models in training.')
 
-    if finetuning_args.pissa_init and is_deepspeed_zero3_enabled():
-        raise ValueError('PiSSA is incompatible with DeepSpeed ZeRO-3.')
-
     if finetuning_args.pure_bf16:
         if not is_torch_bf16_gpu_available():
             raise ValueError('This device does not support `pure_bf16`.')
@@ -274,11 +266,6 @@ def get_train_args(args: Optional[Dict[str, Any]] = None) -> TRAIN_CLS:
         raise ValueError('Cannot use packing in MLLM fine-tuning.')
     if model_args.use_unsloth and is_deepspeed_zero3_enabled():
         raise ValueError('Unsloth is incompatible with DeepSpeed ZeRO-3.')
-
-    if data_args.neat_packing and not data_args.packing:
-        logger.warning(
-            '`neat_packing` requires `packing` is True. Change it to True.')
-        data_args.packing = True
 
     verify_model_args(model_args, finetuning_args)
     check_extra_dependencies(model_args, finetuning_args, training_args)
@@ -369,7 +356,6 @@ def get_train_args(args: Optional[Dict[str, Any]] = None) -> TRAIN_CLS:
 
     model_args.device_map = {'': get_current_device()}
     model_args.model_max_length = data_args.cutoff_len
-    model_args.block_diag_attn = data_args.neat_packing
     data_args.packing = (data_args.packing if data_args.packing is not None
                          else finetuning_args.stage == 'pt')
 

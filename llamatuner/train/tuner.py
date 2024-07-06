@@ -8,7 +8,7 @@ from llamatuner.train.train_lora import run_lora_sft
 def run_exp(args: Optional[Dict[str, Any]] = None) -> None:
     model_args, data_args, training_args, finetuning_args, generating_args = (
         get_train_args(args))
-    if finetuning_args.stage == 'full_sft':
+    if finetuning_args.stage == 'full':
         run_full_sft(
             model_args,
             data_args,
@@ -16,7 +16,7 @@ def run_exp(args: Optional[Dict[str, Any]] = None) -> None:
             finetuning_args,
             generating_args,
         )
-    elif finetuning_args.stage == 'lora_sft':
+    elif finetuning_args.stage == 'sft':
         run_lora_sft(
             model_args,
             data_args,
