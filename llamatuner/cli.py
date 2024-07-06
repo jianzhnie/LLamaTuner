@@ -6,12 +6,11 @@ from enum import Enum, unique
 
 sys.path.append(os.getcwd())
 
+from llamatuner import launcher
 from llamatuner.train.tuner import run_exp
 from llamatuner.utils.env import VERSION, print_env_info
 from llamatuner.utils.logger_utils import get_logger
 from llamatuner.utils.misc import get_device_count
-
-from . import launcher
 
 USAGE = (
     '-' * 70 + '\n' +
