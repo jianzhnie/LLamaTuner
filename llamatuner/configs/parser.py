@@ -26,31 +26,31 @@ logger = get_logger('llamatuner')
 
 check_dependencies()
 
-_TRAIN_ARGS = [
+TRAIN_ARGS = [
     ModelArguments,
     DataArguments,
     TrainingArguments,
     FinetuningArguments,
     GeneratingArguments,
 ]
-_TRAIN_CLS = Tuple[ModelArguments, DataArguments, TrainingArguments,
-                   FinetuningArguments, GeneratingArguments, ]
-_INFER_ARGS = [
+TRAIN_CLS = Tuple[ModelArguments, DataArguments, TrainingArguments,
+                  FinetuningArguments, GeneratingArguments, ]
+INFER_ARGS = [
     ModelArguments,
     DataArguments,
     FinetuningArguments,
     GeneratingArguments,
 ]
-_INFER_CLS = Tuple[ModelArguments, DataArguments, FinetuningArguments,
-                   GeneratingArguments]
-_EVAL_ARGS = [
+INFER_CLS = Tuple[ModelArguments, DataArguments, FinetuningArguments,
+                  GeneratingArguments]
+EVAL_ARGS = [
     ModelArguments,
     DataArguments,
     EvaluationArguments,
     FinetuningArguments,
 ]
-_EVAL_CLS = Tuple[ModelArguments, DataArguments, EvaluationArguments,
-                  FinetuningArguments, ]
+EVAL_CLS = Tuple[ModelArguments, DataArguments, EvaluationArguments,
+                 FinetuningArguments, ]
 
 
 def parse_args(parser: HfArgumentParser,
@@ -150,29 +150,29 @@ def check_extra_dependencies(
         require_version('rouge_chinese', 'To fix: pip install rouge-chinese')
 
 
-def parse_train_args(args: Optional[Dict[str, Any]] = None) -> _TRAIN_CLS:
-    parser = HfArgumentParser(_TRAIN_ARGS)
+def parsetrain_args(args: Optional[Dict[str, Any]] = None) -> TRAIN_CLS:
+    parser = HfArgumentParser(TRAIN_ARGS)
     return parse_args(parser, args)
 
 
-def parse_infer_args(args: Optional[Dict[str, Any]] = None) -> _INFER_CLS:
-    parser = HfArgumentParser(_INFER_ARGS)
+def parseinfer_args(args: Optional[Dict[str, Any]] = None) -> INFER_CLS:
+    parser = HfArgumentParser(INFER_ARGS)
     return parse_args(parser, args)
 
 
-def parse_eval_args(args: Optional[Dict[str, Any]] = None) -> _EVAL_CLS:
-    parser = HfArgumentParser(_EVAL_ARGS)
+def parseeval_args(args: Optional[Dict[str, Any]] = None) -> EVAL_CLS:
+    parser = HfArgumentParser(EVAL_ARGS)
     return parse_args(parser, args)
 
 
-def get_train_args(args: Optional[Dict[str, Any]] = None) -> _TRAIN_CLS:
+def gettrain_args(args: Optional[Dict[str, Any]] = None) -> TRAIN_CLS:
     (
         model_args,
         data_args,
         training_args,
         finetuning_args,
         generating_args,
-    ) = parse_train_args(args)
+    ) = parsetrain_args(args)
 
     # Setup logging
     if training_args.should_log:
@@ -395,8 +395,8 @@ def get_train_args(args: Optional[Dict[str, Any]] = None) -> _TRAIN_CLS:
     )
 
 
-def get_infer_args(args: Optional[Dict[str, Any]] = None) -> _INFER_CLS:
-    model_args, data_args, finetuning_args, generating_args = parse_infer_args(
+def getinfer_args(args: Optional[Dict[str, Any]] = None) -> INFER_CLS:
+    model_args, data_args, finetuning_args, generating_args = parseinfer_args(
         args)
 
     set_transformers_logging()
@@ -437,8 +437,8 @@ def get_infer_args(args: Optional[Dict[str, Any]] = None) -> _INFER_CLS:
     return model_args, data_args, finetuning_args, generating_args
 
 
-def get_eval_args(args: Optional[Dict[str, Any]] = None) -> _EVAL_CLS:
-    model_args, data_args, eval_args, finetuning_args = parse_eval_args(args)
+def geteval_args(args: Optional[Dict[str, Any]] = None) -> EVAL_CLS:
+    model_args, data_args, eval_args, finetuning_args = parseeval_args(args)
 
     set_transformers_logging()
 
