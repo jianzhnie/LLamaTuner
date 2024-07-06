@@ -5,6 +5,10 @@ from typing import Any, Dict, Optional, Tuple
 
 import torch
 import transformers
+from robin.LLamaTuner.llamatuner.configs.finetuning_args import \
+    FinetuningArguments
+from robin.LLamaTuner.llamatuner.configs.generating_args import \
+    GeneratingArguments
 from transformers import HfArgumentParser
 from transformers import Seq2SeqTrainingArguments as TrainingArguments
 from transformers.integrations import is_deepspeed_zero3_enabled
@@ -15,8 +19,6 @@ from transformers.utils.versions import require_version
 
 from llamatuner.configs.data_args import DataArguments
 from llamatuner.configs.eval_args import EvaluationArguments
-from llamatuner.configs.finetune_args import FinetuningArguments
-from llamatuner.configs.gen_args import GeneratingArguments
 from llamatuner.configs.model_args import ModelArguments
 from llamatuner.utils.constants import CHECKPOINT_NAMES
 from llamatuner.utils.logger_utils import get_logger

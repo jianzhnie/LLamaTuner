@@ -1,13 +1,13 @@
 from typing import Any, Dict, Optional
 
-from llamatuner.configs.parser import get_train_args
+from llamatuner.configs.parser import gettrain_args
 from llamatuner.train.train_full import run_full_sft
 from llamatuner.train.train_lora import run_lora_sft
 
 
 def run_exp(args: Optional[Dict[str, Any]] = None) -> None:
     model_args, data_args, training_args, finetuning_args, generating_args = (
-        get_train_args(args))
+        gettrain_args(args))
     if finetuning_args.stage == 'full_sft':
         run_full_sft(
             model_args,

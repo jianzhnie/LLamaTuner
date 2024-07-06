@@ -2,9 +2,10 @@ from typing import List
 
 import bitsandbytes as bnb
 import torch
+from robin.LLamaTuner.llamatuner.configs.finetuning_args import \
+    FinetuningArguments
 from transformers import PretrainedConfig, PreTrainedModel, PreTrainedTokenizer
 
-from llamatuner.configs.finetune_args import FinetuningArguments
 from llamatuner.utils.logger_utils import get_logger
 
 logger = get_logger('llamatuner')
