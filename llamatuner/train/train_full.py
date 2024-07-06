@@ -233,7 +233,7 @@ if __name__ == '__main__':
         FinetuningArguments,
         GeneratingArguments,
     ))
-    (model_args, data_args, training_args, finetune_args,
-     generating_args) = (parser.parse_args_into_dataclasses())
+    model_args, data_args, training_args, finetune_args, generating_args = (
+        parser.parse_args_into_dataclasses())
     run_full_sft(model_args, data_args, training_args, finetune_args,
                  generating_args)

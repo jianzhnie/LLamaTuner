@@ -5,10 +5,13 @@ import sys
 from enum import Enum, unique
 
 sys.path.append(os.getcwd())
-from llamatuner.tuner import launch, run_exp
+
+from llamatuner.train.tuner import run_exp
 from llamatuner.utils.env import VERSION, print_env_info
 from llamatuner.utils.logger_utils import get_logger
 from llamatuner.utils.misc import get_device_count
+
+from . import launcher
 
 USAGE = (
     '-' * 70 + '\n' +
@@ -39,7 +42,7 @@ class Command(str, Enum):
     HELP = 'help'
 
 
-def main():
+def main() -> None:
     command = sys.argv.pop(1) if len(sys.argv) != 1 else Command.HELP
     if command == Command.ENV:
         print_env_info()
@@ -62,7 +65,7 @@ def main():
                                                    str(get_device_count())),
                      master_addr=master_addr,
                      master_port=master_port,
-                     file_name=launch.__file__,
+                     file_name=launcher.__file__,
                      args=' '.join(sys.argv[1:]),
                  ),
                 shell=True,
@@ -76,3 +79,7 @@ def main():
         print(USAGE)
     else:
         raise NotImplementedError('Unknown command: {}'.format(command))
+
+
+if __name__ == '__main__':
+    main()

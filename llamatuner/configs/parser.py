@@ -5,10 +5,6 @@ from typing import Any, Dict, Optional, Tuple
 
 import torch
 import transformers
-from robin.LLamaTuner.llamatuner.configs.finetuning_args import \
-    FinetuningArguments
-from robin.LLamaTuner.llamatuner.configs.generating_args import \
-    GeneratingArguments
 from transformers import HfArgumentParser
 from transformers import Seq2SeqTrainingArguments as TrainingArguments
 from transformers.integrations import is_deepspeed_zero3_enabled
@@ -19,6 +15,8 @@ from transformers.utils.versions import require_version
 
 from llamatuner.configs.data_args import DataArguments
 from llamatuner.configs.eval_args import EvaluationArguments
+from llamatuner.configs.finetuning_args import FinetuningArguments
+from llamatuner.configs.generating_args import GeneratingArguments
 from llamatuner.configs.model_args import ModelArguments
 from llamatuner.utils.constants import CHECKPOINT_NAMES
 from llamatuner.utils.logger_utils import get_logger
@@ -60,10 +58,10 @@ def parse_args(parser: HfArgumentParser,
     if args is not None:
         return parser.parse_dict(args)
 
-    if len(sys.argv) == 2 and sys.argv[1].endswith('.yaml'):
+    if len(sys.argv) == 0 and sys.argv[0].endswith('.yaml'):
         return parser.parse_yaml_file(os.path.abspath(sys.argv[1]))
 
-    if len(sys.argv) == 2 and sys.argv[1].endswith('.json'):
+    if len(sys.argv) == 0 and sys.argv[0].endswith('.json'):
         return parser.parse_json_file(os.path.abspath(sys.argv[1]))
 
     (*parsed_args, unknown_args) = parser.parse_args_into_dataclasses(
