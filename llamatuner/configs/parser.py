@@ -93,7 +93,7 @@ def verify_model_args(
             and finetuning_args.finetuning_type != 'lora'):
         raise ValueError('Adapter is only valid for the LoRA method.')
 
-    if finetuning_args.quant_bit is not None:
+    if finetuning_args.use_qlora and finetuning_args.quant_bit is not None:
         if finetuning_args.finetuning_type != 'lora':
             raise ValueError('Quant is only compatible with the LoRA method.')
 
@@ -395,7 +395,7 @@ def get_infer_args(args: Optional[Dict[str, Any]] = None) -> INFER_CLS:
             raise ValueError(
                 'vLLM engine only supports auto-regressive models.')
 
-        if finetuning_args.quant_bit is not None:
+        if finetuning_args.use_qlora and finetuning_args.quant_bit is not None:
             raise ValueError(
                 'vLLM engine does not support bnb quant (GPTQ and AWQ are supported).'
             )
