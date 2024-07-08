@@ -1,5 +1,5 @@
 ### model
-model_name_or_path: saves/llama3-8b/full/sft
+model_name_or_path: work_dir/llama3-8b/full/sft/
 
 ### method
 stage: sft
@@ -7,7 +7,7 @@ do_predict: true
 finetuning_type: full
 
 ### dataset
-dataset: identity,alpaca_en_demo
+dataset: alpaca
 template: llama3
 cutoff_len: 1024
 max_samples: 50
@@ -15,7 +15,7 @@ overwrite_cache: true
 preprocessing_num_workers: 16
 
 ### output
-output_dir: saves/llama3-8b/full/predict
+output_dir: work_dir/llama3-8b/full/sft/predict
 overwrite_output_dir: true
 
 ### eval

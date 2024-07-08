@@ -1,6 +1,6 @@
 ### model
 model_name_or_path: Qwen/Qwen1.5-0.5B
-quantization_bit: 4
+quant_bit: 4
 
 ### method
 stage: sft
@@ -9,7 +9,7 @@ finetuning_type: lora
 lora_target: q_proj,v_proj
 
 ### dataset
-dataset: identity,alpaca_en_demo
+dataset: alpaca
 template: qwen
 cutoff_len: 1024
 max_samples: 1000
@@ -17,23 +17,30 @@ overwrite_cache: true
 preprocessing_num_workers: 16
 
 ### output
-output_dir: saves/qwen-0.5B/lora/sft
-logging_steps: 10
+output_dir: work_dir/qwen1.5-0.5b/qlora/sft
+save_strategy: steps
 save_steps: 500
-plot_loss: true
+save_total_limit: 5
 overwrite_output_dir: true
+
+# logger settings
+logging_steps: 10
+report_to: wandb
+wandb_project: llamatuner
+wandb_run_name: qwen1.5-0.5b_qlora_sft
 
 ### train
 per_device_train_batch_size: 1
 gradient_accumulation_steps: 8
-learning_rate: 0.0001
+gradient_checkpointing: True
 num_train_epochs: 3.0
+learning_rate: 0.0001
 lr_scheduler_type: cosine
 warmup_steps: 0.1
 fp16: true
 
 ### eval
-val_size: 0.1
+eval_dataset_size: 0.1
 per_device_eval_batch_size: 1
-evaluation_strategy: steps
+eval_strategy: steps
 eval_steps: 500

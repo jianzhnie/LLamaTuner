@@ -6,6 +6,9 @@ stage: sft
 do_train: true
 finetuning_type: full
 
+### ddp
+ddp_timeout: 180000000
+
 ### dataset
 dataset: alpaca
 template: qwen
@@ -15,7 +18,7 @@ overwrite_cache: true
 preprocessing_num_workers: 16
 
 ### output
-output_dir: work_dir/full/alpaca_qwen_full
+output_dir: work_dir/qwen1.5-0.5b/full/sft/
 save_strategy: steps
 save_steps: 500
 save_total_limit: 5
@@ -25,22 +28,19 @@ overwrite_output_dir: true
 logging_steps: 10
 report_to: wandb
 wandb_project: llamatuner
-wandb_run_name: qwen_full_sft_alpaca
+wandb_run_name: qwen1.5-0.5b_full_sft_alpaca
 
 ### train
 per_device_train_batch_size: 1
 gradient_accumulation_steps: 2
 gradient_checkpointing: True
+num_train_epochs: 3.0
 optim: adamw_torch
 learning_rate: 1.0e-4
 lr_scheduler_type: cosine
 weight_decay: 0.01
 warmup_ratio: 0.1
-num_train_epochs: 3.0
 fp16: true
-
-### ddp
-ddp_timeout: 180000000
 
 ### eval
 eval_dataset_size: 0.1
