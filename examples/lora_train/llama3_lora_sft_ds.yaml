@@ -12,7 +12,7 @@ ddp_timeout: 180000000
 deepspeed: examples/deepspeed/ds_z3_config.json
 
 ### dataset
-dataset: identity,alpaca_en_demo
+dataset: alpaca
 template: llama3
 cutoff_len: 1024
 max_samples: 1000
@@ -20,23 +20,31 @@ overwrite_cache: true
 preprocessing_num_workers: 16
 
 ### output
-output_dir: saves/llama3-8b/lora/sft
-logging_steps: 10
+output_dir: work_dir/llama3-8b/lora/sft/
+save_strategy: steps
 save_steps: 500
-plot_loss: true
+save_total_limit: 5
 overwrite_output_dir: true
+
+### logging
+logging_steps: 10
+report_to: wandb
+wandb_project: llamatuner
+wandb_run_name: alpaca_llama3-8b_lora-sft
 
 ### train
 per_device_train_batch_size: 1
 gradient_accumulation_steps: 2
+gradient_checkpointing: True
 learning_rate: 1.0e-4
-num_train_epochs: 3.0
 lr_scheduler_type: cosine
+weight_decay: 0.0
 warmup_ratio: 0.1
-fp16: true
+num_train_epochs: 3.0
+fp16: True
 
 ### eval
-val_size: 0.1
+eval_dataset_size: 0.1
 per_device_eval_batch_size: 1
 eval_strategy: steps
 eval_steps: 500

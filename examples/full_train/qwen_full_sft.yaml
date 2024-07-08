@@ -1,5 +1,5 @@
 ### model
-model_name_or_path: meta-llama/Meta-Llama-3-8B-Instruct
+model_name_or_path: Qwen/Qwen1.5-0.5B
 
 ### method
 stage: sft
@@ -8,29 +8,32 @@ finetuning_type: full
 
 ### ddp
 ddp_timeout: 180000000
-deepspeed: examples/deepspeed/ds_z3_config.json
 
 ### dataset
 dataset: alpaca
-template: llama3
+template: qwen
 cutoff_len: 1024
 max_samples: 1000
 overwrite_cache: true
 preprocessing_num_workers: 16
 
 ### output
-output_dir: work_dir/llama3-8b/full/sft
-wandb_project: llamatuner
-wandb_run_name: llama3-8b_full_sft_alpaca
-logging_steps: 10
+output_dir: work_dir/qwen1.5-0.5b/full/sft/
 save_strategy: steps
-save_total_limit: 5
 save_steps: 500
+save_total_limit: 5
 overwrite_output_dir: true
+
+# logger settings
+logging_steps: 10
+report_to: wandb
+wandb_project: llamatuner
+wandb_run_name: qwen1.5-0.5b_full_sft_alpaca
 
 ### train
 per_device_train_batch_size: 1
 gradient_accumulation_steps: 2
+gradient_checkpointing: True
 num_train_epochs: 3.0
 optim: adamw_torch
 learning_rate: 1.0e-4
@@ -40,7 +43,7 @@ warmup_ratio: 0.1
 fp16: true
 
 ### eval
-eval_data_size: 0.1
+eval_dataset_size: 0.1
 per_device_eval_batch_size: 1
 eval_strategy: steps
 eval_steps: 500
