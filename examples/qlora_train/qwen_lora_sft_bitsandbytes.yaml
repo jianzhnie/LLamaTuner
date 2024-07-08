@@ -1,6 +1,7 @@
 ### model
 model_name_or_path: Qwen/Qwen1.5-0.5B
 quant_bit: 4
+use_qlora : true
 
 ### method
 stage: sft
@@ -36,7 +37,7 @@ gradient_checkpointing: True
 num_train_epochs: 3.0
 learning_rate: 0.0001
 lr_scheduler_type: cosine
-warmup_steps: 0.1
+warmup_ratio: 0.1
 fp16: true
 
 ### eval

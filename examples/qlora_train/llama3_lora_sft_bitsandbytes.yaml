@@ -1,6 +1,7 @@
 ### model
 model_name_or_path: meta-llama/Meta-Llama-3-8B-Instruct
 quant_bit: 4
+use_qlora : true
 
 ### method
 stage: sft
