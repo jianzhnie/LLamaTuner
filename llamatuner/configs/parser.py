@@ -210,7 +210,7 @@ def get_train_args(args: Optional[Dict[str, Any]] = None) -> TRAIN_CLS:
 
     if training_args.parallel_mode == ParallelMode.NOT_DISTRIBUTED:
         raise ValueError(
-            "Please launch distributed training with `llamatuner-cli` or `torchrun`."
+            'Please launch distributed training with `llamatuner-cli` or `torchrun`.'
         )
 
     if (training_args.deepspeed
