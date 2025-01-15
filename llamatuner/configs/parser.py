@@ -181,9 +181,6 @@ def get_train_args(args: Optional[Dict[str, Any]] = None) -> TRAIN_CLS:
         raise ValueError(
             '`predict_with_generate` cannot be set as True except SFT.')
 
-    if finetuning_args.stage != 'sft' and data_args.neat_packing:
-        raise ValueError('`neat_packing` cannot be set as True except SFT.')
-
     if (finetuning_args.stage == 'sft' and training_args.do_predict
             and not training_args.predict_with_generate):
         raise ValueError(
@@ -213,7 +210,7 @@ def get_train_args(args: Optional[Dict[str, Any]] = None) -> TRAIN_CLS:
 
     if training_args.parallel_mode == ParallelMode.NOT_DISTRIBUTED:
         raise ValueError(
-            'Please launch distributed training with `llamafactory-cli` or `torchrun`.'
+            'Please launch distributed training with `llamatuner-cli` or `torchrun`.'
         )
 
     if (training_args.deepspeed
