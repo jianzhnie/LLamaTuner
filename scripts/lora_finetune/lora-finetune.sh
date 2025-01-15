@@ -1,4 +1,4 @@
-python tools/train_lora.py \
+python llamatuner/train/sft/train_lora.py \
     --model_name_or_path facebook/opt-125m \
     --dataset alpaca \
     --output_dir work_dir/lora-finetune \
