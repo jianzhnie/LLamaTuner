@@ -62,11 +62,8 @@ LLamaTuner is an efficient, flexible and full-featured toolkit for fine-tuning L
   - [Getting Started](#getting-started)
     - [Clone the code](#clone-the-code)
   - [Getting Started](#getting-started-1)
-    - [QLora int4 Finetune](#qlora-int4-finetune)
-  - [Known Issues and Limitations](#known-issues-and-limitations)
   - [License](#license)
   - [Acknowledgements](#acknowledgements)
-  - [Some lmm fine-tuning repos](#some-lmm-fine-tuning-repos)
   - [Citation](#citation)
 
 
@@ -235,36 +232,12 @@ cd LLamaTuner
 
 | main function                    | Useage                                                                               | Scripts                                    |
 | -------------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------ |
-| [train.py](tools/train.py)           | Full finetune LLMs on  SFT datasets                                                  | [full_finetune](./scripts/full_finetune)   |
-| [train_lora.py](tools/train_lora.py) | Finetune LLMs by using Lora  (Low-Rank Adaptation of Large Language Models finetune) | [lora_finetune](./scripts/lora_finetune)   |
-| [train_qlora.py](tools/rain_qlora.py) | Finetune LLMs by using QLora (QLoRA: Efficient Finetuning of Quantized LLMs)         | [qlora_finetune](./scripts/qlora_finetune) |
-
-### QLora int4 Finetune
-
-The `train_qlora.py` code is a starting point for finetuning and inference on various datasets.
-Basic command for finetuning a baseline model on the Alpaca dataset:
-
-```bash
-python train_qlora.py --model_name_or_path <path_or_name>
-```
-
-For models larger than 13B, we recommend adjusting the learning rate:
-
-```bash
-python train_qlora.py –learning_rate 0.0001 --model_name_or_path <path_or_name>
-```
-To find more scripts for finetuning and inference, please refer to the `scripts` folder.
+| [train_full.py](./llamatuner/train/sft/train_full.py)           | Full finetune LLMs on  SFT datasets                                                  | [full_finetune](./scripts/full_finetune/full-finetune.sh)   |
+| [train_lora.py](./llamatuner/train/sft/train_lora.py) | Finetune LLMs by using Lora  (Low-Rank Adaptation of Large Language Models finetune) | [lora_finetune](./scripts/lora_finetune/lora-finetune.sh)   |
+| [train_qlora.py](./llamatuner/train/sft/train_lora.py) | Finetune LLMs by using QLora (QLoRA: Efficient Finetuning of Quantized LLMs)         | [qlora_finetune](./scripts/qlora_finetune/qlora-finetune.sh) |
 
 
 
-## Known Issues and Limitations
-
-Here a list of known issues and bugs. If your issue is not reported here, please open a new issue and describe the problem.
-
-1. 4-bit inference is slow. Currently, our 4-bit inference implementation is not yet integrated with the 4-bit matrix multiplication
-2. Resuming a LoRA training run with the Trainer currently runs on an error
-3. Currently, using `bnb_4bit_compute_type='fp16'` can lead to instabilities. For 7B LLaMA, only 80% of finetuning runs complete without error. We have solutions, but they are not integrated yet into bitsandbytes.
-4. Make sure that `tokenizer.bos_token_id = 1` to avoid generation issues.
 
 ## License
 
@@ -291,16 +264,6 @@ We appreciate the work by many open-source contributors, especially:
 - [qlora](https://github.com/artidoro/qlora)
 - [bitsandbytes](https://github.com/TimDettmers/bitsandbytes)
 
-
-## Some lmm fine-tuning repos
-
-- https://github.com/QwenLM
-- https://github.com/InternLM
-- https://github.com/ymcui/Chinese-LLaMA-Alpaca-3
-- https://github.com/ymcui/Chinese-Mixtral
-- https://github.com/SmartFlowAI/EmoLLM
-- https://github.com/yangjianxin1/Firefly
-- https://github.com/LiuHC0428/LAW-GPT
 
 ## Citation
 
