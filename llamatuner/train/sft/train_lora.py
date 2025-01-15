@@ -7,6 +7,7 @@ import sys
 import time
 from typing import Tuple, Union
 
+import deepspeed
 import torch
 import wandb
 from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
@@ -15,7 +16,7 @@ from transformers import (AutoModelForCausalLM, AutoTokenizer,
                           HfArgumentParser, PreTrainedModel,
                           PreTrainedTokenizer)
 from transformers import Seq2SeqTrainingArguments as TrainingArguments
-from transformers import Trainer, deepspeed
+from transformers import Trainer
 
 sys.path.append(os.getcwd())
 from llamatuner.configs import (DataArguments, FinetuningArguments,

@@ -6,7 +6,7 @@ import torch
 import transformers
 from transformers import AutoModelForCausalLM, AutoTokenizer, GenerationConfig
 
-from llamatuner.utils.apply_lora import apply_lora
+from llamatuner.train.apply_lora import apply_lora
 from llamatuner.utils.stream_server import Iteratorize, Stream
 
 

@@ -5,6 +5,10 @@ import torch
 from peft import PeftModel
 from transformers import AutoModelForCausalLM, AutoTokenizer, PreTrainedModel
 
+from llamatuner.utils.logger_utils import get_logger
+
+logger = get_logger(__name__)
+
 
 def apply_lora(
     base_model_path: str,
@@ -27,7 +31,7 @@ def apply_lora(
         Tuple[AutoModelForCausalLM, AutoTokenizer]: A tuple containing the target model and its tokenizer.
     """
     # Load the base model and tokenizer
-    print(f'Loading the base model from {base_model_path}')
+    logger.info(f'Loading the base model from {base_model_path}')
     # Set configuration kwargs for tokenizer.
     config_kwargs = {
         'cache_dir': cache_dir,
@@ -43,7 +47,7 @@ def apply_lora(
     )
 
     # Load the tokenizer
-    print(f'Loading the tokenizer from {base_model_path}')
+    logger.info(f'Loading the tokenizer from {base_model_path}')
     # Due to the name of Transformers' LlamaTokenizer, we have to do this
     tokenizer = AutoTokenizer.from_pretrained(
         base_model_path,
@@ -52,14 +56,14 @@ def apply_lora(
     )
 
     # Load the LoRA adapter
-    print(f'Loading the LoRA adapter from {lora_model_path}')
+    logger.info(f'Loading the LoRA adapter from {lora_model_path}')
     model: PreTrainedModel = PeftModel.from_pretrained(base_model,
                                                        lora_model_path)
-    print('Applying the LoRA to  base model')
+    logger.info('Applying the LoRA to  base model')
     model = model.merge_and_unload()
 
     if target_model_path is not None:
-        print(f'Saving the target model to {target_model_path}')
+        logger.info(f'Saving the target model to {target_model_path}')
         model.save_pretrained(target_model_path)
         tokenizer.save_pretrained(target_model_path)
 

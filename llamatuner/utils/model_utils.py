@@ -13,6 +13,9 @@ from transformers.trainer_utils import get_last_checkpoint
 
 from llamatuner.utils.constants import (DEFAULT_BOS_TOKEN, DEFAULT_EOS_TOKEN,
                                         DEFAULT_PAD_TOKEN, DEFAULT_UNK_TOKEN)
+from llamatuner.utils.logger_utils import get_logger
+
+logger = get_logger(__name__)
 
 
 def add_special_tokens_if_missing(tokenizer: PreTrainedTokenizer,
@@ -133,9 +136,9 @@ def print_trainable_parameters(model: torch.nn.Module, kbit: int = 8) -> None:
 
     # Compute and print the percentage of trainable vs all parameters
     trainable_percent = 100 * trainable_params / all_param
-    print(f'trainable params: {trainable_params} || '
-          f'all params: {all_param} || '
-          f'trainable: {trainable_percent}%')
+    logger.info(f'trainable params: {trainable_params} || '
+                f'all params: {all_param} || '
+                f'trainable: {trainable_percent}%')
 
 
 def print_model_dtypes(model: torch.nn.Module) -> None:
@@ -159,12 +162,11 @@ def print_model_dtypes(model: torch.nn.Module) -> None:
 
     # 输出各个数据类型的数量以及所占比例.
     for k, v in dtypes.items():
-        print(f'{k}: {v} ({100 * v / total:.2f}%)')
+        logger.info(f'{k}: {v} ({100 * v / total:.2f}%)')
     return None
 
 
-def check_training_finished(args: argparse.Namespace,
-                            logger=None) -> Tuple[str, bool]:
+def check_training_finished(args: argparse.Namespace) -> Tuple[str, bool]:
     """Given a directory containing previous saved checkpoints, returns the
     path to the last checkpoint if available along with a boolean flag
     indicating whether training has already been completed.
