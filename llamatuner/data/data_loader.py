@@ -1,7 +1,7 @@
-import inspect
 import os
 from typing import Literal, Optional, Union
 
+import numpy as np
 from datasets import Dataset, IterableDataset, load_dataset, load_from_disk
 from transformers import ProcessorMixin, TrainingArguments
 from transformers.tokenization_utils import PreTrainedTokenizer
@@ -53,24 +53,24 @@ def load_single_dataset(
         if os.path.isdir(local_path):
             for file_name in os.listdir(local_path):
                 data_files.append(os.path.join(local_path, file_name))
-                if data_path is None:
-                    data_path = FILEEXT2TYPE.get(
-                        file_name.split('.')[-1], None)
-                elif data_path != FILEEXT2TYPE.get(
-                        file_name.split('.')[-1], None):
-                    raise ValueError('File types should be identical.')
         # Check if the path is a file
         elif os.path.isfile(local_path):
             data_files.append(local_path)
-            data_path = FILEEXT2TYPE.get(local_path.split('.')[-1], None)
         else:
             raise ValueError(f'File {local_path} not found.')
+        data_path = FILEEXT2TYPE.get(
+            os.path.splitext(data_files[0])[-1][1:], None)
         if data_path is None:
-            raise ValueError('File extension must be txt, csv, json or jsonl.')
+            raise ValueError('Allowed file types: {}.'.format(','.join(
+                FILEEXT2TYPE.keys())))
+        if any(data_path != FILEEXT2TYPE.get(
+                os.path.splitext(data_file)[-1][1:], None)
+               for data_file in data_files):
+            raise ValueError('File types should be identical.')
     else:
         raise NotImplementedError('Unsupported dataset source.')
 
-    # Load dataset from Microsoft Hub
+    # Load dataset from ModelScope Hub
     if dataset_attr.load_from == 'ms_hub':
         try:
             from modelscope import MsDataset
@@ -82,11 +82,10 @@ def load_single_dataset(
                 subset_name=dataset_attr.subset,
                 data_dir=dataset_attr.folder,
                 data_files=data_files,
-                split=data_args.split,
+                split=dataset_attr.split,
                 cache_dir=cache_dir,
                 token=model_args.ms_hub_token,
-                use_streaming=(data_args.streaming
-                               and dataset_attr.load_from != 'file'),
+                use_streaming=data_args.streaming,
             )
             if isinstance(dataset, MsDataset):
                 dataset = dataset.to_hf_dataset()
@@ -95,29 +94,35 @@ def load_single_dataset(
                 'Please install modelscope via `pip install modelscope -U`'
             ) from exc
     else:
-        # Prepare arguments for `load_dataset`
-        kwargs = ({
-            'trust_remote_code': True
-        } if 'trust_remote_code' in inspect.signature(load_dataset).parameters
-                  else {})
-
         # Load dataset from Hugging Face Hub or local script/file
         dataset = load_dataset(
             path=data_path,
             name=dataset_attr.subset,
             data_dir=dataset_attr.folder,
             data_files=data_files,
-            split=data_args.split,
+            split=dataset_attr.split,
             cache_dir=model_args.cache_dir,
             token=model_args.hf_hub_token,
-            streaming=(data_args.streaming
-                       and dataset_attr.load_from != 'file'),
-            **kwargs,
+            streaming=data_args.streaming,
+            num_proc=data_args.preprocessing_num_workers,
+            trust_remote_code=model_args.trust_remote_code,
         )
 
-    # Convert dataset to iterable if streaming and loaded from file
-    if data_args.streaming and dataset_attr.load_from == 'file':
-        dataset = dataset.to_iterable_dataset()
+    if dataset_attr.num_samples is not None and not data_args.streaming:
+        target_num = dataset_attr.num_samples
+        indexes = np.random.permutation(
+            len(dataset))[:target_num]  # all samples should be included
+        target_num -= len(indexes)
+        if target_num > 0:
+            expand_indexes = np.random.choice(len(dataset), target_num)
+            indexes = np.concatenate((indexes, expand_indexes), axis=0)
+
+        assert len(
+            indexes) == dataset_attr.num_samples, 'Sample num mismatched.'
+        dataset = dataset.select(indexes)
+        logger.info(
+            f'Sampled {dataset_attr.num_samples} examples from dataset {dataset_attr}.'
+        )
 
     # Truncate dataset if max_train_samples is set
     if data_args.max_samples is not None:
@@ -139,7 +144,7 @@ def get_dataset(
     data_args: DataArguments,
     model_args: ModelArguments,
     training_args: TrainingArguments,
-    stage: Literal['pt', 'sft', 'rm', 'kto'],
+    stage: Literal['pt', 'sft', 'rm', 'ppo', 'kto'],
     tokenizer: PreTrainedTokenizer,
     processor: Optional[ProcessorMixin] = None,
 ) -> Union[Dataset, IterableDataset]:
@@ -150,7 +155,7 @@ def get_dataset(
         data_args (DataArguments): Arguments related to the dataset and data processing.
         model_args (ModelArguments): Arguments related to the model configuration.
         training_args (TrainingArguments): Arguments for training configuration.
-        stage (Literal['pt', 'sft', 'rm', 'kto']): The current training stage.
+        stage (Literal['pt', 'sft', 'rm', 'ppo', 'kto']): The current training stage.
         tokenizer (PreTrainedTokenizer): Tokenizer to be used for preprocessing.
         processor (Optional[ProcessorMixin], optional): Optional processor for additional preprocessing. Defaults to None.
 
@@ -159,7 +164,7 @@ def get_dataset(
     """
     # Adjust the template and tokenizer
     logger.info('Get template and fix tokenizer')
-    template = get_template_and_fix_tokenizer(tokenizer, data_args.template)
+    template = get_template_and_fix_tokenizer(tokenizer, data_args)
     logger.info('Template: %s', template)
 
     if data_args.train_on_prompt and template.efficient_eos:

@@ -57,6 +57,7 @@ class DatasetAttr:
     # Extra configs
     ranking: bool = False
     subset: Optional[str] = None
+    split: str = 'train'
     folder: Optional[str] = None
     num_samples: Optional[int] = None
 
@@ -64,6 +65,7 @@ class DatasetAttr:
     system: Optional[str] = None
     tools: Optional[str] = None
     images: Optional[str] = None
+    videos: Optional[str] = None
 
     # RLHF columns
     chosen: Optional[str] = None
@@ -109,6 +111,7 @@ def get_dataset_list(data_args: DataArguments) -> List[DatasetAttr]:
     Returns:
         List[DatasetAttr]: A list of DatasetAttr objects with configured attributes.
     """
+
     file_path = os.path.join(data_args.dataset_dir, DATA_CONFIG)
     dataset_names = ([ds.strip() for ds in data_args.dataset.split(',')]
                      if data_args.dataset else [])
@@ -167,12 +170,16 @@ def get_dataset_list(data_args: DataArguments) -> List[DatasetAttr]:
         dataset_attr.set_attr('folder', dataset_info)
         dataset_attr.set_attr('ranking', dataset_info, default=False)
         dataset_attr.set_attr('formatting', dataset_info, default='alpaca')
+        dataset_attr.set_attr('split', dataset_info, default='train')
+        dataset_attr.set_attr('folder', dataset_info)
+        dataset_attr.set_attr('num_samples', dataset_info)
 
         if 'columns' in dataset_info:
             column_names = [
                 'system',
                 'tools',
                 'images',
+                'videos',
                 'chosen',
                 'rejected',
                 'kto_tag',
