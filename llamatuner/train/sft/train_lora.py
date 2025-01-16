@@ -22,7 +22,6 @@ sys.path.append(os.getcwd())
 from llamatuner.configs import (DataArguments, FinetuningArguments,
                                 GeneratingArguments, ModelArguments)
 from llamatuner.data.data_loader import get_dataset
-from llamatuner.data.utils import split_dataset
 from llamatuner.model.callbacks import ComputeMetrics
 from llamatuner.model.utils.misc import find_all_linear_modules
 from llamatuner.utils.constants import IGNORE_INDEX
@@ -226,7 +225,7 @@ def run_lora_sft(
     # Create a supervised dataset and Trainer, then train the model
     logger.info('Creating a supervised dataset and DataCollator...')
 
-    all_dataset = get_dataset(
+    dataset_module = get_dataset(
         data_args,
         model_args,
         training_args,
@@ -234,7 +233,6 @@ def run_lora_sft(
         tokenizer=tokenizer,
         processor=None,
     )
-    data_module = split_dataset(all_dataset, data_args, training_args)
     logger.info('Successfully created the supervised dataset.')
     logger.info('Creating DataCollator for Seq2Seq...')
 
@@ -277,7 +275,7 @@ def run_lora_sft(
         data_collator=data_collator,
         compute_metrics=ComputeMetrics(tokenizer)
         if training_args.predict_with_generate else None,
-        **data_module,
+        **dataset_module,
     )
 
     logger.info('Starting training...')

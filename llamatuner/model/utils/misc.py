@@ -4,7 +4,7 @@ import bitsandbytes as bnb
 import torch
 from robin.LLamaTuner.llamatuner.configs.finetuning_args import \
     FinetuningArguments
-from transformers import PretrainedConfig, PreTrainedModel, PreTrainedTokenizer
+from transformers import PreTrainedModel
 
 from llamatuner.utils.logger_utils import get_logger
 
@@ -123,16 +123,3 @@ def find_expanded_modules(model: 'PreTrainedModel', target_modules: List[str],
     logger.info('Apply lora to layers: %s',
                 ','.join(map(str, trainable_layer_ids)))
     return module_names
-
-
-def register_autoclass(
-    config: 'PretrainedConfig',
-    model: 'PreTrainedModel',
-    tokenizer: 'PreTrainedTokenizer',
-):
-    if 'AutoConfig' in getattr(config, 'auto_map', {}):
-        config.__class__.register_for_auto_class()
-    if 'AutoModelForCausalLM' in getattr(config, 'auto_map', {}):
-        model.__class__.register_for_auto_class()
-    if 'AutoTokenizer' in tokenizer.init_kwargs.get('auto_map', {}):
-        tokenizer.__class__.register_for_auto_class()
