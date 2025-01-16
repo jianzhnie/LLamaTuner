@@ -463,6 +463,7 @@ def align_dataset(
     Returns:
         Union[Dataset, IterableDataset]: The aligned dataset.
     """
+    logger.info(dataset_attr)
     # Determine the conversion function based on the dataset formatting
     if dataset_attr.formatting == 'alpaca':
         convert_func = partial(alpaca_map_fn,

@@ -91,7 +91,7 @@ class DatasetAttr:
     system_tag: Optional[str] = 'system'
 
     def __repr__(self) -> str:
-        return f'{self.dataset_name}, load_from: {self.load_from}, formatting: {self.formatting}'
+        return f'DatasetAttr(name: {self.dataset_name}, load_from: {self.load_from}, formatting: {self.formatting}, split: {self.split})'
 
     def set_attr(self,
                  key: str,
