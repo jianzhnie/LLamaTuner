@@ -70,7 +70,7 @@ def load_single_dataset(
     else:
         raise NotImplementedError('Unsupported dataset source.')
 
-    # Load dataset from Microsoft Hub
+    # Load dataset from ModelScope Hub
     if dataset_attr.load_from == 'ms_hub':
         try:
             from modelscope import MsDataset
@@ -85,8 +85,7 @@ def load_single_dataset(
                 split=dataset_attr.split,
                 cache_dir=cache_dir,
                 token=model_args.ms_hub_token,
-                use_streaming=(data_args.streaming
-                               and dataset_attr.load_from != 'file'),
+                use_streaming=data_args.streaming,
             )
             if isinstance(dataset, MsDataset):
                 dataset = dataset.to_hf_dataset()
@@ -104,8 +103,7 @@ def load_single_dataset(
             split=dataset_attr.split,
             cache_dir=model_args.cache_dir,
             token=model_args.hf_hub_token,
-            streaming=(data_args.streaming
-                       and dataset_attr.load_from != 'file'),
+            streaming=data_args.streaming,
             num_proc=data_args.preprocessing_num_workers,
             trust_remote_code=model_args.trust_remote_code,
         )
@@ -146,7 +144,7 @@ def get_dataset(
     data_args: DataArguments,
     model_args: ModelArguments,
     training_args: TrainingArguments,
-    stage: Literal['pt', 'sft', 'rm', 'kto'],
+    stage: Literal['pt', 'sft', 'rm', 'ppo', 'kto'],
     tokenizer: PreTrainedTokenizer,
     processor: Optional[ProcessorMixin] = None,
 ) -> Union[Dataset, IterableDataset]:
@@ -157,7 +155,7 @@ def get_dataset(
         data_args (DataArguments): Arguments related to the dataset and data processing.
         model_args (ModelArguments): Arguments related to the model configuration.
         training_args (TrainingArguments): Arguments for training configuration.
-        stage (Literal['pt', 'sft', 'rm', 'kto']): The current training stage.
+        stage (Literal['pt', 'sft', 'rm', 'ppo', 'kto']): The current training stage.
         tokenizer (PreTrainedTokenizer): Tokenizer to be used for preprocessing.
         processor (Optional[ProcessorMixin], optional): Optional processor for additional preprocessing. Defaults to None.
 
@@ -166,7 +164,7 @@ def get_dataset(
     """
     # Adjust the template and tokenizer
     logger.info('Get template and fix tokenizer')
-    template = get_template_and_fix_tokenizer(tokenizer, data_args.template)
+    template = get_template_and_fix_tokenizer(tokenizer, data_args)
     logger.info('Template: %s', template)
 
     if data_args.train_on_prompt and template.efficient_eos:

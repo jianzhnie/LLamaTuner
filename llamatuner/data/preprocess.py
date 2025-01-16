@@ -457,7 +457,7 @@ def print_unsupervised_dataset_example(example: Dict[str, List[int]],
 def get_preprocess_and_print_func(
     data_args: DataArguments,
     training_args: Seq2SeqTrainingArguments,
-    stage: Literal['pt', 'sft', 'rm', 'kto'],
+    stage: Literal['pt', 'sft', 'rm', 'ppo', 'kto'],
     template: Template,
     tokenizer: PreTrainedTokenizer,
     processor: Optional[ProcessorMixin],
