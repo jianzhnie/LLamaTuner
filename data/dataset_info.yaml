@@ -1,4 +1,9 @@
 # The dataset_info.yaml file contains the information of the datasets used in the experiments.
+c4_demo:
+  file_name: c4_demo.json
+  columns:
+    prompt: text
+
 alpaca:
   hf_hub_url: tatsu-lab/alpaca
   formatting: alpaca

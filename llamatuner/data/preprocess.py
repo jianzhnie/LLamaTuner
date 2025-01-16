@@ -1,3 +1,4 @@
+from collections import defaultdict
 from functools import partial
 from itertools import chain
 from typing import (Any, Callable, Dict, List, Literal, Optional, Sequence,
@@ -6,7 +7,7 @@ from typing import (Any, Callable, Dict, List, Literal, Optional, Sequence,
 from numpy.typing import NDArray
 from PIL import Image
 from PIL.Image import Image as ImageObject
-from transformers import ProcessorMixin, Seq2SeqTrainingArguments
+from transformers import ProcessorMixin
 from transformers.image_processing_utils import BaseImageProcessor
 from transformers.tokenization_utils import PreTrainedTokenizer
 
@@ -34,9 +35,9 @@ def preprocess_pretrain_dataset(
     data_args: DataArguments,
 ) -> Dict[str, List[List[int]]]:
     # build grouped texts with format `X1 X2 X3 ...` if packing is enabled
+    eos_token = '<|end_of_text|>' if data_args.template == 'llama3' else tokenizer.eos_token
     text_examples = [
-        messages[0]['content'] + tokenizer.eos_token
-        for messages in examples['prompt']
+        messages[0]['content'] + eos_token for messages in examples['_prompt']
     ]
 
     if not data_args.packing:
@@ -47,6 +48,7 @@ def preprocess_pretrain_dataset(
 
         result = tokenizer(text_examples,
                            add_special_tokens=False,
+                           truncation=True,
                            max_length=data_args.cutoff_len)
     else:
         tokenized_examples = tokenizer(text_examples, add_special_tokens=False)
@@ -79,7 +81,7 @@ def preprocess_supervised_dataset(
 ) -> Dict[str, List[List[int]]]:
     # build inputs with format `<bos> X Y <eos>` and labels with format `<ignore> ... <ignore> Y <eos>`
     # for multiturn examples, we only mask the prompt part in each prompt-response pair.
-    model_inputs = {'input_ids': [], 'attention_mask': [], 'labels': []}
+    model_inputs = defaultdict(list)
     if processor is not None:
         model_inputs['pixel_values'] = []
         preprocess_visual_inputs = partial(_preprocess_visual_inputs,
@@ -421,13 +423,20 @@ def preprocess_kto_dataset(
     return model_inputs
 
 
+def print_pretrain_dataset_example(example: Dict[str, List[int]],
+                                   tokenizer: PreTrainedTokenizer) -> None:
+    logger.info('input_ids:\n{}'.format(example['input_ids']))
+    logger.info('inputs:\n{}'.format(
+        tokenizer.decode(example['input_ids'], skip_special_tokens=False)))
+
+
 def print_supervised_dataset_example(example: Dict[str, List[int]],
                                      tokenizer: PreTrainedTokenizer) -> None:
-    print('input_ids:\n{}'.format(example['input_ids']))
-    print('inputs:\n{}'.format(
+    logger.info('input_ids:\n{}'.format(example['input_ids']))
+    logger.info('inputs:\n{}'.format(
         tokenizer.decode(example['input_ids'], skip_special_tokens=False)))
-    print('label_ids:\n{}'.format(example['labels']))
-    print('labels:\n{}'.format(
+    logger.info('label_ids:\n{}'.format(example['labels']))
+    logger.info('labels:\n{}'.format(
         tokenizer.decode(
             list(filter(lambda x: x != IGNORE_INDEX, example['labels'])),
             skip_special_tokens=False,
@@ -436,31 +445,31 @@ def print_supervised_dataset_example(example: Dict[str, List[int]],
 
 def print_pairwise_dataset_example(example: Dict[str, List[int]],
                                    tokenizer: PreTrainedTokenizer) -> None:
-    print('prompt_ids:\n{}'.format(example['prompt_ids']))
-    print('prompt:\n{}'.format(
+    logger.info('prompt_ids:\n{}'.format(example['prompt_ids']))
+    logger.info('prompt:\n{}'.format(
         tokenizer.decode(example['prompt_ids'], skip_special_tokens=False)))
-    print('chosen_ids:\n{}'.format(example['chosen_ids']))
-    print('chosen:\n{}'.format(
+    logger.info('chosen_ids:\n{}'.format(example['chosen_ids']))
+    logger.info('chosen:\n{}'.format(
         tokenizer.decode(example['chosen_ids'], skip_special_tokens=False)))
-    print('rejected_ids:\n{}'.format(example['rejected_ids']))
-    print('rejected:\n{}'.format(
+    logger.info('rejected_ids:\n{}'.format(example['rejected_ids']))
+    logger.info('rejected:\n{}'.format(
         tokenizer.decode(example['rejected_ids'], skip_special_tokens=False)))
 
 
 def print_unsupervised_dataset_example(example: Dict[str, List[int]],
                                        tokenizer: PreTrainedTokenizer) -> None:
-    print('input_ids:\n{}'.format(example['input_ids']))
-    print('inputs:\n{}'.format(
+    logger.info('input_ids:\n{}'.format(example['input_ids']))
+    logger.info('inputs:\n{}'.format(
         tokenizer.decode(example['input_ids'], skip_special_tokens=False)))
 
 
 def get_preprocess_and_print_func(
     data_args: DataArguments,
-    training_args: Seq2SeqTrainingArguments,
     stage: Literal['pt', 'sft', 'rm', 'ppo', 'kto'],
     template: Template,
     tokenizer: PreTrainedTokenizer,
     processor: Optional[ProcessorMixin],
+    do_generate: bool = False,
 ) -> Tuple[Callable, Callable]:
     if stage == 'pt':
         preprocess_func = partial(
@@ -468,14 +477,16 @@ def get_preprocess_and_print_func(
             tokenizer=tokenizer,
             data_args=data_args,
         )
-        print_function = partial(print_unsupervised_dataset_example,
+        print_function = partial(print_pretrain_dataset_example,
                                  tokenizer=tokenizer)
-    elif stage == 'sft' and not training_args.predict_with_generate:
+
+    elif stage == 'sft' and not do_generate:
         if data_args.packing:
             preprocess_func = partial(
                 preprocess_packed_supervised_dataset,
                 template=template,
                 tokenizer=tokenizer,
+                processor=processor,
                 data_args=data_args,
             )
         else:

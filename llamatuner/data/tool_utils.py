@@ -56,7 +56,7 @@ class ToolUtils(ABC):
     @staticmethod
     @abstractmethod
     def function_formatter(
-        functions: List['FunctionCall']
+        functions: List[FunctionCall]
     ) -> Sequence[Union[str, Set[str], Dict[str, str]]]:
         r"""
         Generates the assistant message including all the tool calls.
@@ -65,7 +65,7 @@ class ToolUtils(ABC):
 
     @staticmethod
     @abstractmethod
-    def tool_extractor(content: str) -> Union[str, List['FunctionCall']]:
+    def tool_extractor(content: str) -> Union[str, List[FunctionCall]]:
         r"""
         Extracts all the function calls from the assistant message.
 
@@ -120,7 +120,7 @@ class DefaultToolUtils(ToolUtils):
     @override
     @staticmethod
     def function_formatter(
-        functions: List['FunctionCall']
+        functions: List[FunctionCall]
     ) -> Sequence[Union[str, Set[str], Dict[str, str]]]:
         function_text = ''
         for name, arguments in functions:
@@ -130,7 +130,7 @@ class DefaultToolUtils(ToolUtils):
 
     @override
     @staticmethod
-    def tool_extractor(content: str) -> Union[str, List['FunctionCall']]:
+    def tool_extractor(content: str) -> Union[str, List[FunctionCall]]:
         regex = re.compile(
             r'Action:\s*([a-zA-Z0-9_]+)\s*Action Input:\s*(.+?)(?=\s*Action:|\s*$)',
             re.DOTALL)
@@ -172,7 +172,7 @@ class GLM4ToolUtils(ToolUtils):
     @override
     @staticmethod
     def function_formatter(
-        functions: List['FunctionCall']
+        functions: List[FunctionCall]
     ) -> Sequence[Union[str, Set[str], Dict[str, str]]]:
         if len(functions) > 1:
             raise ValueError('GLM-4 does not support parallel functions.')
@@ -181,7 +181,7 @@ class GLM4ToolUtils(ToolUtils):
 
     @override
     @staticmethod
-    def tool_extractor(content: str) -> Union[str, List['FunctionCall']]:
+    def tool_extractor(content: str) -> Union[str, List[FunctionCall]]:
         if '\n' not in content:
             return content
 
@@ -218,7 +218,7 @@ class Llama3ToolUtils(ToolUtils):
     @override
     @staticmethod
     def function_formatter(
-        functions: List['FunctionCall']
+        functions: List[FunctionCall]
     ) -> Sequence[Union[str, Set[str], Dict[str, str]]]:
         if len(functions) > 1:
             raise ValueError('Llama-3 does not support parallel functions.')
@@ -229,7 +229,7 @@ class Llama3ToolUtils(ToolUtils):
 
     @override
     @staticmethod
-    def tool_extractor(content: str) -> Union[str, List['FunctionCall']]:
+    def tool_extractor(content: str) -> Union[str, List[FunctionCall]]:
         try:
             tool = json.loads(content.strip())
         except json.JSONDecodeError:
@@ -262,7 +262,7 @@ class MistralToolUtils(ToolUtils):
     @override
     @staticmethod
     def function_formatter(
-        functions: List['FunctionCall']
+        functions: List[FunctionCall]
     ) -> Sequence[Union[str, Set[str], Dict[str, str]]]:
         function_texts = []
         for name, arguments in functions:
@@ -273,7 +273,7 @@ class MistralToolUtils(ToolUtils):
 
     @override
     @staticmethod
-    def tool_extractor(content: str) -> Union[str, List['FunctionCall']]:
+    def tool_extractor(content: str) -> Union[str, List[FunctionCall]]:
         try:
             tools = json.loads(content.strip())
         except json.JSONDecodeError:
@@ -313,7 +313,7 @@ class QwenToolUtils(ToolUtils):
     @override
     @staticmethod
     def function_formatter(
-        functions: List['FunctionCall']
+        functions: List[FunctionCall]
     ) -> Sequence[Union[str, Set[str], Dict[str, str]]]:
         function_texts = []
         for name, arguments in functions:
@@ -326,7 +326,7 @@ class QwenToolUtils(ToolUtils):
 
     @override
     @staticmethod
-    def tool_extractor(content: str) -> Union[str, List['FunctionCall']]:
+    def tool_extractor(content: str) -> Union[str, List[FunctionCall]]:
         regex = re.compile(
             r'<tool_call>(.+?)</tool_call>(?=\s*<tool_call>|\s*$)', re.DOTALL)
         tool_match: List[str] = re.findall(regex, content)
