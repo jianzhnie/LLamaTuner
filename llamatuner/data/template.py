@@ -8,7 +8,8 @@ from llamatuner.configs import DataArguments
 from llamatuner.data.formatter import (EmptyFormatter, Formatter,
                                        FunctionFormatter, StringFormatter,
                                        ToolFormatter)
-from llamatuner.data.utils import FunctionCall, Role
+from llamatuner.data.tool_utils import FunctionCall
+from llamatuner.data.utils import Role
 from llamatuner.utils.logger_utils import get_logger
 
 logger = get_logger('llamatuner')
@@ -215,6 +216,9 @@ class Template:
     ) -> Sequence[Tuple[List[int], List[int]]]:
         """
         Encodes formatted inputs to pairs of token IDs.
+
+        Turn 0: prefix + system + query        response
+        Turn t: sep + query                    response
 
         Args:
             tokenizer (PreTrainedTokenizer): Tokenizer to convert text to tokens.
@@ -518,13 +522,12 @@ def _get_jinja_template(template: Template,
 
 def get_template_and_fix_tokenizer(tokenizer: PreTrainedTokenizer,
                                    data_args: DataArguments) -> Template:
-    if data_args.template_name is None:
+    if data_args.template is None:
         template = templates['empty']  # placeholder
     else:
-        template = templates.get(data_args.template_name, None)
+        template = templates.get(data_args.template, None)
         if template is None:
-            raise ValueError(
-                f'Template {data_args.template_name} does not exist.')
+            raise ValueError(f'Template {data_args.template} does not exist.')
 
     if data_args.train_on_prompt and template.efficient_eos:
         raise ValueError(
@@ -572,3 +575,9 @@ def get_template_and_fix_tokenizer(tokenizer: PreTrainedTokenizer,
         logger.info('Cannot add this chat template to tokenizer.')
 
     return template
+
+
+register_template(
+    name='empty',
+    efficient_eos=True,
+)

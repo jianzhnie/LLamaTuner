@@ -1,5 +1,5 @@
 from enum import Enum, unique
-from typing import Dict, List, NamedTuple, Union
+from typing import Dict, List, Union
 
 from datasets import (Dataset, IterableDataset, concatenate_datasets,
                       interleave_datasets)
@@ -18,11 +18,6 @@ class Role(str, Enum):
     SYSTEM = 'system'
     FUNCTION = 'function'
     OBSERVATION = 'observation'
-
-
-class FunctionCall(NamedTuple):
-    name: str
-    arguments: str
 
 
 def merge_dataset(
