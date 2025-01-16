@@ -1,10 +1,10 @@
-python llamatuner/train/sft/train.py \
+python llamatuner/train/pt/train_pt.py \
     --model_name_or_path facebook/opt-125m \
-    --dataset alpaca \
-    --lora_target 'q_proj', 'v_proj' \
-    --output_dir work_dir/full-finetune \
+    --dataset c4_demo \
+    --eval_dataset c4_demo \
+    --output_dir work_dir/pre_train \
     --wandb_project llamatuner \
-    --wandb_run_name alpaca_opt-125m_full-finetune \
+    --wandb_run_name opt-125m_pre_train \
     --num_train_epochs 3 \
     --per_device_train_batch_size 4 \
     --per_device_eval_batch_size 4 \

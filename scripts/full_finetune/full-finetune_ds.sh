@@ -1,4 +1,4 @@
-CUDA_VISIBLE_DEVICES=0 torchrun --nproc_per_node=1 tools/train.py \
+CUDA_VISIBLE_DEVICES=0 torchrun --nproc_per_node=1 llamatuner/train/sft/train.py \
     --model_name_or_path facebook/opt-125m \
     --dataset_cfg ./data/run_test.yaml \
     --output_dir work_dir/full-finetune \
