@@ -1,6 +1,6 @@
 import os
 from dataclasses import dataclass
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional, Sequence
 
 import yaml
 
@@ -101,7 +101,8 @@ class DatasetAttr:
         setattr(self, key, obj.get(key, default))
 
 
-def get_dataset_list(data_args: DataArguments) -> List[DatasetAttr]:
+def get_dataset_list(dataset_names: Optional[Sequence[str]],
+                     data_args: DataArguments) -> List[DatasetAttr]:
     """
     Get a list of dataset attributes based on the provided dataset arguments.
 
@@ -113,8 +114,9 @@ def get_dataset_list(data_args: DataArguments) -> List[DatasetAttr]:
     """
 
     file_path = os.path.join(data_args.dataset_dir, DATA_CONFIG)
-    dataset_names = ([ds.strip() for ds in data_args.dataset.split(',')]
-                     if data_args.dataset else [])
+    if dataset_names is None:
+        dataset_names = []
+
     if not dataset_names:
         raise ValueError(
             'No dataset specified in the --dataset argument, please refer to the '

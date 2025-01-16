@@ -1,8 +1,9 @@
 import os
-from typing import Literal, Optional, Union
+from typing import Dict, Literal, Optional, Sequence, Union
 
 import numpy as np
-from datasets import Dataset, IterableDataset, load_dataset, load_from_disk
+from datasets import (Dataset, DatasetDict, IterableDataset, load_dataset,
+                      load_from_disk)
 from transformers import ProcessorMixin, TrainingArguments
 from transformers.tokenization_utils import PreTrainedTokenizer
 
@@ -10,8 +11,8 @@ from llamatuner.configs import DataArguments, ModelArguments
 from llamatuner.data.data_align import align_dataset
 from llamatuner.data.data_parser import DatasetAttr, get_dataset_list
 from llamatuner.data.preprocess import get_preprocess_and_print_func
-from llamatuner.data.template import get_template_and_fix_tokenizer
-from llamatuner.data.utils import merge_dataset
+from llamatuner.data.template import Template, get_template_and_fix_tokenizer
+from llamatuner.data.utils import DatasetModule, merge_dataset, split_dataset
 from llamatuner.utils.constants import FILEEXT2TYPE
 from llamatuner.utils.logger_utils import get_logger
 from llamatuner.utils.misc import has_tokenized_data
@@ -140,6 +141,87 @@ def load_single_dataset(
     return aligned_dataset
 
 
+def get_merged_dataset(
+    dataset_names: Optional[Sequence[str]],
+    data_args: DataArguments,
+    model_args: ModelArguments,
+    training_args: TrainingArguments,
+    stage: Literal['pt', 'sft', 'rm', 'ppo', 'kto'],
+) -> None:
+    if dataset_names is None:
+        return None
+    all_datasets = []
+    for dataset_attr in get_dataset_list(dataset_names, data_args):
+        if (stage == 'rm'
+                and not dataset_attr.ranking) or (stage != 'rm'
+                                                  and dataset_attr.ranking):
+            raise ValueError(
+                'The dataset is not applicable in the current training stage.')
+        single_dataset = load_single_dataset(dataset_attr, model_args,
+                                             data_args)
+        all_datasets.append(single_dataset)
+
+    logger.info(f'Merging {data_args.dataset} datasets together...')
+    dataset = merge_dataset(all_datasets, data_args, training_args)
+
+    return dataset
+
+
+def get_preprocessed_dataset(
+    dataset: Optional[Union[Dataset, IterableDataset]],
+    data_args: DataArguments,
+    training_args: TrainingArguments,
+    stage: Literal['pt', 'sft', 'rm', 'ppo', 'kto'],
+    template: Template,
+    tokenizer: PreTrainedTokenizer,
+    processor: Optional[ProcessorMixin] = None,
+    is_eval: bool = False,
+) -> Optional[Union[Dataset, IterableDataset]]:
+    r"""
+    Preprocesses the dataset, including format checking and tokenization.
+    """
+    if dataset is None:
+        return None
+
+    preprocess_func, print_function = get_preprocess_and_print_func(
+        data_args, stage, template, tokenizer, processor, do_generate=False)
+
+    column_names = list(next(iter(dataset)).keys())
+    kwargs = {}
+
+    if not data_args.streaming:
+        kwargs = dict(
+            num_proc=data_args.preprocessing_num_workers,
+            load_from_cache_file=(not data_args.overwrite_cache)
+            or (training_args.local_process_index != 0),
+            desc='Running tokenizer on dataset',
+        )
+
+    dataset = dataset.map(
+        preprocess_func,
+        batched=True,
+        batch_size=data_args.preprocessing_batch_size,
+        remove_columns=column_names,
+        **kwargs,
+    )
+
+    if training_args.should_log:
+        try:
+            logger.info('eval example:' if is_eval else 'training example:')
+            print_function(next(iter(dataset)))
+        except StopIteration:
+            if stage == 'pt':
+                raise RuntimeError(
+                    'Cannot find sufficient samples, consider increasing dataset size.'
+                )
+            else:
+                raise RuntimeError(
+                    'Cannot find valid samples, check `data/README.md` for the data format.'
+                )
+
+    return dataset
+
+
 def get_dataset(
     data_args: DataArguments,
     model_args: ModelArguments,
@@ -147,7 +229,7 @@ def get_dataset(
     stage: Literal['pt', 'sft', 'rm', 'ppo', 'kto'],
     tokenizer: PreTrainedTokenizer,
     processor: Optional[ProcessorMixin] = None,
-) -> Union[Dataset, IterableDataset]:
+) -> DatasetModule:
     """
     Retrieves and processes the dataset for training.
 
@@ -176,12 +258,29 @@ def get_dataset(
         if has_tokenized_data(data_args.tokenized_path):
             logger.warning(
                 'Loading dataset from disk will ignore other data arguments.')
-            dataset = load_from_disk(data_args.tokenized_path)
+            tokenized_data = load_from_disk(data_args.tokenized_path)
             logger.info('Loaded tokenized dataset from %s.',
                         data_args.tokenized_path)
+
+            dataset_module: Dict[str, Dataset] = {}
+            if isinstance(tokenized_data, DatasetDict):
+                if 'train_dataset' in tokenized_data:
+                    dataset_module['train_dataset'] = tokenized_data[
+                        'train_dataset']
+
+                if 'eval_dataset' in tokenized_data:
+                    dataset_module['eval_dataset'] = tokenized_data[
+                        'eval_dataset']
+
+            else:  # Dataset
+                dataset_module['train_dataset'] = tokenized_data
+
             if data_args.streaming:
-                dataset = dataset.to_iterable_dataset()
-            return dataset
+                dataset_module = {
+                    k: v.to_iterable_dataset()
+                    for k, v in dataset_module.items()
+                }
+            return dataset_module
 
         if data_args.streaming:
             raise ValueError(
@@ -189,40 +288,61 @@ def get_dataset(
 
     # Load raw dataset and align it
     with training_args.main_process_first(desc='load dataset'):
-        all_datasets = []
-        for dataset_attr in get_dataset_list(data_args):
-            if (stage == 'rm' and not dataset_attr.ranking) or (
-                    stage != 'rm' and dataset_attr.ranking):
-                raise ValueError(
-                    'The dataset is not applicable in the current training stage.'
-                )
-            single_dataset = load_single_dataset(dataset_attr, model_args,
-                                                 data_args)
-            all_datasets.append(single_dataset)
-
-        logger.info(f'Merging {data_args.dataset} datasets together...')
-        dataset = merge_dataset(all_datasets, data_args, training_args)
+        train_dataset_names = ([
+            ds.strip() for ds in data_args.dataset.split(',')
+        ] if data_args.dataset else [])
+        eval_dataset_names = ([
+            ds.strip() for ds in data_args.eval_dataset.split(',')
+        ] if data_args.eval_dataset else [])
+        logger.info(f'Train dataset names: {train_dataset_names}')
+        logger.info(f'Eval dataset names: {train_dataset_names}')
+        train_dataset = get_merged_dataset(train_dataset_names, data_args,
+                                           model_args, training_args, stage)
+        eval_dataset = get_merged_dataset(eval_dataset_names, data_args,
+                                          model_args, training_args, stage)
 
     # Preprocess the dataset
     with training_args.main_process_first(desc='pre-process dataset'):
-        preprocess_func, print_function = get_preprocess_and_print_func(
-            data_args, training_args, stage, template, tokenizer, processor)
 
-        column_names = list(next(iter(dataset)).keys())
-        kwargs = {}
-        if not data_args.streaming:
-            kwargs = {
-                'num_proc': data_args.preprocessing_num_workers,
-                'load_from_cache_file': not data_args.overwrite_cache,
-                'desc': 'Running tokenizer on dataset',
-            }
+        train_dataset = get_preprocessed_dataset(train_dataset,
+                                                 data_args,
+                                                 training_args,
+                                                 stage,
+                                                 template,
+                                                 tokenizer,
+                                                 processor,
+                                                 is_eval=False)
+        eval_dataset = get_preprocessed_dataset(eval_dataset,
+                                                data_args,
+                                                training_args,
+                                                stage,
+                                                template,
+                                                tokenizer,
+                                                processor,
+                                                is_eval=True)
 
-        dataset = dataset.map(
-            preprocess_func,
-            batched=True,
-            remove_columns=column_names,
-            **kwargs,
-        )
+        if data_args.eval_dataset_size > 1e-6:
+            dataset_dict = split_dataset(train_dataset, data_args,
+                                         training_args)
+        else:
+            dataset_dict = {}
+            if train_dataset is not None:
+                if data_args.streaming:
+                    train_dataset = train_dataset.shuffle(
+                        buffer_size=data_args.buffer_size,
+                        seed=training_args.seed)
+
+                dataset_dict['train_dataset'] = train_dataset
+
+            if eval_dataset is not None:
+                if data_args.streaming:
+                    eval_dataset = eval_dataset.shuffle(
+                        buffer_size=data_args.buffer_size,
+                        seed=training_args.seed)
+
+                dataset_dict['eval_dataset'] = eval_dataset
+
+            dataset_dict = DatasetDict(dataset_dict)
 
         # Save tokenized dataset to disk if required
         if data_args.tokenized_path is not None:
@@ -235,16 +355,14 @@ def get_dataset(
                     'Please restart the training with `--tokenized_path %s`.',
                     data_args.tokenized_path,
                 )
-                dataset.save_to_disk(data_args.tokenized_path)
+                dataset_dict.save_to_disk(data_args.tokenized_path)
             exit(0)
 
-        # Log a sample of the dataset
-        if training_args.should_log:
-            try:
-                print_function(next(iter(dataset)))
-            except StopIteration as exc:
-                raise RuntimeError(
-                    'Cannot find valid samples, check `data/README.md` for the data format.'
-                ) from exc
+        dataset_module = {}
+        if 'train_dataset' in dataset_dict:
+            dataset_module['train_dataset'] = dataset_dict['train_dataset']
 
-    return dataset
+        if 'eval_dataset' in dataset_dict:
+            dataset_module['eval_dataset'] = dataset_dict['eval_dataset']
+
+    return dataset_module

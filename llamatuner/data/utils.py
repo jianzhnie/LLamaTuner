@@ -1,5 +1,5 @@
 from enum import Enum, unique
-from typing import Dict, List, Union
+from typing import Dict, List, Optional, TypedDict, Union
 
 from datasets import (Dataset, IterableDataset, concatenate_datasets,
                       interleave_datasets)
@@ -18,6 +18,11 @@ class Role(str, Enum):
     SYSTEM = 'system'
     FUNCTION = 'function'
     OBSERVATION = 'observation'
+
+
+class DatasetModule(TypedDict):
+    train_dataset: Optional[Union[Dataset, IterableDataset]]
+    eval_dataset: Optional[Union[Dataset, IterableDataset]]
 
 
 def merge_dataset(
@@ -54,28 +59,19 @@ def split_dataset(
     data_args: DataArguments,
     training_args: TrainingArguments,
 ) -> Dict[str, Dataset]:
-    if training_args.do_train:
-        if data_args.eval_dataset_size > 1e-6:  # Split the dataset
-            if data_args.streaming:
-                dataset = dataset.shuffle(buffer_size=data_args.buffer_size,
-                                          seed=training_args.seed)
-                val_set = dataset.take(int(data_args.eval_dataset_size))
-                train_set = dataset.skip(int(data_args.eval_dataset_size))
-                return {'train_dataset': train_set, 'eval_dataset': val_set}
-            else:
-                val_size = (int(data_args.eval_dataset_size)
-                            if data_args.eval_dataset_size > 1 else
-                            data_args.eval_dataset_size)
-                dataset = dataset.train_test_split(test_size=val_size,
-                                                   seed=training_args.seed)
-                return {
-                    'train_dataset': dataset['train'],
-                    'eval_dataset': dataset['test'],
-                }
-        else:
-            if data_args.streaming:
-                dataset = dataset.shuffle(buffer_size=data_args.buffer_size,
-                                          seed=training_args.seed)
-            return {'train_dataset': dataset}
-    else:  # do_eval or do_predict
-        return {'eval_dataset': dataset}
+    if data_args.streaming:
+        dataset = dataset.shuffle(buffer_size=data_args.buffer_size,
+                                  seed=training_args.seed)
+        val_set = dataset.take(int(data_args.eval_dataset_size))
+        train_set = dataset.skip(int(data_args.eval_dataset_size))
+        return {'train_dataset': train_set, 'eval_dataset': val_set}
+    else:
+        val_size = (int(data_args.eval_dataset_size)
+                    if data_args.eval_dataset_size > 1 else
+                    data_args.eval_dataset_size)
+        dataset = dataset.train_test_split(test_size=val_size,
+                                           seed=training_args.seed)
+        return {
+            'train_dataset': dataset['train'],
+            'eval_dataset': dataset['test'],
+        }
