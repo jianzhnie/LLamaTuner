@@ -9,8 +9,8 @@ from typing import Tuple
 
 import wandb
 from transformers import (AutoConfig, AutoModelForCausalLM, AutoTokenizer,
-                          DataCollatorForLanguageModeling, PreTrainedModel,
-                          PreTrainedTokenizer)
+                          DataCollatorForLanguageModeling, HfArgumentParser,
+                          PreTrainedModel, PreTrainedTokenizer)
 from transformers import Seq2SeqTrainingArguments as TrainingArguments
 from transformers import Trainer
 
@@ -18,7 +18,6 @@ sys.path.append(os.getcwd())
 from llamatuner.configs import (DataArguments, FinetuningArguments,
                                 ModelArguments)
 from llamatuner.data.data_loader import get_dataset
-from llamatuner.data.utils import split_dataset
 from llamatuner.utils.logger_utils import get_logger, get_outdir
 
 
@@ -120,17 +119,16 @@ def run_pt(
     # Create a supervised dataset and Trainer, then train the model
     logger.info('Creating a supervised dataset and DataCollator...')
 
-    all_dataset = get_dataset(
+    dataset_module = get_dataset(
         data_args,
         model_args,
         training_args,
-        stage='sft',
+        stage='pt',
         tokenizer=tokenizer,
         processor=None,
     )
-    data_module = split_dataset(all_dataset, data_args, training_args)
     logger.info('Successfully created the supervised dataset.')
-    logger.info('Creating DataCollator for Seq2Seq...')
+    logger.info('Creating DataCollator...')
     data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer,
                                                     mlm=False)
     # Initialize wandb
@@ -139,8 +137,8 @@ def run_pt(
         dir=output_dir,
         project=finetune_args.wandb_project,
         name=finetune_args.wandb_run_name,
-        tags=['full-finetune', 'sft'],
-        group='full-finetune',
+        tags=['full-finetune', 'pt'],
+        group='pt',
         config=args,
     )
     # Initialize the Trainer object and start training
@@ -150,7 +148,7 @@ def run_pt(
         tokenizer=tokenizer,
         args=training_args,
         data_collator=data_collator,
-        **data_module,
+        **dataset_module,
     )
     # Training
     if training_args.do_train:
@@ -182,3 +180,11 @@ def run_pt(
         trainer.save_metrics('eval', metrics)
 
     logger.info('Done.')
+
+
+if __name__ == '__main__':
+    parser = HfArgumentParser((ModelArguments, DataArguments,
+                               TrainingArguments, FinetuningArguments))
+    model_args, data_args, training_args, finetune_args = (
+        parser.parse_args_into_dataclasses())
+    run_pt(model_args, data_args, training_args, finetune_args)

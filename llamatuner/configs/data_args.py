@@ -22,15 +22,16 @@ class DataArguments:
             'The name of provided dataset(s) to use. Use commas to separate multiple datasets.'
         },
     )
+    eval_dataset: Optional[str] = field(
+        default=None,
+        metadata={
+            'help':
+            'The name of dataset(s) to use for evaluation. Use commas to separate multiple datasets.'
+        },
+    )
     dataset_dir: str = field(
         default='data',
         metadata={'help': 'Path to the folder containing the datasets.'},
-    )
-    split: str = field(
-        default='train',
-        metadata={
-            'help': 'Which dataset split to use for training and evaluation.'
-        },
     )
     cutoff_len: int = field(
         default=1024,
@@ -81,6 +82,12 @@ class DataArguments:
             'help': 'Overwrite the cached training and evaluation sets.'
         },
     )
+    preprocessing_batch_size: int = field(
+        default=1000,
+        metadata={
+            'help': 'The number of examples in one group in pre-processing.'
+        },
+    )
     preprocessing_num_workers: Optional[int] = field(
         default=None,
         metadata={
@@ -121,6 +128,13 @@ class DataArguments:
         metadata={
             'help':
             'Whether or not to pack the sequences in training. Will automatically enable in pre-training.'
+        },
+    )
+    tool_format: Optional[str] = field(
+        default=None,
+        metadata={
+            'help':
+            'Tool format to use for constructing function calling examples.'
         },
     )
     tokenized_path: Optional[str] = field(
