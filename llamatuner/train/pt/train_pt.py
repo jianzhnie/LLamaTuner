@@ -10,9 +10,8 @@ from typing import Tuple
 import wandb
 from transformers import (AutoConfig, AutoModelForCausalLM, AutoTokenizer,
                           DataCollatorForLanguageModeling, HfArgumentParser,
-                          PreTrainedModel, PreTrainedTokenizer)
-from transformers import Seq2SeqTrainingArguments as TrainingArguments
-from transformers import Trainer
+                          PreTrainedModel, PreTrainedTokenizer, Trainer,
+                          TrainingArguments)
 
 sys.path.append(os.getcwd())
 from llamatuner.configs import (DataArguments, FinetuningArguments,

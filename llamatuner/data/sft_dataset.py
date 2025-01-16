@@ -9,6 +9,9 @@ from torch.utils.data import Dataset
 from transformers.tokenization_utils import PreTrainedTokenizer
 
 from llamatuner.utils.constants import IGNORE_INDEX
+from llamatuner.utils.logger_utils import get_logger
+
+logger = get_logger('llamatuner')
 
 
 @dataclass
@@ -84,12 +87,12 @@ class SupervisedDataset(Dataset):
 
         # Extract the input_ids tensor
         if len(source_ids) > self.max_seq_len:
-            print(
+            logger.info(
                 f'Source length {len(source_ids)} exceeds max seq length of {self.max_seq_len}'
             )
         # Create the labels tensor
         if len(target_ids) > self.max_seq_len:
-            print(
+            logger.info(
                 f'Target length {len(target_ids)} exceeds max seq length of {self.max_seq_len}'
             )
         if not self.predict_with_generate:
