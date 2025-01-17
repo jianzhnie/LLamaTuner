@@ -9,7 +9,7 @@ from transformers.tokenization_utils import PreTrainedTokenizer
 
 from llamatuner.configs import DataArguments, ModelArguments
 from llamatuner.data.data_align import align_dataset
-from llamatuner.data.data_parser import DatasetAttr, get_dataset_list
+from llamatuner.data.data_parser import DatasetAttr, get_dataset_attr_list
 from llamatuner.data.preprocess import get_preprocess_and_print_func
 from llamatuner.data.template import Template, get_template_and_fix_tokenizer
 from llamatuner.data.utils import DatasetModule, merge_dataset, split_dataset
@@ -130,13 +130,12 @@ def load_single_dataset(
         num_samples = min(data_args.max_samples, len(dataset))
         dataset = dataset.select(range(num_samples))
 
-    logger.info('Successfully loaded dataset')
-    logger.info('Aligning the dataset to the Alpaca or ShareGPT template.')
+    logger.info(f'Successfully loaded dataset {dataset_attr.dataset_name}')
+    logger.info(
+        f'Aligning the dataset to the {dataset_attr.formatting} template.')
     aligned_dataset = align_dataset(dataset, dataset_attr, data_args)
     logger.info(
-        'Successfully converted dataset %s to %s format.',
-        dataset_attr.dataset_name,
-        dataset_attr.formatting,
+        f'Successfully converted dataset {dataset_attr.dataset_name} to {dataset_attr.formatting} format.'
     )
     return aligned_dataset
 
@@ -151,7 +150,7 @@ def get_merged_dataset(
     if dataset_names is None:
         return None
     all_datasets = []
-    for dataset_attr in get_dataset_list(dataset_names, data_args):
+    for dataset_attr in get_dataset_attr_list(dataset_names, data_args):
         if (stage == 'rm'
                 and not dataset_attr.ranking) or (stage != 'rm'
                                                   and dataset_attr.ranking):
