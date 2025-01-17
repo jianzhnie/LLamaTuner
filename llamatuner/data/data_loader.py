@@ -147,6 +147,19 @@ def get_merged_dataset(
     training_args: TrainingArguments,
     stage: Literal['pt', 'sft', 'rm', 'ppo', 'kto'],
 ) -> None:
+    """
+    Merge multiple datasets into a single dataset.
+
+    Args:
+        dataset_names: List of dataset names to merge.
+        data_args: Arguments related to data loading and processing.
+        model_args: Arguments related to model configuration.
+        training_args: Arguments for training configuration.
+        stage: Current training stage.
+
+    Returns:
+        Optional[Union[Dataset, IterableDataset]]: Merged dataset or None if no datasets provided.
+    """
     if dataset_names is None:
         return None
     all_datasets = []
@@ -176,8 +189,24 @@ def get_preprocessed_dataset(
     processor: Optional[ProcessorMixin] = None,
     is_eval: bool = False,
 ) -> Optional[Union[Dataset, IterableDataset]]:
-    r"""
-    Preprocesses the dataset, including format checking and tokenization.
+    """
+    Preprocess the dataset by applying tokenization and formatting.
+
+    Args:
+        dataset: Input dataset to preprocess.
+        data_args: Arguments related to data processing.
+        training_args: Arguments for training configuration.
+        stage: Current training stage.
+        template: Template for data formatting.
+        tokenizer: Tokenizer for text processing.
+        processor: Optional additional processor.
+        is_eval: Whether this is evaluation dataset.
+
+    Returns:
+        Optional[Union[Dataset, IterableDataset]]: Preprocessed dataset or None if input is None.
+
+    Raises:
+        RuntimeError: If insufficient or invalid samples are found.
     """
     if dataset is None:
         return None
@@ -246,7 +275,7 @@ def get_dataset(
     # Adjust the template and tokenizer
     logger.info('Get template and fix tokenizer')
     template = get_template_and_fix_tokenizer(tokenizer, data_args)
-    logger.info('Template: %s', template)
+    logger.info('Using template: %s', template)
 
     if data_args.train_on_prompt and template.efficient_eos:
         raise ValueError(
