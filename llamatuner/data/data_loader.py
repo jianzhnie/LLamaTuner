@@ -109,6 +109,7 @@ def load_single_dataset(
             trust_remote_code=model_args.trust_remote_code,
         )
 
+    logger.info(f'Successfully loaded dataset {dataset_attr.dataset_name}')
     if dataset_attr.num_samples is not None and not data_args.streaming:
         target_num = dataset_attr.num_samples
         # all samples should be included
@@ -130,10 +131,9 @@ def load_single_dataset(
         num_samples = min(data_args.max_samples, len(dataset))
         dataset = dataset.select(range(num_samples))
         logger.info(
-            f'Sampled {dataset_attr.max_samples} examples from dataset {dataset_attr}.'
+            f'Sampled {data_args.max_samples} examples from dataset {dataset_attr}.'
         )
 
-    logger.info(f'Successfully loaded dataset {dataset_attr.dataset_name}')
     logger.info(
         f'Aligning the dataset to the {dataset_attr.formatting} template.')
     aligned_dataset = align_dataset(dataset, dataset_attr, data_args)
@@ -325,7 +325,7 @@ def get_dataset(
             ds.strip() for ds in data_args.eval_dataset.split(',')
         ] if data_args.eval_dataset else [])
         logger.info(f'Train dataset names: {train_dataset_names}')
-        logger.info(f'Eval dataset names: {train_dataset_names}')
+        logger.info(f'Eval dataset names: {eval_dataset_names}')
         train_dataset = get_merged_dataset(train_dataset_names, data_args,
                                            model_args, training_args, stage)
         eval_dataset = get_merged_dataset(eval_dataset_names, data_args,
