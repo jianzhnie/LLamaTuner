@@ -111,8 +111,8 @@ def load_single_dataset(
 
     if dataset_attr.num_samples is not None and not data_args.streaming:
         target_num = dataset_attr.num_samples
-        indexes = np.random.permutation(
-            len(dataset))[:target_num]  # all samples should be included
+        # all samples should be included
+        indexes = np.random.permutation(len(dataset))[:target_num]
         target_num -= len(indexes)
         if target_num > 0:
             expand_indexes = np.random.choice(len(dataset), target_num)
@@ -129,6 +129,9 @@ def load_single_dataset(
     if data_args.max_samples is not None:
         num_samples = min(data_args.max_samples, len(dataset))
         dataset = dataset.select(range(num_samples))
+        logger.info(
+            f'Sampled {dataset_attr.max_samples} examples from dataset {dataset_attr}.'
+        )
 
     logger.info(f'Successfully loaded dataset {dataset_attr.dataset_name}')
     logger.info(
@@ -146,7 +149,7 @@ def get_merged_dataset(
     model_args: ModelArguments,
     training_args: TrainingArguments,
     stage: Literal['pt', 'sft', 'rm', 'ppo', 'kto'],
-) -> None:
+) -> Optional[Union[Dataset, IterableDataset]]:
     """
     Merge multiple datasets into a single dataset.
 
@@ -162,6 +165,7 @@ def get_merged_dataset(
     """
     if dataset_names is None:
         return None
+
     all_datasets = []
     for dataset_attr in get_dataset_attr_list(dataset_names, data_args):
         if (stage == 'rm'
@@ -173,9 +177,7 @@ def get_merged_dataset(
                                              data_args)
         all_datasets.append(single_dataset)
 
-    logger.info(f'Merging {data_args.dataset} datasets together...')
     dataset = merge_dataset(all_datasets, data_args, training_args)
-
     return dataset
 
 
