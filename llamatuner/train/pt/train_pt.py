@@ -115,8 +115,8 @@ def run_pt(
                                             logger=logger)
     logger.info('Successfully loaded model and tokenizer.')
 
-    # Create a supervised dataset and Trainer, then train the model
-    logger.info('Creating a supervised dataset and DataCollator...')
+    # Create a dataset and Trainer, then train the model
+    logger.info('Creating a dataset and DataCollator...')
 
     dataset_module = get_dataset(
         data_args,
@@ -126,7 +126,7 @@ def run_pt(
         tokenizer=tokenizer,
         processor=None,
     )
-    logger.info('Successfully created the supervised dataset.')
+    logger.info('Successfully created the dataset.')
     logger.info('Creating DataCollator...')
     data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer,
                                                     mlm=False)
