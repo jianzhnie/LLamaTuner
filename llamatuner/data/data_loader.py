@@ -9,7 +9,7 @@ from transformers.tokenization_utils import PreTrainedTokenizer
 
 from llamatuner.configs import DataArguments, ModelArguments
 from llamatuner.data.data_align import align_dataset
-from llamatuner.data.data_parser import DatasetAttr, get_dataset_list
+from llamatuner.data.data_parser import DatasetAttr, get_dataset_attr_list
 from llamatuner.data.preprocess import get_preprocess_and_print_func
 from llamatuner.data.template import Template, get_template_and_fix_tokenizer
 from llamatuner.data.utils import DatasetModule, merge_dataset, split_dataset
@@ -130,13 +130,12 @@ def load_single_dataset(
         num_samples = min(data_args.max_samples, len(dataset))
         dataset = dataset.select(range(num_samples))
 
-    logger.info('Successfully loaded dataset')
-    logger.info('Aligning the dataset to the Alpaca or ShareGPT template.')
+    logger.info(f'Successfully loaded dataset {dataset_attr.dataset_name}')
+    logger.info(
+        f'Aligning the dataset to the {dataset_attr.formatting} template.')
     aligned_dataset = align_dataset(dataset, dataset_attr, data_args)
     logger.info(
-        'Successfully converted dataset %s to %s format.',
-        dataset_attr.dataset_name,
-        dataset_attr.formatting,
+        f'Successfully converted dataset {dataset_attr.dataset_name} to {dataset_attr.formatting} format.'
     )
     return aligned_dataset
 
@@ -148,10 +147,23 @@ def get_merged_dataset(
     training_args: TrainingArguments,
     stage: Literal['pt', 'sft', 'rm', 'ppo', 'kto'],
 ) -> None:
+    """
+    Merge multiple datasets into a single dataset.
+
+    Args:
+        dataset_names: List of dataset names to merge.
+        data_args: Arguments related to data loading and processing.
+        model_args: Arguments related to model configuration.
+        training_args: Arguments for training configuration.
+        stage: Current training stage.
+
+    Returns:
+        Optional[Union[Dataset, IterableDataset]]: Merged dataset or None if no datasets provided.
+    """
     if dataset_names is None:
         return None
     all_datasets = []
-    for dataset_attr in get_dataset_list(dataset_names, data_args):
+    for dataset_attr in get_dataset_attr_list(dataset_names, data_args):
         if (stage == 'rm'
                 and not dataset_attr.ranking) or (stage != 'rm'
                                                   and dataset_attr.ranking):
@@ -177,8 +189,24 @@ def get_preprocessed_dataset(
     processor: Optional[ProcessorMixin] = None,
     is_eval: bool = False,
 ) -> Optional[Union[Dataset, IterableDataset]]:
-    r"""
-    Preprocesses the dataset, including format checking and tokenization.
+    """
+    Preprocess the dataset by applying tokenization and formatting.
+
+    Args:
+        dataset: Input dataset to preprocess.
+        data_args: Arguments related to data processing.
+        training_args: Arguments for training configuration.
+        stage: Current training stage.
+        template: Template for data formatting.
+        tokenizer: Tokenizer for text processing.
+        processor: Optional additional processor.
+        is_eval: Whether this is evaluation dataset.
+
+    Returns:
+        Optional[Union[Dataset, IterableDataset]]: Preprocessed dataset or None if input is None.
+
+    Raises:
+        RuntimeError: If insufficient or invalid samples are found.
     """
     if dataset is None:
         return None
@@ -247,7 +275,7 @@ def get_dataset(
     # Adjust the template and tokenizer
     logger.info('Get template and fix tokenizer')
     template = get_template_and_fix_tokenizer(tokenizer, data_args)
-    logger.info('Template: %s', template)
+    logger.info('Using template: %s', template)
 
     if data_args.train_on_prompt and template.efficient_eos:
         raise ValueError(

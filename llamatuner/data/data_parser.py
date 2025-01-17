@@ -101,12 +101,13 @@ class DatasetAttr:
         setattr(self, key, obj.get(key, default))
 
 
-def get_dataset_list(dataset_names: Optional[Sequence[str]],
-                     data_args: DataArguments) -> List[DatasetAttr]:
+def get_dataset_attr_list(dataset_names: Optional[Sequence[str]],
+                          data_args: DataArguments) -> List[DatasetAttr]:
     """
     Get a list of dataset attributes based on the provided dataset arguments.
 
     Args:
+        dataset_names: Sequence of dataset names to process.
         data_args (DataArguments): The dataset arguments containing dataset information.
 
     Returns:
@@ -119,17 +120,17 @@ def get_dataset_list(dataset_names: Optional[Sequence[str]],
 
     if not dataset_names:
         raise ValueError(
-            'No dataset specified in the --dataset argument, please refer to the '
-            + '%s file for available datasets.' % file_path)
+            f'No dataset specified in the --dataset argument, please refer to the {file_path} '
+            'file for available datasets.')
 
-    logger.info('You have set the --dataset with %s', data_args.dataset)
-
+    # Parse interleave probabilities if provided
     if data_args.interleave_probs:
         data_args.interleave_probs = [
             float(prob.strip())
             for prob in data_args.interleave_probs.split(',')
         ]
 
+    # Load dataset configuration
     try:
         logger.info('Loading dataset information config file from %s...',
                     file_path)
@@ -139,73 +140,84 @@ def get_dataset_list(dataset_names: Optional[Sequence[str]],
         error_message = f'Cannot open {file_path} due to {str(err)}.'
         raise ValueError(error_message) from err
 
-    dataset_list: List[DatasetAttr] = []
+    def _create_dataset_attr(name: str, info: Dict[str, Any]) -> DatasetAttr:
+        """Helper function to create and configure a DatasetAttr instance.
+
+        Args:
+            name: Name of the dataset.
+            info: Dataset configuration information.
+
+        Returns:
+            Configured DatasetAttr instance.
+        """
+        # Determine data source and create base DatasetAttr
+        has_hf_url = 'hf_hub_url' in info
+        has_ms_url = 'ms_hub_url' in info
+
+        if has_hf_url or has_ms_url:
+            if (use_modelscope() and has_ms_url) or (not has_hf_url):
+                dataset_attr = DatasetAttr(dataset_name=info['ms_hub_url'],
+                                           load_from='ms_hub')
+            else:
+                dataset_attr = DatasetAttr(dataset_name=info['hf_hub_url'],
+                                           load_from='hf_hub')
+        elif 'script_url' in info:
+            dataset_attr = DatasetAttr(dataset_name=info['script_url'],
+                                       load_from='script')
+        else:
+            dataset_attr = DatasetAttr(dataset_name=info['file_name'],
+                                       load_from='file')
+
+        # Configure basic attributes
+        for attr in ['subset', 'folder', 'num_samples']:
+            dataset_attr.set_attr(attr, info)
+
+        dataset_attr.set_attr('ranking', info, default=False)
+        dataset_attr.set_attr('formatting', info, default='alpaca')
+        dataset_attr.set_attr('split', info, default='train')
+
+        # Configure column names
+        if 'columns' in info:
+            _configure_columns(dataset_attr, info['columns'])
+
+        # Configure ShareGPT tags
+        if dataset_attr.formatting == 'sharegpt' and 'tags' in info:
+            _configure_tags(dataset_attr, info['tags'])
+
+        return dataset_attr
+
+    def _configure_columns(dataset_attr: DatasetAttr,
+                           columns: Dict[str, str]) -> None:
+        """Configure dataset columns based on formatting type."""
+        base_columns = [
+            'system', 'tools', 'images', 'videos', 'chosen', 'rejected',
+            'kto_tag'
+        ]
+        format_columns = ([
+            'prompt', 'query', 'response', 'history'
+        ] if dataset_attr.formatting == 'alpaca' else ['messages'])
+
+        for column in base_columns + format_columns:
+            dataset_attr.set_attr(column, columns)
+
+    def _configure_tags(dataset_attr: DatasetAttr, tags: Dict[str,
+                                                              str]) -> None:
+        """Configure ShareGPT specific tags."""
+        tag_names = [
+            'role_tag', 'content_tag', 'user_tag', 'assistant_tag',
+            'observation_tag', 'function_tag', 'system_tag'
+        ]
+        for tag in tag_names:
+            dataset_attr.set_attr(tag, tags)
+
+    # Process each dataset
+    dataset_attr_list: List[DatasetAttr] = []
     for name in dataset_names:
         if name not in dataset_infos:
             raise ValueError(
                 f'Undefined dataset {name} in dataset config file {file_path}.'
             )
+        dataset_attr_ = _create_dataset_attr(name, dataset_infos[name])
+        dataset_attr_list.append(dataset_attr_)
 
-        dataset_info = dataset_infos[name]
-        has_hf_url = 'hf_hub_url' in dataset_info
-        has_ms_url = 'ms_hub_url' in dataset_info
-
-        # Determine source and create DatasetAttr instance
-        if has_hf_url or has_ms_url:
-            if (use_modelscope() and has_ms_url) or (not has_hf_url):
-                dataset_attr = DatasetAttr(
-                    dataset_name=dataset_info['ms_hub_url'],
-                    load_from='ms_hub')
-            else:
-                dataset_attr = DatasetAttr(
-                    dataset_name=dataset_info['hf_hub_url'],
-                    load_from='hf_hub')
-        elif 'script_url' in dataset_info:
-            dataset_attr = DatasetAttr(dataset_name=dataset_info['script_url'],
-                                       load_from='script')
-        else:
-            dataset_attr = DatasetAttr(dataset_name=dataset_info['file_name'],
-                                       load_from='file')
-
-        # Set attributes from dataset_info
-        dataset_attr.set_attr('subset', dataset_info)
-        dataset_attr.set_attr('folder', dataset_info)
-        dataset_attr.set_attr('ranking', dataset_info, default=False)
-        dataset_attr.set_attr('formatting', dataset_info, default='alpaca')
-        dataset_attr.set_attr('split', dataset_info, default='train')
-        dataset_attr.set_attr('folder', dataset_info)
-        dataset_attr.set_attr('num_samples', dataset_info)
-
-        if 'columns' in dataset_info:
-            column_names = [
-                'system',
-                'tools',
-                'images',
-                'videos',
-                'chosen',
-                'rejected',
-                'kto_tag',
-            ]
-            if dataset_attr.formatting == 'alpaca':
-                column_names.extend(['prompt', 'query', 'response', 'history'])
-            else:
-                column_names.append('messages')
-
-            for column_name in column_names:
-                dataset_attr.set_attr(column_name, dataset_info['columns'])
-
-        if dataset_attr.formatting == 'sharegpt' and 'tags' in dataset_info:
-            tag_names = (
-                'role_tag',
-                'content_tag',
-                'user_tag',
-                'assistant_tag',
-                'observation_tag',
-                'function_tag',
-                'system_tag',
-            )
-            for tag in tag_names:
-                dataset_attr.set_attr(tag, dataset_info['tags'])
-
-        dataset_list.append(dataset_attr)
-    return dataset_list
+    return dataset_attr_list
