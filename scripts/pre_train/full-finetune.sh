@@ -1,14 +1,15 @@
 python llamatuner/train/pt/train_pt.py \
-    --model_name_or_path facebook/opt-125m \
-    --dataset c4_demo \
+    --model_name_or_path Qwen/Qwen2.5-1.5B \
+    --dataset open-web-math \
     --eval_dataset c4_demo \
     --output_dir work_dir/pre_train \
     --wandb_project llamatuner \
-    --wandb_run_name opt-125m_pre_train \
+    --wandb_run_name qwen-1.5B_pre_train \
     --num_train_epochs 3 \
-    --per_device_train_batch_size 4 \
-    --per_device_eval_batch_size 4 \
-    --gradient_accumulation_steps 8 \
+    --max_samples 10000 \
+    --per_device_train_batch_size 1 \
+    --per_device_eval_batch_size 1 \
+    --gradient_accumulation_steps 1 \
     --eval_strategy "steps" \
     --save_strategy "steps" \
     --eval_steps 100 \
