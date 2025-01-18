@@ -109,10 +109,11 @@ def load_single_dataset(
             trust_remote_code=model_args.trust_remote_code,
         )
 
+    logger.info(f'Successfully loaded dataset {dataset_attr.dataset_name}')
     if dataset_attr.num_samples is not None and not data_args.streaming:
         target_num = dataset_attr.num_samples
-        indexes = np.random.permutation(
-            len(dataset))[:target_num]  # all samples should be included
+        # all samples should be included
+        indexes = np.random.permutation(len(dataset))[:target_num]
         target_num -= len(indexes)
         if target_num > 0:
             expand_indexes = np.random.choice(len(dataset), target_num)
@@ -129,8 +130,10 @@ def load_single_dataset(
     if data_args.max_samples is not None:
         num_samples = min(data_args.max_samples, len(dataset))
         dataset = dataset.select(range(num_samples))
+        logger.info(
+            f'Sampled {data_args.max_samples} examples from dataset {dataset_attr}.'
+        )
 
-    logger.info(f'Successfully loaded dataset {dataset_attr.dataset_name}')
     logger.info(
         f'Aligning the dataset to the {dataset_attr.formatting} template.')
     aligned_dataset = align_dataset(dataset, dataset_attr, data_args)
@@ -146,7 +149,7 @@ def get_merged_dataset(
     model_args: ModelArguments,
     training_args: TrainingArguments,
     stage: Literal['pt', 'sft', 'rm', 'ppo', 'kto'],
-) -> None:
+) -> Optional[Union[Dataset, IterableDataset]]:
     """
     Merge multiple datasets into a single dataset.
 
@@ -162,6 +165,7 @@ def get_merged_dataset(
     """
     if dataset_names is None:
         return None
+
     all_datasets = []
     for dataset_attr in get_dataset_attr_list(dataset_names, data_args):
         if (stage == 'rm'
@@ -173,9 +177,7 @@ def get_merged_dataset(
                                              data_args)
         all_datasets.append(single_dataset)
 
-    logger.info(f'Merging {data_args.dataset} datasets together...')
     dataset = merge_dataset(all_datasets, data_args, training_args)
-
     return dataset
 
 
@@ -323,7 +325,7 @@ def get_dataset(
             ds.strip() for ds in data_args.eval_dataset.split(',')
         ] if data_args.eval_dataset else [])
         logger.info(f'Train dataset names: {train_dataset_names}')
-        logger.info(f'Eval dataset names: {train_dataset_names}')
+        logger.info(f'Eval dataset names: {eval_dataset_names}')
         train_dataset = get_merged_dataset(train_dataset_names, data_args,
                                            model_args, training_args, stage)
         eval_dataset = get_merged_dataset(eval_dataset_names, data_args,

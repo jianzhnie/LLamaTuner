@@ -1,27 +1,30 @@
 python llamatuner/train/pt/train_pt.py \
-    --model_name_or_path facebook/opt-125m \
-    --dataset c4_demo \
+    --model_name_or_path Qwen/Qwen2.5-1.5B \
+    --trust_remote_code \
+    --dataset open-web-math \
     --eval_dataset c4_demo \
+    --template qwen \
+    --cutoff_len 64 \
+    --max_samples 1000 \
+    --preprocessing_num_workers 16 \
     --output_dir work_dir/pre_train \
     --wandb_project llamatuner \
-    --wandb_run_name opt-125m_pre_train \
-    --num_train_epochs 3 \
-    --per_device_train_batch_size 4 \
-    --per_device_eval_batch_size 4 \
-    --gradient_accumulation_steps 8 \
-    --eval_strategy "steps" \
+    --wandb_run_name qwen-1.5B_pre_train \
+    --logging_steps 10 \
     --save_strategy "steps" \
-    --eval_steps 100 \
     --save_steps 500 \
     --save_total_limit 5 \
-    --logging_steps 10 \
+    --per_device_train_batch_size 1 \
+    --per_device_eval_batch_size 1 \
+    --gradient_accumulation_steps 1 \
+    --eval_strategy "steps" \
+    --eval_steps 100 \
+    --num_train_epochs 3 \
     --learning_rate 2e-5 \
     --weight_decay 0. \
-    --warmup_ratio 0.03 \
+    --warmup_ratio 0.1 \
     --optim "adamw_torch" \
     --lr_scheduler_type "cosine" \
     --gradient_checkpointing True \
-    --trust_remote_code \
-    --model_max_length 128 \
     --do_train \
     --do_eval

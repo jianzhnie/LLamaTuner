@@ -1,9 +1,17 @@
 # The dataset_info.yaml file contains the information of the datasets used in the experiments.
+## pretrain dataset
 c4_demo:
   file_name: c4_demo.json
   columns:
     prompt: text
 
+open-web-math:
+  hf_hub_url: open-web-math/open-web-math
+  formatting: alpaca
+  columns:
+    prompt: text
+
+## sft dataset
 alpaca:
   hf_hub_url: tatsu-lab/alpaca
   formatting: alpaca
