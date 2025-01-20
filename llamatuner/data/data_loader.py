@@ -111,21 +111,21 @@ def load_single_dataset(
 
     logger.info(f'Successfully loaded dataset {dataset_attr.dataset_name}')
     if dataset_attr.num_samples is not None and not data_args.streaming:
+        dataset_size = len(dataset)
         target_num = dataset_attr.num_samples
-        # all samples should be included
-        indexes = np.random.permutation(len(dataset))[:target_num]
-        target_num -= len(indexes)
-        if target_num > 0:
-            expand_indexes = np.random.choice(len(dataset), target_num)
-            indexes = np.concatenate((indexes, expand_indexes), axis=0)
 
-        assert len(
-            indexes) == dataset_attr.num_samples, 'Sample num mismatched.'
+        # If target samples exceed dataset size, use sampling with replacement
+        if target_num > dataset_size:
+            indexes = np.concatenate([
+                np.random.permutation(dataset_size),
+                np.random.choice(dataset_size, target_num - dataset_size)
+            ])
+        else:
+            indexes = np.random.permutation(dataset_size)[:target_num]
+
         dataset = dataset.select(indexes)
         logger.info(
-            f'Sampled {dataset_attr.num_samples} examples from dataset {dataset_attr}.'
-        )
-
+            f'Sampled {target_num} examples from dataset {dataset_attr}.')
     # Truncate dataset if max_train_samples is set
     if data_args.max_samples is not None:
         num_samples = min(data_args.max_samples, len(dataset))
