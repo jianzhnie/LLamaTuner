@@ -160,6 +160,7 @@ cython_debug/
 #.idea/
 *.json
 wandb/
+hf_hub
 logs/
 docs/
 checkpoints/
@@ -168,4 +169,3 @@ work_dirs/
 output/
 outputs/
 *.jso
-llamatuner/model/patcher.py

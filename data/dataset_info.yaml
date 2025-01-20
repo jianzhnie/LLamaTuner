@@ -7,6 +7,7 @@ c4_demo:
 
 open-web-math:
   hf_hub_url: open-web-math/open-web-math
+  split: train[10:20]
   formatting: alpaca
   columns:
     prompt: text
@@ -33,7 +34,6 @@ openassistant-guanaco:
   hf_hub_url: timdettmers/openassistant-guanaco
   formatting: alpaca
 
-# Belle Group
 belle_0.5m:
   hf_hub_url: BelleGroup/train_0.5M_CN
   ms_hub_url: AI-ModelScope/train_0.5M_CN
@@ -67,7 +67,6 @@ belle_multiturn:
     response: output
     history: history
 
-# firefly
 firefly:
   hf_hub_url: YeungNLP/firefly-train-1.1M
   formatting: alpaca
@@ -75,13 +74,11 @@ firefly:
     prompt: input
     response: target
 
-# CodeAlpaca
 codealpaca:
   hf_hub_url: sahil2801/CodeAlpaca-20k
   ms_hub_url: AI-ModelScope/CodeAlpaca-20k
   formatting: alpaca
 
-# alpacacot
 alpaca_cot:
   hf_hub_url: QingyiSi/Alpaca-CoT
   ms_hub_url: AI-ModelScope/Alpaca-CoT
