@@ -100,11 +100,9 @@ def run_pt(
     # Initialize the logger before other steps
     timestamp = time.strftime('%Y%m%d_%H%M%S', time.localtime())
     # Set up the output directory
-    output_dir = get_outdir(training_args.output_dir,
-                            finetune_args.wandb_run_name)
+    output_dir = get_outdir(training_args.output_dir)
     training_args.output_dir = get_outdir(output_dir, 'checkpoints')
-    log_name = os.path.join(finetune_args.wandb_run_name,
-                            timestamp).replace(os.path.sep, '_')
+    log_name = os.path.join(output_dir, timestamp).replace(os.path.sep, '_')
     log_file = os.path.join(output_dir, log_name + '.log')
     logger = get_logger(name='llamatuner', log_file=log_file, log_level='INFO')
 
@@ -131,15 +129,17 @@ def run_pt(
     data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer,
                                                     mlm=False)
     # Initialize wandb
-    logger.info('Initializing wandb project...')
-    wandb.init(
-        dir=output_dir,
-        project=finetune_args.wandb_project,
-        name=finetune_args.wandb_run_name,
-        tags=['full-finetune', 'pt'],
-        group='pt',
-        config=args,
-    )
+    if 'wandb' in training_args.report_to:
+        logger.info('Initializing wandb project...')
+        wandb_run_name = finetune_args.wandb_run_name if finetune_args else log_name
+        wandb.init(
+            dir=output_dir,
+            project=finetune_args.wandb_project,
+            name=wandb_run_name,
+            tags=['full-finetune', 'pt'],
+            group='pt',
+            config=args,
+        )
     # Initialize the Trainer object and start training
     logger.info('Initializing Trainer object.')
     trainer = Trainer(
