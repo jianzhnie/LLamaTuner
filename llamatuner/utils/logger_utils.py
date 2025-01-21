@@ -124,11 +124,11 @@ def get_logger(
 
         # Configure formatter and handlers
         formatter = ColorfulFormatter(
-            fmt=
-            ('%(asctime)s - [Rank %(rank)d] %(name)s.%(funcName)s:%(lineno)d - '
-             '%(levelname)s - %(message)s'),
+            fmt=('%(asctime)s - [%(filename)s.%(funcName)s:%(lineno)d]- '
+                 '%(levelname)s - %(message)s'),
             datefmt='%Y-%m-%d %H:%M:%S',
         )
+
         # Inject rank into all log records
         old_factory = logging.getLogRecordFactory()
 
