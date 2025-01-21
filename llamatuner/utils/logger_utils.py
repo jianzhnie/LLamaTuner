@@ -1,7 +1,9 @@
 import logging
 import os
 import sys
+import threading
 from logging import Formatter, LogRecord
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Optional, Union
 
@@ -24,7 +26,7 @@ class ColorfulFormatter(Formatter):
         >>> handler.setFormatter(formatter)
     """
 
-    COLORS = {
+    COLORS: dict[str, str] = {
         'INFO': Fore.GREEN,
         'WARNING': Fore.YELLOW,
         'ERROR': Fore.RED,
@@ -33,9 +35,18 @@ class ColorfulFormatter(Formatter):
     }
 
     def format(self, record: LogRecord) -> str:
+        """Format the log record with color coding.
+
+        Args:
+            record: The log record to format
+
+        Returns:
+            The formatted and color-coded log message
+        """
         record.rank = int(os.getenv('LOCAL_RANK', '0'))
         log_message = super().format(record)
-        return self.COLORS.get(record.levelname, '') + log_message + Fore.RESET
+        color = self.COLORS.get(record.levelname, Fore.RESET)
+        return f'{color}{log_message}{Fore.RESET}'
 
 
 def get_logger(
@@ -66,60 +77,79 @@ def get_logger(
         >>> logger.info("Training started")
     """
     if file_mode not in ('w', 'a'):
-        raise ValueError("file_mode must be either 'w' or 'a'")
+        raise ValueError(f"Invalid file_mode: {file_mode}. Use 'w' or 'a'.")
 
-    # Get or create logger instance
-    logger = logging.getLogger(name)
+    with threading.Lock():
+        # Get or create logger instance
+        logger = logging.getLogger(name)
 
-    # Return existing logger if already initialized
-    if name in logger_initialized:
-        return logger
-
-    # Check if parent logger is already initialized
-    for logger_name in logger_initialized:
-        if name.startswith(logger_name):
+        # Return existing logger if already initialized
+        if name in logger_initialized:
             return logger
 
-    # Fix PyTorch DDP duplicate logging issue
-    # Set root StreamHandler to ERROR level to prevent unwanted output from rank>0 processes
-    for handler in logger.root.handlers:
-        if isinstance(handler, logging.StreamHandler):
-            handler.setLevel(logging.ERROR)
+        # Check if parent logger is already initialized
+        for logger_name in logger_initialized:
+            if name.startswith(logger_name):
+                return logger
 
-    # Initialize handlers list with stdout StreamHandler
-    handlers = [logging.StreamHandler(sys.stdout)]
+        # Fix PyTorch DDP duplicate logging issue
+        # Set root StreamHandler to ERROR level to prevent unwanted output from rank>0 processes
+        for handler in logger.root.handlers:
+            if isinstance(handler, logging.StreamHandler):
+                handler.setLevel(logging.ERROR)
 
-    # Determine process rank for distributed setup
-    try:
-        rank = dist.get_rank() if (dist.is_available()
-                                   and dist.is_initialized()) else 0
-    except Exception:
-        rank = 0
+        # Initialize handlers list with stdout StreamHandler
+        handlers = [logging.StreamHandler(sys.stdout)]
 
-    # Add FileHandler for rank 0 process if log_file is specified
-    if rank == 0 and log_file is not None:
-        log_file = Path(log_file)
-        log_file.parent.mkdir(parents=True, exist_ok=True)
-        handlers.append(logging.FileHandler(str(log_file), file_mode))
+        # Determine process rank for distributed setup
+        try:
+            rank = dist.get_rank() if (dist.is_available()
+                                       and dist.is_initialized()) else 0
+        except Exception:
+            rank = 0
 
-    # Configure formatter and handlers
-    formatter = ColorfulFormatter(
-        fmt=
-        '%(asctime)s - %(name)s.%(funcName)s:%(lineno)d - %(levelname)s - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S',
-    )
+        # Add FileHandler for rank 0 process if log_file is specified
+        if rank == 0 and log_file is not None:
+            log_file = Path(log_file)
+            log_file.parent.mkdir(parents=True, exist_ok=True)
+            file_handler = RotatingFileHandler(
+                filename=str(log_file),
+                mode=file_mode,
+                maxBytes=10 * 1024 * 1024,  # 10 MB
+                backupCount=5,
+                encoding='utf-8',
+            )
+            file_handler.setLevel(log_level)
+            handlers.append(file_handler)
 
-    # Apply configuration to all handlers
-    for handler in handlers:
-        handler.setFormatter(formatter)
-        handler.setLevel(log_level)
-        logger.addHandler(handler)
+        # Configure formatter and handlers
+        formatter = ColorfulFormatter(
+            fmt=
+            ('%(asctime)s - [Rank %(rank)d] %(name)s.%(funcName)s:%(lineno)d - '
+             '%(levelname)s - %(message)s'),
+            datefmt='%Y-%m-%d %H:%M:%S',
+        )
+        # Inject rank into all log records
+        old_factory = logging.getLogRecordFactory()
 
-    # Set logger level based on rank
-    logger.setLevel(log_level if rank == 0 else logging.ERROR)
+        def record_factory(*args, **kwargs):
+            record = old_factory(*args, **kwargs)
+            record.rank = rank  # Dynamic rank injection
+            return record
 
-    # Mark logger as initialized
-    logger_initialized[name] = True
+        logging.setLogRecordFactory(record_factory)
+
+        # Apply configuration to all handlers
+        for handler in handlers:
+            handler.setFormatter(formatter)
+            logger.addHandler(handler)
+
+        # Set logger level based on rank
+        logger.setLevel(log_level if rank == 0 else logging.ERROR)
+        logger.propagate = False  # Prevent propagation to root logger
+
+        # Mark logger as initialized
+        logger_initialized[name] = True
 
     return logger
 
@@ -197,3 +227,15 @@ def get_outdir(path: str, *paths, inc: bool = False) -> str:
         raise RuntimeError(
             'Failed to create unique output directory after 100 attempts')
     return outdir
+
+
+if __name__ == '__main__':
+    # Initialize logger
+    logger = get_logger('my_model', 'training.log', logging.DEBUG)
+
+    # Log messages
+    logger.debug('This is a debug message.')
+    logger.info('This is an info message.')
+    logger.warning('This is a warning message.')
+    logger.error('This is an error message.')
+    logger.critical('This is a critical message.')
