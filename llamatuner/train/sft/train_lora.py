@@ -193,11 +193,9 @@ def run_lora_sft(
     )
 
     timestamp = time.strftime('%Y%m%d_%H%M%S', time.localtime())
-    output_dir = get_outdir(training_args.output_dir,
-                            finetune_args.wandb_run_name)
+    output_dir = get_outdir(training_args.output_dir)
     training_args.output_dir = get_outdir(output_dir, 'checkpoints')
-    log_name = os.path.join(finetune_args.wandb_run_name,
-                            timestamp).replace(os.path.sep, '_')
+    log_name = os.path.join(output_dir, timestamp).replace(os.path.sep, '_')
     log_file = os.path.join(output_dir, log_name + '.log')
     logger = get_root_logger(log_file=log_file, log_level='INFO')
 
@@ -257,15 +255,17 @@ def run_lora_sft(
     gen_kwargs['pad_token_id'] = tokenizer.pad_token_id
     gen_kwargs['logits_processor'] = get_logits_processor()
 
-    logger.info('Initializing wandb...')
-    wandb.init(
-        dir=output_dir,
-        project=finetune_args.wandb_project,
-        name=finetune_args.wandb_run_name,
-        tags=['lora-finetune', 'sft'],
-        group='lora-finetune',
-        config=args,
-    )
+    if 'wandb' in training_args.report_to:
+        logger.info('Initializing wandb project...')
+        wandb_run_name = finetune_args.wandb_run_name if finetune_args else log_name
+        wandb.init(
+            dir=output_dir,
+            project=finetune_args.wandb_project,
+            name=wandb_run_name,
+            tags=['lora-finetune', 'sft'],
+            group='lora-finetune',
+            config=args,
+        )
 
     logger.info('Creating a Trainer...')
     trainer = Trainer(

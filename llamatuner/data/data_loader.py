@@ -12,7 +12,7 @@ from llamatuner.data.data_align import align_dataset
 from llamatuner.data.data_parser import DatasetAttr, get_dataset_attr_list
 from llamatuner.data.preprocess import get_preprocess_and_print_func
 from llamatuner.data.template import Template, get_template_and_fix_tokenizer
-from llamatuner.data.utils import DatasetModule, merge_dataset, split_dataset
+from llamatuner.data.utils import DatasetModule, merge_dataset
 from llamatuner.utils.constants import FILEEXT2TYPE
 from llamatuner.utils.logger_utils import get_logger
 from llamatuner.utils.misc import has_tokenized_data
@@ -111,21 +111,21 @@ def load_single_dataset(
 
     logger.info(f'Successfully loaded dataset {dataset_attr.dataset_name}')
     if dataset_attr.num_samples is not None and not data_args.streaming:
+        dataset_size = len(dataset)
         target_num = dataset_attr.num_samples
-        # all samples should be included
-        indexes = np.random.permutation(len(dataset))[:target_num]
-        target_num -= len(indexes)
-        if target_num > 0:
-            expand_indexes = np.random.choice(len(dataset), target_num)
-            indexes = np.concatenate((indexes, expand_indexes), axis=0)
 
-        assert len(
-            indexes) == dataset_attr.num_samples, 'Sample num mismatched.'
+        # If target samples exceed dataset size, use sampling with replacement
+        if target_num > dataset_size:
+            indexes = np.concatenate([
+                np.random.permutation(dataset_size),
+                np.random.choice(dataset_size, target_num - dataset_size)
+            ])
+        else:
+            indexes = np.random.permutation(dataset_size)[:target_num]
+
         dataset = dataset.select(indexes)
         logger.info(
-            f'Sampled {dataset_attr.num_samples} examples from dataset {dataset_attr}.'
-        )
-
+            f'Sampled {target_num} examples from dataset {dataset_attr}.')
     # Truncate dataset if max_train_samples is set
     if data_args.max_samples is not None:
         num_samples = min(data_args.max_samples, len(dataset))
@@ -351,28 +351,22 @@ def get_dataset(
                                                 processor,
                                                 is_eval=True)
 
-        if data_args.eval_dataset_size > 1e-6:
-            dataset_dict = split_dataset(train_dataset, data_args,
-                                         training_args)
-        else:
-            dataset_dict = {}
-            if train_dataset is not None:
-                if data_args.streaming:
-                    train_dataset = train_dataset.shuffle(
-                        buffer_size=data_args.buffer_size,
-                        seed=training_args.seed)
+        dataset_dict = {}
+        if train_dataset is not None:
+            if data_args.streaming:
+                train_dataset = train_dataset.shuffle(
+                    buffer_size=data_args.buffer_size, seed=training_args.seed)
 
-                dataset_dict['train_dataset'] = train_dataset
+            dataset_dict['train_dataset'] = train_dataset
 
-            if eval_dataset is not None:
-                if data_args.streaming:
-                    eval_dataset = eval_dataset.shuffle(
-                        buffer_size=data_args.buffer_size,
-                        seed=training_args.seed)
+        if eval_dataset is not None:
+            if data_args.streaming:
+                eval_dataset = eval_dataset.shuffle(
+                    buffer_size=data_args.buffer_size, seed=training_args.seed)
 
-                dataset_dict['eval_dataset'] = eval_dataset
+            dataset_dict['eval_dataset'] = eval_dataset
 
-            dataset_dict = DatasetDict(dataset_dict)
+        dataset_dict = DatasetDict(dataset_dict)
 
         # Save tokenized dataset to disk if required
         if data_args.tokenized_path is not None:
