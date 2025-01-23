@@ -73,7 +73,7 @@ class LoraArguments:
         metadata={'help': 'Dropout rate for the LoRA fine-tuning.'},
     )
     lora_target: str = field(
-        default='q_proj',
+        default='all',
         metadata={
             'help':
             ('Name(s) of target modules to apply LoRA. '
@@ -91,42 +91,11 @@ class LoraArguments:
         default='none',
         metadata={'help': 'Whether or not to use bias for LoRA layers.'},
     )
-    loraplus_lr_ratio: Optional[float] = field(
-        default=None,
-        metadata={'help': 'LoRA plus learning rate ratio (lr_B / lr_A).'},
-    )
-    loraplus_lr_embedding: float = field(
-        default=1e-6,
-        metadata={
-            'help': 'LoRA plus learning rate for lora embedding layers.'
-        },
-    )
     use_qlora: bool = field(
         default=False,
         metadata={
             'help':
             'Whether or not to use the LoRA+ method for learning rate scaling.'
-        },
-    )
-    use_rslora: bool = field(
-        default=False,
-        metadata={
-            'help':
-            'Whether or not to use the rank stabilization scaling factor for LoRA layer.'
-        },
-    )
-    use_dora: bool = field(
-        default=False,
-        metadata={
-            'help':
-            'Whether or not to use the weight-decomposed lora method (DoRA).'
-        },
-    )
-    create_new_adapter: bool = field(
-        default=False,
-        metadata={
-            'help':
-            'Whether or not to create a new adapter with randomly initialized weight.'
         },
     )
 
@@ -381,168 +350,22 @@ class RLHFArguments:
 
 
 @dataclass
-class GaloreArguments:
-    r"""
-    Arguments pertaining to the GaLore algorithm.
-    """
-
-    use_galore: bool = field(
-        default=False,
-        metadata={
-            'help':
-            'Whether or not to use the gradient low-Rank projection (GaLore).'
-        },
-    )
-    galore_target: str = field(
-        default='all',
-        metadata={
-            'help':
-            ('Name(s) of modules to apply GaLore. Use commas to separate multiple modules. '
-             'Use `all` to specify all the linear modules.')
-        },
-    )
-    galore_rank: int = field(
-        default=16,
-        metadata={'help': 'The rank of GaLore gradients.'},
-    )
-    galore_update_interval: int = field(
-        default=200,
-        metadata={'help': 'Number of steps to update the GaLore projection.'},
-    )
-    galore_scale: float = field(
-        default=0.25,
-        metadata={'help': 'GaLore scaling coefficient.'},
-    )
-    galore_proj_type: Literal['std', 'reverse_std', 'right', 'left',
-                              'full'] = field(
-                                  default='std',
-                                  metadata={
-                                      'help': 'Type of GaLore projection.'
-                                  },
-                              )
-    galore_layerwise: bool = field(
-        default=False,
-        metadata={
-            'help':
-            'Whether or not to enable layer-wise update to further save memory.'
-        },
-    )
-
-
-@dataclass
-class BAdamArgument:
-    r"""
-    Arguments pertaining to the BAdam optimizer.
-    """
-
-    use_badam: bool = field(
-        default=False,
-        metadata={'help': 'Whether or not to use the BAdam optimizer.'},
-    )
-    badam_mode: Literal['layer', 'ratio'] = field(
-        default='layer',
-        metadata={
-            'help': 'Whether to use layer-wise or ratio-wise BAdam optimizer.'
-        },
-    )
-    badam_start_block: Optional[int] = field(
-        default=None,
-        metadata={'help': 'The starting block index for layer-wise BAdam.'},
-    )
-    badam_switch_mode: Optional[Literal[
-        'ascending', 'descending', 'random', 'fixed']] = field(
-            default='ascending',
-            metadata={
-                'help':
-                'the strategy of picking block to update for layer-wise BAdam.'
-            },
-        )
-    badam_switch_interval: Optional[int] = field(
-        default=50,
-        metadata={
-            'help':
-            'Number of steps to update the block for layer-wise BAdam. Use -1 to disable the block update.'
-        },
-    )
-    badam_update_ratio: float = field(
-        default=0.05,
-        metadata={'help': 'The ratio of the update for ratio-wise BAdam.'},
-    )
-    badam_mask_mode: Literal['adjacent', 'scatter'] = field(
-        default='adjacent',
-        metadata={
-            'help':
-            ('The mode of the mask for BAdam optimizer. '
-             '`adjacent` means that the trainable parameters are adjacent to each other, '
-             '`scatter` means that trainable parameters are randomly choosed from the weight.'
-             )
-        },
-    )
-    badam_verbose: int = field(
-        default=0,
-        metadata={
-            'help':
-            ('The verbosity level of BAdam optimizer. '
-             '0 for no print, 1 for print the block prefix, 2 for print trainable parameters.'
-             )
-        },
-    )
-
-
-@dataclass
 class FinetuningArguments(
         FreezeArguments,
         LoraArguments,
         QuantArguments,
         RLHFArguments,
-        GaloreArguments,
-        BAdamArgument,
 ):
     r"""
     Arguments pertaining to which techniques we are going to fine-tuning with.
     """
-
-    pure_bf16: bool = field(
-        default=False,
-        metadata={
-            'help':
-            'Whether or not to train model in purely bf16 precision (without AMP).'
-        },
+    stage: Literal['pt', 'sft', 'rm', 'ppo', 'dpo', 'kto', ] = field(
+        default='sft',
+        metadata={'help': 'Which stage will be performed in training.'},
     )
-    stage: Literal['full', 'pt', 'sft', 'rm', 'ppo', 'dpo', 'kto',
-                   'orpo'] = field(
-                       default='sft',
-                       metadata={
-                           'help': 'Which stage will be performed in training.'
-                       },
-                   )
     finetuning_type: Literal['lora', 'freeze', 'full'] = field(
         default='lora',
         metadata={'help': 'Which fine-tuning method to use.'},
-    )
-    use_llama_pro: bool = field(
-        default=False,
-        metadata={
-            'help':
-            'Whether or not to make only the parameters in the expanded blocks trainable.'
-        },
-    )
-    freeze_vision_tower: bool = field(
-        default=True,
-        metadata={
-            'help': 'Whether ot not to freeze vision tower in MLLM training.'
-        },
-    )
-    train_mm_proj_only: bool = field(
-        default=False,
-        metadata={
-            'help':
-            'Whether or not to train the multimodal projector for MLLM only.'
-        },
-    )
-    plot_loss: bool = field(
-        default=False,
-        metadata={'help': 'Whether or not to save the training loss curves.'},
     )
     wandb_project: Optional[str] = field(
         default='llamatuner',
@@ -566,7 +389,9 @@ class FinetuningArguments(
         self.lora_alpha = self.lora_alpha or self.lora_rank * 2
         self.lora_target = split_arg(self.lora_target)
         self.additional_target = split_arg(self.additional_target)
-        self.galore_target = split_arg(self.galore_target)
+        self.use_ref_model = self.stage == 'dpo' and self.pref_loss not in [
+            'orpo', 'simpo'
+        ]
 
         assert self.finetuning_type in [
             'lora',
@@ -599,17 +424,10 @@ class FinetuningArguments(
                 '`dpo_label_smoothing` is only valid for sigmoid loss function.'
             )
 
-        if self.use_llama_pro and self.finetuning_type == 'full':
-            raise ValueError(
-                '`use_llama_pro` is only valid for the Freeze or LoRA training.'
-            )
-
-        if self.use_galore and self.finetuning_type == 'lora':
-            raise ValueError('Cannot use LoRA with GaLore together.')
-
-        if self.use_galore and self.use_badam:
-            raise ValueError('Cannot use GaLore with BAdam together.')
-
-        if self.loraplus_lr_ratio is not None and self.finetuning_type != 'lora':
-            raise ValueError(
-                '`loraplus_lr_ratio` is only valid for the LoRA training.')
+    def to_dict(self) -> Dict[str, Any]:
+        args = asdict(self)
+        args = {
+            k: f'<{k.upper()}>' if k.endswith('api_key') else v
+            for k, v in args.items()
+        }
+        return args

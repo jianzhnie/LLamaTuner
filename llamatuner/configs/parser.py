@@ -7,11 +7,8 @@ import torch
 import transformers
 from transformers import HfArgumentParser
 from transformers import Seq2SeqTrainingArguments as TrainingArguments
-from transformers.integrations import is_deepspeed_zero3_enabled
 from transformers.trainer_utils import get_last_checkpoint
 from transformers.training_args import ParallelMode
-from transformers.utils import is_torch_bf16_gpu_available
-from transformers.utils.versions import require_version
 
 from llamatuner.configs.data_args import DataArguments
 from llamatuner.configs.eval_args import EvaluationArguments
@@ -20,7 +17,8 @@ from llamatuner.configs.generating_args import GeneratingArguments
 from llamatuner.configs.model_args import ModelArguments
 from llamatuner.utils.constants import CHECKPOINT_NAMES
 from llamatuner.utils.logger_utils import get_logger
-from llamatuner.utils.misc import check_dependencies, get_current_device
+from llamatuner.utils.misc import (check_dependencies, check_version,
+                                   get_current_device)
 
 logger = get_logger('llamatuner')
 
@@ -89,8 +87,8 @@ def verify_model_args(
     model_args: ModelArguments,
     finetuning_args: FinetuningArguments,
 ) -> None:
-    if (model_args.adapter_name_or_path is not None
-            and finetuning_args.finetuning_type != 'lora'):
+
+    if model_args.adapter_name_or_path is not None and finetuning_args.finetuning_type != 'lora':
         raise ValueError('Adapter is only valid for the LoRA method.')
 
     if finetuning_args.use_qlora and finetuning_args.quant_bit is not None:
@@ -102,11 +100,6 @@ def verify_model_args(
                 'Cannot resize embedding layers of a quantized model.')
 
         if (model_args.adapter_name_or_path is not None
-                and finetuning_args.create_new_adapter):
-            raise ValueError(
-                'Cannot create new adapter upon a quantized model.')
-
-        if (model_args.adapter_name_or_path is not None
                 and len(model_args.adapter_name_or_path) != 1):
             raise ValueError(
                 'Quantized model only accepts a single adapter. Merge them first.'
@@ -114,35 +107,12 @@ def verify_model_args(
 
 
 def check_extra_dependencies(
-    model_args: ModelArguments,
-    finetuning_args: FinetuningArguments,
-    training_args: Optional[TrainingArguments] = None,
-) -> None:
-    if model_args.use_unsloth:
-        require_version(
-            'unsloth',
-            'Please install unsloth: https://github.com/unslothai/unsloth')
-
-    if model_args.mixture_of_depths is not None:
-        require_version('mixture-of-depth>=1.1.6',
-                        'To fix: pip install mixture-of-depth>=1.1.6')
-
-    if model_args.infer_backend == 'vllm':
-        require_version('vllm>=0.4.3', 'To fix: pip install vllm>=0.4.3')
-
-    if finetuning_args.use_galore:
-        require_version('galore_torch', 'To fix: pip install galore_torch')
-
-    if finetuning_args.use_badam:
-        require_version('badam>=1.2.1', 'To fix: pip install badam>=1.2.1')
-
-    if finetuning_args.plot_loss:
-        require_version('matplotlib', 'To fix: pip install matplotlib')
+    training_args: Optional[TrainingArguments] = None, ) -> None:
 
     if training_args is not None and training_args.predict_with_generate:
-        require_version('jieba', 'To fix: pip install jieba')
-        require_version('nltk', 'To fix: pip install nltk')
-        require_version('rouge_chinese', 'To fix: pip install rouge-chinese')
+        check_version('jieba', mandatory=True)
+        check_version('nltk', mandatory=True)
+        check_version('rouge_chinese', mandatory=True)
 
 
 def parse_train_args(args: Optional[Dict[str, Any]] = None) -> TRAIN_CLS:
@@ -177,14 +147,19 @@ def get_train_args(args: Optional[Dict[str, Any]] = None) -> TRAIN_CLS:
     if finetuning_args.stage != 'pt' and data_args.template is None:
         raise ValueError('Please specify which `template` to use.')
 
-    if finetuning_args.stage != 'sft' and training_args.predict_with_generate:
+    if finetuning_args.stage != 'sft':
+        if training_args.predict_with_generate:
+            raise ValueError(
+                '`predict_with_generate` cannot be set as True except SFT.')
+
+        if data_args.train_on_prompt or data_args.mask_history:
+            raise ValueError(
+                '`train_on_prompt` or `mask_history` cannot be set as True except SFT.'
+            )
+
+    if finetuning_args.stage != 'sft' and training_args.do_predict and training_args.predict_with_generate:
         raise ValueError(
             '`predict_with_generate` cannot be set as True except SFT.')
-
-    if (finetuning_args.stage == 'sft' and training_args.do_predict
-            and not training_args.predict_with_generate):
-        raise ValueError(
-            'Please enable `predict_with_generate` to save model predictions.')
 
     if finetuning_args.stage in ['rm', 'ppo'
                                  ] and training_args.load_best_model_at_end:
@@ -195,14 +170,6 @@ def get_train_args(args: Optional[Dict[str, Any]] = None) -> TRAIN_CLS:
         raise ValueError(
             'PPO training does not support evaluation, use the SFT stage to evaluate models.'
         )
-
-    if finetuning_args.stage == 'ppo' and model_args.shift_attn:
-        raise ValueError('PPO training is incompatible with S^2-Attn.')
-
-    if (finetuning_args.stage == 'ppo'
-            and finetuning_args.reward_model_type == 'lora'
-            and model_args.use_unsloth):
-        raise ValueError('Unsloth does not support lora reward model.')
 
     if (finetuning_args.stage == 'ppo' and training_args.report_to
             and training_args.report_to[0] not in ['wandb', 'tensorboard']):
@@ -221,48 +188,12 @@ def get_train_args(args: Optional[Dict[str, Any]] = None) -> TRAIN_CLS:
     if training_args.max_steps == -1 and data_args.streaming:
         raise ValueError('Please specify `max_steps` in streaming mode.')
 
-    if training_args.do_train and training_args.predict_with_generate:
-        raise ValueError(
-            '`predict_with_generate` cannot be set as True while training.')
+    if training_args.do_train and data_args.dataset is None:
+        raise ValueError('Please specify dataset for training.')
 
     if training_args.do_train and finetuning_args.quant_device_map == 'auto':
         raise ValueError(
             'Cannot use device map for quantized models in training.')
-
-    if finetuning_args.pure_bf16:
-        if not is_torch_bf16_gpu_available():
-            raise ValueError('This device does not support `pure_bf16`.')
-
-        if is_deepspeed_zero3_enabled():
-            raise ValueError(
-                '`pure_bf16` is incompatible with DeepSpeed ZeRO-3.')
-
-    if (finetuning_args.use_galore and finetuning_args.galore_layerwise
-            and training_args.parallel_mode == ParallelMode.DISTRIBUTED):
-        raise ValueError(
-            'Distributed training does not support layer-wise GaLore.')
-
-    if (finetuning_args.use_badam
-            and training_args.parallel_mode == ParallelMode.DISTRIBUTED):
-        if finetuning_args.badam_mode == 'ratio':
-            raise ValueError(
-                'Radio-based BAdam does not yet support distributed training, use layer-wise BAdam.'
-            )
-        elif not is_deepspeed_zero3_enabled():
-            raise ValueError(
-                'Layer-wise BAdam only supports DeepSpeed ZeRO-3 training.')
-
-    if finetuning_args.use_galore and training_args.deepspeed is not None:
-        raise ValueError('GaLore is incompatible with DeepSpeed yet.')
-
-    if model_args.infer_backend == 'vllm':
-        raise ValueError(
-            'vLLM backend is only available for API, CLI and Web.')
-
-    if model_args.visual_inputs and data_args.packing:
-        raise ValueError('Cannot use packing in MLLM fine-tuning.')
-    if model_args.use_unsloth and is_deepspeed_zero3_enabled():
-        raise ValueError('Unsloth is incompatible with DeepSpeed ZeRO-3.')
 
     verify_model_args(model_args, finetuning_args)
     check_extra_dependencies(model_args, finetuning_args, training_args)
@@ -274,20 +205,9 @@ def get_train_args(args: Optional[Dict[str, Any]] = None) -> TRAIN_CLS:
             'Remember to add embedding layers to `additional_target` to make the added tokens trainable.'
         )
 
-    if (training_args.do_train and finetuning_args.quant_bit is not None
-            and (not model_args.upcast_layernorm)):
-        logger.warning(
-            'We recommend enable `upcast_layernorm` in quantized training.')
-
     if training_args.do_train and (not training_args.fp16) and (
             not training_args.bf16):
         logger.warning('We recommend enable mixed precision training.')
-
-    if (training_args.do_train and finetuning_args.use_galore
-            and not finetuning_args.pure_bf16):
-        logger.warning(
-            'Using GaLore with mixed precision training may significantly increases GPU memory usage.'
-        )
 
     if (not training_args.do_train) and finetuning_args.quant_bit is not None:
         logger.warning(
@@ -346,7 +266,7 @@ def get_train_args(args: Optional[Dict[str, Any]] = None) -> TRAIN_CLS:
             .format(training_args.resume_from_checkpoint))
 
     # Post-process model arguments
-    if training_args.bf16 or finetuning_args.pure_bf16:
+    if training_args.bf16:
         model_args.compute_dtype = torch.bfloat16
     elif training_args.fp16:
         model_args.compute_dtype = torch.float16
@@ -381,42 +301,15 @@ def get_train_args(args: Optional[Dict[str, Any]] = None) -> TRAIN_CLS:
 def get_infer_args(args: Optional[Dict[str, Any]] = None) -> INFER_CLS:
     model_args, data_args, finetuning_args, generating_args = parse_infer_args(
         args)
-
     set_transformers_logging()
 
     if data_args.template is None:
         raise ValueError('Please specify which `template` to use.')
 
-    if model_args.infer_backend == 'vllm':
-        if finetuning_args.stage != 'sft':
-            raise ValueError(
-                'vLLM engine only supports auto-regressive models.')
-
-        if finetuning_args.use_qlora and finetuning_args.quant_bit is not None:
-            raise ValueError(
-                'vLLM engine does not support bnb quant (GPTQ and AWQ are supported).'
-            )
-
-        if model_args.rope_scaling is not None:
-            raise ValueError('vLLM engine does not support RoPE scaling.')
-
-        if (model_args.adapter_name_or_path is not None
-                and len(model_args.adapter_name_or_path) != 1):
-            raise ValueError(
-                'vLLM only accepts a single adapter. Merge them first.')
-
-    if finetuning_args.stage == 'rm' and model_args.visual_inputs:
-        raise ValueError(
-            'Reward server does not support MLLM yet. Stay tuned.')
-
     verify_model_args(model_args, finetuning_args)
     check_extra_dependencies(model_args, finetuning_args)
 
-    if model_args.export_dir is not None:
-        model_args.device_map = {'': torch.device(model_args.export_device)}
-    else:
-        model_args.device_map = 'auto'
-
+    model_args.device_map = 'auto'
     return model_args, data_args, finetuning_args, generating_args
 
 
@@ -427,10 +320,6 @@ def get_eval_args(args: Optional[Dict[str, Any]] = None) -> EVAL_CLS:
 
     if data_args.template is None:
         raise ValueError('Please specify which `template` to use.')
-
-    if model_args.infer_backend == 'vllm':
-        raise ValueError(
-            'vLLM backend is only available for API, CLI and Web.')
 
     verify_model_args(model_args, finetuning_args)
     check_extra_dependencies(model_args, finetuning_args)
