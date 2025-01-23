@@ -11,7 +11,7 @@ from llamatuner.utils.logger_utils import get_logger
 logger = get_logger('llamatuner')
 
 
-def find_all_linear_names(finetune_args: FinetuningArguments,
+def find_all_linear_names(finetuning_args: FinetuningArguments,
                           model: torch.nn.Module) -> List[str]:
     """Returns a list of names of all linear layers present in the given model.
     如果args.bits是4，使用bitsandbytes库中的bnb.nn.Linear4bit层；
@@ -40,9 +40,9 @@ def find_all_linear_names(finetune_args: FinetuningArguments,
         ['0', '1']
     """
     # Determine the correct linear layer class based on the value of `args.bits`
-    if finetune_args.quant_bit == 4:
+    if finetuning_args.quant_bit == 4:
         cls = bnb.nn.Linear4bit
-    elif finetune_args.quant_bit == 8:
+    elif finetuning_args.quant_bit == 8:
         cls = bnb.nn.Linear8bitLt
     else:
         cls = torch.nn.Linear

@@ -9,21 +9,20 @@ from typing import Tuple
 
 import wandb
 from transformers import (AutoConfig, AutoModelForCausalLM, AutoTokenizer,
-                          DataCollatorForSeq2Seq, HfArgumentParser,
-                          PreTrainedModel, PreTrainedTokenizer)
+                          DataCollatorForSeq2Seq, PreTrainedModel,
+                          PreTrainedTokenizer)
 from transformers import Seq2SeqTrainingArguments as TrainingArguments
 from transformers import Trainer
 
 sys.path.append(os.getcwd())
 from llamatuner.configs import (DataArguments, FinetuningArguments,
                                 GeneratingArguments, ModelArguments)
+from llamatuner.configs.parser import get_train_args
 from llamatuner.data.data_loader import get_dataset
 from llamatuner.model.callbacks import ComputeMetrics
 from llamatuner.utils.constants import IGNORE_INDEX
 from llamatuner.utils.logger_utils import get_logger, get_outdir
 from llamatuner.utils.model_utils import get_logits_processor
-
-os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
 
 
 def load_model_tokenizer(
@@ -50,13 +49,6 @@ def load_model_tokenizer(
     config = AutoConfig.from_pretrained(model_args.model_name_or_path,
                                         **config_kwargs)
 
-    orig_ctx_len = getattr(config, 'max_position_embeddings', None)
-    if orig_ctx_len and model_args.model_max_length > orig_ctx_len:
-        scaling_factor = float(
-            math.ceil(model_args.model_max_length / orig_ctx_len))
-        config.rope_scaling = {'type': 'linear', 'factor': scaling_factor}
-    config.use_cache = False
-
     # Load the pre-trained model
     logger.info(f'Loading Model from {model_args.model_name_or_path}...')
     model = AutoModelForCausalLM.from_pretrained(model_args.model_name_or_path,
@@ -78,7 +70,7 @@ def load_model_tokenizer(
     logger.info(f'Loading tokenizer from {model_args.model_name_or_path}...')
     tokenizer = AutoTokenizer.from_pretrained(
         model_args.model_name_or_path,
-        padding_side=model_args.padding_side,
+        padding_side='right',
         model_max_length=model_args.model_max_length,
         use_fast=False,
         **config_kwargs,
@@ -94,7 +86,7 @@ def run_full_sft(
     model_args: ModelArguments,
     data_args: DataArguments,
     training_args: TrainingArguments,
-    finetune_args: FinetuningArguments,
+    finetuning_args: FinetuningArguments,
     generating_args: GeneratingArguments,
 ) -> None:
     """Trains a language model using Hugging Face's Transformers library.
@@ -103,7 +95,7 @@ def run_full_sft(
         model_args (ModelArguments): The arguments for the model configuration.
         data_args (DataArguments): The arguments for the data configuration.
         training_args (TrainingArguments): The arguments for the training configuration.
-        finetune_args (FinetuningArguments): The arguments for the fine-tuning configuration.
+        finetuning_args (FinetuningArguments): The arguments for the fine-tuning configuration.
         generating_args (GeneratingArguments): The arguments for the generating configuration.
 
     Returns:
@@ -113,7 +105,7 @@ def run_full_sft(
         **vars(model_args),
         **vars(data_args),
         **vars(training_args),
-        **vars(finetune_args),
+        **vars(finetuning_args),
         **vars(generating_args),
     )
     # Initialize the logger before other steps
@@ -171,10 +163,10 @@ def run_full_sft(
     # Initialize wandb
     if 'wandb' in training_args.report_to:
         logger.info('Initializing wandb project...')
-        wandb_run_name = finetune_args.wandb_run_name if finetune_args else log_name
+        wandb_run_name = finetuning_args.wandb_run_name if finetuning_args else log_name
         wandb.init(
             dir=output_dir,
-            project=finetune_args.wandb_project,
+            project=finetuning_args.wandb_project,
             name=wandb_run_name,
             tags=['full-finetune', 'sft'],
             group='full-finetune',
@@ -225,14 +217,7 @@ def run_full_sft(
 
 
 if __name__ == '__main__':
-    parser = HfArgumentParser((
-        ModelArguments,
-        DataArguments,
-        TrainingArguments,
-        FinetuningArguments,
-        GeneratingArguments,
-    ))
-    model_args, data_args, training_args, finetune_args, generating_args = (
-        parser.parse_args_into_dataclasses())
-    run_full_sft(model_args, data_args, training_args, finetune_args,
+    model_args, data_args, training_args, finetuning_args, generating_args = (
+        get_train_args())
+    run_full_sft(model_args, data_args, training_args, finetuning_args,
                  generating_args)

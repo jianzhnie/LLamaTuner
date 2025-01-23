@@ -13,14 +13,14 @@ import wandb
 from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
 from transformers import (AutoModelForCausalLM, AutoTokenizer,
                           BitsAndBytesConfig, DataCollatorForSeq2Seq,
-                          HfArgumentParser, PreTrainedModel,
-                          PreTrainedTokenizer)
+                          PreTrainedModel, PreTrainedTokenizer)
 from transformers import Seq2SeqTrainingArguments as TrainingArguments
 from transformers import Trainer
 
 sys.path.append(os.getcwd())
 from llamatuner.configs import (DataArguments, FinetuningArguments,
                                 GeneratingArguments, ModelArguments)
+from llamatuner.configs.parser import get_train_args
 from llamatuner.data.data_loader import get_dataset
 from llamatuner.model.callbacks import ComputeMetrics
 from llamatuner.model.utils.misc import find_all_linear_modules
@@ -31,13 +31,11 @@ from llamatuner.utils.model_utils import (get_logits_processor,
                                           print_model_dtypes,
                                           print_trainable_parameters)
 
-os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
-
 
 def load_model_tokenizer(
     model_args: ModelArguments,
     training_args: TrainingArguments,
-    finetune_args: FinetuningArguments,
+    finetuning_args: FinetuningArguments,
     logger: logging.Logger,
 ) -> Tuple[PreTrainedModel, PreTrainedTokenizer]:
     """
@@ -46,7 +44,7 @@ def load_model_tokenizer(
     Args:
         model_args (ModelArguments): Arguments for the model configuration.
         training_args (TrainingArguments): Arguments for the training configuration.
-        finetune_args (FinetuningArguments): Arguments for the finetuning configuration.
+        finetuning_args (FinetuningArguments): Arguments for the finetuning configuration.
         logger (logging.Logger): Logger object for logging information.
 
     Returns:
@@ -58,7 +56,7 @@ def load_model_tokenizer(
                    (torch.bfloat16 if training_args.bf16 else torch.float32))
 
     device_map: Union[str, None] = 'auto'
-    if finetune_args.use_qlora:
+    if finetuning_args.use_qlora:
         world_size = int(os.environ.get('WORLD_SIZE', 1))
         device_map = ({
             '': int(os.environ.get('LOCAL_RANK') or 0)
@@ -75,8 +73,8 @@ def load_model_tokenizer(
 
     logger.info(f'Loading Model from {model_args.model_name_or_path}...')
 
-    load_in_4bit = finetune_args.quant_bit == 4
-    load_in_8bit = finetune_args.quant_bit == 8
+    load_in_4bit = finetuning_args.quant_bit == 4
+    load_in_8bit = finetuning_args.quant_bit == 8
 
     model = AutoModelForCausalLM.from_pretrained(
         model_args.model_name_or_path,
@@ -86,13 +84,13 @@ def load_model_tokenizer(
         quantization_config=BitsAndBytesConfig(
             load_in_4bit=load_in_4bit,
             load_in_8bit=load_in_8bit,
-            llm_int8_threshold=finetune_args.llm_int8_threshold,  # int8的门限
-            llm_int8_has_fp16_weight=finetune_args.
+            llm_int8_threshold=finetuning_args.llm_int8_threshold,  # int8的门限
+            llm_int8_has_fp16_weight=finetuning_args.
             llm_int8_has_fp16_weight,  # int8的LLM，是否包含fp16的权重
-            bnb_4bit_use_double_quant=finetune_args.double_quant,  # 是否进行双重量化
-            bnb_4bit_quant_type=finetune_args.quant_type,  # {'fp4', 'nf4'}
+            bnb_4bit_use_double_quant=finetuning_args.double_quant,  # 是否进行双重量化
+            bnb_4bit_quant_type=finetuning_args.quant_type,  # {'fp4', 'nf4'}
             bnb_4bit_compute_dtype=torch_dtype,  # 计算时使用的数据类型
-        ) if finetune_args.use_qlora else None,
+        ) if finetuning_args.use_qlora else None,
         torch_dtype=torch_dtype,
         **config_kwargs,
     )
@@ -105,14 +103,14 @@ def load_model_tokenizer(
         setattr(model, 'is_parallelizable', True)
 
     # Prepare the model for k-bit training if specified.
-    if finetune_args.use_qlora:
+    if finetuning_args.use_qlora:
         logger.info('Preparemodel for kbit training!!!')
         model = prepare_model_for_kbit_training(
             model,
             use_gradient_checkpointing=training_args.gradient_checkpointing)
     # Print a message if the GPU supports bfloat16.
     # 如果计算类型为 torch.float16 并且 args.bits==4，也就是4bit量化模型时，进行如下操作。
-    if torch_dtype == torch.float16 and finetune_args.quant_bit.bits == 4:
+    if torch_dtype == torch.float16 and finetuning_args.quant_bit.bits == 4:
         # 得到显卡的计算能力的最大值和最小值，分别对应major和minor
         # 只有major >= 8时的GPU才支持bfloat16格式，可以使用参数--bf16来加速训练
         major, minor = torch.cuda.get_device_capability()
@@ -123,19 +121,19 @@ def load_model_tokenizer(
 
     # Add LoRA sparsity if specified
     logger.info('Adding LoRA modules...')
-    if len(finetune_args.lora_target
-           ) == 1 and finetune_args.lora_target[0] == 'all':
+    if len(finetuning_args.lora_target
+           ) == 1 and finetuning_args.lora_target[0] == 'all':
         target_modules = find_all_linear_modules(
-            model, finetune_args.freeze_vision_tower)
+            model, finetuning_args.freeze_vision_tower)
     else:
-        target_modules = finetune_args.lora_target
+        target_modules = finetuning_args.lora_target
 
     lora_config = LoraConfig(
-        r=finetune_args.lora_rank,  # lora层A矩阵的列大小和B矩阵的行大小
-        lora_alpha=finetune_args.lora_alpha,  # 缩放因子
+        r=finetuning_args.lora_rank,  # lora层A矩阵的列大小和B矩阵的行大小
+        lora_alpha=finetuning_args.lora_alpha,  # 缩放因子
         target_modules=target_modules,  # 需要进行lora网络操作的模块名称列表
-        lora_dropout=finetune_args.lora_dropout,  # 是否使用dropout, 正则化操作
-        bias=finetune_args.lora_bias,  # 是否对偏差参数进行处理
+        lora_dropout=finetuning_args.lora_dropout,  # 是否使用dropout, 正则化操作
+        bias=finetuning_args.lora_bias,  # 是否对偏差参数进行处理
         task_type='CAUSAL_LM',  # 模型名称，一种标记
     )
 
@@ -151,7 +149,7 @@ def load_model_tokenizer(
     logger.info(f'Loading tokenizer from {model_args.model_name_or_path}...')
     tokenizer = AutoTokenizer.from_pretrained(
         model_args.model_name_or_path,
-        padding_side=model_args.padding_side,
+        padding_side='right',
         model_max_length=model_args.model_max_length,
         use_fast=False,
         **config_kwargs,
@@ -167,7 +165,7 @@ def run_lora_sft(
     model_args: ModelArguments,
     data_args: DataArguments,
     training_args: TrainingArguments,
-    finetune_args: FinetuningArguments,
+    finetuning_args: FinetuningArguments,
     generating_args: GeneratingArguments,
 ) -> None:
     """
@@ -177,7 +175,7 @@ def run_lora_sft(
         model_args (ModelArguments): The arguments for the model configuration.
         data_args (DataArguments): The arguments for the data configuration.
         training_args (TrainingArguments): The arguments for the training configuration.
-        finetune_args (FinetuningArguments): The arguments for the finetuning configuration.
+        finetuning_args (FinetuningArguments): The arguments for the finetuning configuration.
         generating_args (GeneratingArguments): The arguments for the generating configuration.
 
     Returns:
@@ -188,7 +186,7 @@ def run_lora_sft(
         **vars(model_args),
         **vars(data_args),
         **vars(training_args),
-        **vars(finetune_args),
+        **vars(finetuning_args),
         **vars(generating_args),
     )
 
@@ -209,12 +207,12 @@ def run_lora_sft(
     logger.info('Loading model and tokenizer...')
     model, tokenizer = load_model_tokenizer(model_args,
                                             training_args,
-                                            finetune_args,
+                                            finetuning_args,
                                             logger=logger)
     logger.info('Successfully loaded model and tokenizer.')
 
     logger.info('Printing trainable parameters...')
-    print_trainable_parameters(model, kbit=finetune_args.quant_bit)
+    print_trainable_parameters(model, kbit=finetuning_args.quant_bit)
 
     # Verify dtypes
     logger.info('Print model dtypes...')
@@ -257,10 +255,10 @@ def run_lora_sft(
 
     if 'wandb' in training_args.report_to:
         logger.info('Initializing wandb project...')
-        wandb_run_name = finetune_args.wandb_run_name if finetune_args else log_name
+        wandb_run_name = finetuning_args.wandb_run_name if finetuning_args else log_name
         wandb.init(
             dir=output_dir,
-            project=finetune_args.wandb_project,
+            project=finetuning_args.wandb_project,
             name=wandb_run_name,
             tags=['lora-finetune', 'sft'],
             group='lora-finetune',
@@ -297,7 +295,7 @@ def run_lora_sft(
                 state_dict = state_dict_zero3
         else:
             state_dict = get_peft_state_maybe_zero_3(model.named_parameters(),
-                                                     finetune_args.lora_bias)
+                                                     finetuning_args.lora_bias)
 
         if training_args.local_rank == 0:
             model.save_pretrained(training_args.output_dir,
@@ -325,14 +323,7 @@ def run_lora_sft(
 
 
 if __name__ == '__main__':
-    parser = HfArgumentParser((
-        ModelArguments,
-        DataArguments,
-        TrainingArguments,
-        FinetuningArguments,
-        GeneratingArguments,
-    ))
-    model_args, data_args, training_args, finetune_args, generating_args = (
-        parser.parse_args_into_dataclasses())
-    run_lora_sft(model_args, data_args, training_args, finetune_args,
+    model_args, data_args, training_args, finetuning_args, generating_args = (
+        get_train_args())
+    run_lora_sft(model_args, data_args, training_args, finetuning_args,
                  generating_args)

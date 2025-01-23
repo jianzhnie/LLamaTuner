@@ -9,13 +9,13 @@ from typing import Tuple
 
 import wandb
 from transformers import (AutoConfig, AutoModelForCausalLM, AutoTokenizer,
-                          DataCollatorForLanguageModeling, HfArgumentParser,
-                          PreTrainedModel, PreTrainedTokenizer, Trainer,
-                          TrainingArguments)
+                          DataCollatorForLanguageModeling, PreTrainedModel,
+                          PreTrainedTokenizer, Trainer, TrainingArguments)
 
 sys.path.append(os.getcwd())
 from llamatuner.configs import (DataArguments, FinetuningArguments,
                                 ModelArguments)
+from llamatuner.configs.parser import get_train_args
 from llamatuner.data.data_loader import get_dataset
 from llamatuner.utils.logger_utils import get_logger, get_outdir
 
@@ -43,14 +43,6 @@ def load_model_tokenizer(
     # Set RoPE scaling factor
     config = AutoConfig.from_pretrained(model_args.model_name_or_path,
                                         **config_kwargs)
-
-    orig_ctx_len = getattr(config, 'max_position_embeddings', None)
-    if orig_ctx_len and model_args.model_max_length > orig_ctx_len:
-        scaling_factor = float(
-            math.ceil(model_args.model_max_length / orig_ctx_len))
-        config.rope_scaling = {'type': 'linear', 'factor': scaling_factor}
-    config.use_cache = False
-
     # Load the pre-trained model
     logger.info(f'Loading Model from {model_args.model_name_or_path}...')
     model = AutoModelForCausalLM.from_pretrained(model_args.model_name_or_path,
@@ -72,7 +64,7 @@ def load_model_tokenizer(
     logger.info(f'Loading tokenizer from {model_args.model_name_or_path}...')
     tokenizer = AutoTokenizer.from_pretrained(
         model_args.model_name_or_path,
-        padding_side=model_args.padding_side,
+        padding_side='right',
         model_max_length=model_args.model_max_length,
         use_fast=False,
         **config_kwargs,
@@ -88,14 +80,14 @@ def run_pt(
     model_args: ModelArguments,
     data_args: DataArguments,
     training_args: TrainingArguments,
-    finetune_args: FinetuningArguments,
+    finetuning_args: FinetuningArguments,
 ) -> None:
 
     args = argparse.Namespace(
         **vars(model_args),
         **vars(data_args),
         **vars(training_args),
-        **vars(finetune_args),
+        **vars(finetuning_args),
     )
     # Initialize the logger before other steps
     timestamp = time.strftime('%Y%m%d_%H%M%S', time.localtime())
@@ -131,10 +123,10 @@ def run_pt(
     # Initialize wandb
     if 'wandb' in training_args.report_to:
         logger.info('Initializing wandb project...')
-        wandb_run_name = finetune_args.wandb_run_name if finetune_args else log_name
+        wandb_run_name = finetuning_args.wandb_run_name if finetuning_args else log_name
         wandb.init(
             dir=output_dir,
-            project=finetune_args.wandb_project,
+            project=finetuning_args.wandb_project,
             name=wandb_run_name,
             tags=['full-finetune', 'pt'],
             group='pt',
@@ -182,8 +174,6 @@ def run_pt(
 
 
 if __name__ == '__main__':
-    parser = HfArgumentParser((ModelArguments, DataArguments,
-                               TrainingArguments, FinetuningArguments))
-    model_args, data_args, training_args, finetune_args = (
-        parser.parse_args_into_dataclasses())
-    run_pt(model_args, data_args, training_args, finetune_args)
+    model_args, data_args, training_args, finetuning_args, generating_args = (
+        get_train_args())
+    run_pt(model_args, data_args, training_args, finetuning_args)

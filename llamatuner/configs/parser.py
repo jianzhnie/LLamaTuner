@@ -17,8 +17,7 @@ from llamatuner.configs.generating_args import GeneratingArguments
 from llamatuner.configs.model_args import ModelArguments
 from llamatuner.utils.constants import CHECKPOINT_NAMES
 from llamatuner.utils.logger_utils import get_logger
-from llamatuner.utils.misc import (check_dependencies, check_version,
-                                   get_current_device)
+from llamatuner.utils.misc import check_dependencies, get_current_device
 
 logger = get_logger('llamatuner')
 
@@ -56,11 +55,17 @@ def parse_args(parser: HfArgumentParser,
     if args is not None:
         return parser.parse_dict(args)
 
-    if len(sys.argv) == 2 and sys.argv[1].endswith('.yaml'):
-        return parser.parse_yaml_file(os.path.abspath(sys.argv[1]))
+    # Check for YAML config in either argv[0] or argv[1]
+    if (len(sys.argv) >= 1 and sys.argv[0].endswith('.yaml')) or \
+       (len(sys.argv) == 2 and sys.argv[1].endswith('.yaml')):
+        config_path = sys.argv[1] if len(sys.argv) == 2 else sys.argv[0]
+        return parser.parse_yaml_file(os.path.abspath(config_path))
 
-    if len(sys.argv) == 2 and sys.argv[1].endswith('.json'):
-        return parser.parse_json_file(os.path.abspath(sys.argv[1]))
+    # Check for JSON config in either argv[0] or argv[1]
+    if (len(sys.argv) >= 1 and sys.argv[0].endswith('.json')) or \
+       (len(sys.argv) == 2 and sys.argv[1].endswith('.json')):
+        config_path = sys.argv[1] if len(sys.argv) == 2 else sys.argv[0]
+        return parser.parse_json_file(os.path.abspath(config_path))
 
     (*parsed_args, unknown_args) = parser.parse_args_into_dataclasses(
         return_remaining_strings=True)
@@ -104,15 +109,6 @@ def verify_model_args(
             raise ValueError(
                 'Quantized model only accepts a single adapter. Merge them first.'
             )
-
-
-def check_extra_dependencies(
-    training_args: Optional[TrainingArguments] = None, ) -> None:
-
-    if training_args is not None and training_args.predict_with_generate:
-        check_version('jieba', mandatory=True)
-        check_version('nltk', mandatory=True)
-        check_version('rouge_chinese', mandatory=True)
 
 
 def parse_train_args(args: Optional[Dict[str, Any]] = None) -> TRAIN_CLS:
@@ -196,7 +192,6 @@ def get_train_args(args: Optional[Dict[str, Any]] = None) -> TRAIN_CLS:
             'Cannot use device map for quantized models in training.')
 
     verify_model_args(model_args, finetuning_args)
-    check_extra_dependencies(model_args, finetuning_args, training_args)
 
     if (training_args.do_train and finetuning_args.finetuning_type == 'lora'
             and finetuning_args.quant_bit is None and model_args.resize_vocab
@@ -307,7 +302,6 @@ def get_infer_args(args: Optional[Dict[str, Any]] = None) -> INFER_CLS:
         raise ValueError('Please specify which `template` to use.')
 
     verify_model_args(model_args, finetuning_args)
-    check_extra_dependencies(model_args, finetuning_args)
 
     model_args.device_map = 'auto'
     return model_args, data_args, finetuning_args, generating_args
@@ -322,7 +316,6 @@ def get_eval_args(args: Optional[Dict[str, Any]] = None) -> EVAL_CLS:
         raise ValueError('Please specify which `template` to use.')
 
     verify_model_args(model_args, finetuning_args)
-    check_extra_dependencies(model_args, finetuning_args)
 
     model_args.device_map = 'auto'
 
