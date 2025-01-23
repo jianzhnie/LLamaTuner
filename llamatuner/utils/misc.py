@@ -51,20 +51,34 @@ class AverageMeter:
         self.avg = self.sum / self.count
 
 
-def check_dependencies() -> None:
-    if os.environ.get('DISABLE_VERSION_CHECK', '0').lower() in ['true', '1']:
-        logger.warning(
+def check_version(requirement: str, mandatory: bool = False) -> None:
+    r"""
+    Optionally checks the package version.
+    """
+    if os.getenv('DISABLE_VERSION_CHECK', '0').lower() in ['true', '1'
+                                                           ] and not mandatory:
+        logger.warning_rank0_once(
             'Version checking has been disabled, may lead to unexpected behaviors.'
         )
+        return
+
+    if mandatory:
+        hint = f'To fix: run `pip install {requirement}`.'
     else:
-        require_version('transformers>=4.37.2',
-                        'To fix: pip install transformers>=4.37.2')
-        require_version('datasets>=2.14.3',
-                        'To fix: pip install datasets>=2.14.3')
-        require_version('accelerate>=0.27.2',
-                        'To fix: pip install accelerate>=0.27.2')
-        require_version('peft>=0.10.0', 'To fix: pip install peft>=0.10.0')
-        require_version('trl>=0.8.2', 'To fix: pip install trl>=0.8.2')
+        hint = f'To fix: run `pip install {requirement}` or set `DISABLE_VERSION_CHECK=1` to skip this check.'
+
+    require_version(requirement, hint)
+
+
+def check_dependencies() -> None:
+    r"""
+    Checks the version of the required packages.
+    """
+    check_version('transformers>=4.41.2,<=4.46.1')
+    check_version('datasets>=2.16.0,<=3.1.0')
+    check_version('accelerate>=0.34.0,<=1.0.1')
+    check_version('peft>=0.11.1,<=0.12.0')
+    check_version('trl>=0.8.6,<=0.9.6')
 
 
 def count_parameters(model: torch.nn.Module) -> Tuple[int, int]:
