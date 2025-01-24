@@ -23,6 +23,7 @@ preprocessing_num_workers: 8
 output_dir: work_dir/pretrain/qwen2.5-0.5b/
 save_strategy: steps
 save_steps: 500
+save_total_limit: 5
 overwrite_output_dir: true
 
 # logger settings
@@ -44,7 +45,6 @@ warmup_ratio: 0.1
 fp16: true
 
 ### eval
-eval_dataset_size: 0.1
 per_device_eval_batch_size: 1
 eval_strategy: steps
 eval_steps: 500

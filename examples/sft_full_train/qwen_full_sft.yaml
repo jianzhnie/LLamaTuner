@@ -1,5 +1,6 @@
 ### model
-model_name_or_path: Qwen/Qwen1.5-0.5B
+model_name_or_path: Qwen/Qwen2.5-0.5B
+trust_remote_code: true
 
 ### method
 stage: sft
@@ -11,14 +12,14 @@ ddp_timeout: 180000000
 
 ### dataset
 dataset: alpaca
+eval_dataset: alpaca
 template: qwen
 cutoff_len: 1024
-max_samples: 1000
 overwrite_cache: true
-preprocessing_num_workers: 16
+preprocessing_num_workers: 8
 
 ### output
-output_dir: work_dir/qwen1.5-0.5b/full/sft/
+output_dir: work_dir/sft/qwen1.5-0.5b/
 save_strategy: steps
 save_steps: 500
 save_total_limit: 5
@@ -43,7 +44,6 @@ warmup_ratio: 0.1
 fp16: true
 
 ### eval
-eval_dataset_size: 0.1
 per_device_eval_batch_size: 1
 eval_strategy: steps
 eval_steps: 500
