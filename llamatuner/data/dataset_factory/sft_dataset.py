@@ -10,7 +10,8 @@ from torch.utils.data import Dataset
 from transformers import PreTrainedTokenizer, ProcessorMixin
 
 from llamatuner.configs import DataArguments
-from llamatuner.data.factory.dataset_utils import _preprocess_visual_inputs
+from llamatuner.data.dataset_factory.dataset_utils import \
+    _preprocess_visual_inputs
 from llamatuner.data.template import Template
 from llamatuner.utils.constants import IGNORE_INDEX, IMAGE_TOKEN
 from llamatuner.utils.logger_utils import get_logger

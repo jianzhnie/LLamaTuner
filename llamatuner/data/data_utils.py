@@ -10,10 +10,10 @@ import torch
 from datasets import Dataset, DatasetDict, concatenate_datasets, load_dataset
 from transformers import PreTrainedTokenizer
 
-from llamatuner.data.factory.sft_dataset import (
+from llamatuner.data.dataset_factory.sft_dataset import (
     DataCollatorForSupervisedDataset, SupervisedDataset)
-from llamatuner.data.factory.sharegpt_dataset import (ConversationDataset,
-                                                      VicunaDataset)
+from llamatuner.data.dataset_factory.sharegpt_dataset import (
+    ConversationDataset, VicunaDataset)
 from llamatuner.data.template import (ALPACA_PROMPT_DICT, DEFAULT_PROMPT_DICT,
                                       RANDOM_PROMPT_DICT)
 
