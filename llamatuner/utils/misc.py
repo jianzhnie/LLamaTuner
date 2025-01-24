@@ -1,20 +1,14 @@
 import gc
 import os
-from typing import Dict, Tuple
+from typing import Tuple
 
 import torch
-from peft import PeftModel
-from transformers import (InfNanRemoveLogitsProcessor, LogitsProcessorList,
-                          PreTrainedModel)
-from transformers.utils import (SAFE_WEIGHTS_NAME, WEIGHTS_NAME,
-                                is_torch_bf16_gpu_available,
+from transformers.utils import (is_torch_bf16_gpu_available,
                                 is_torch_cuda_available,
                                 is_torch_mps_available, is_torch_npu_available,
                                 is_torch_xpu_available)
 from transformers.utils.versions import require_version
 
-from llamatuner.utils.constants import (V_HEAD_SAFE_WEIGHTS_NAME,
-                                        V_HEAD_WEIGHTS_NAME)
 from llamatuner.utils.logger_utils import get_logger
 
 _is_fp16_available = is_torch_npu_available() or is_torch_cuda_available()
@@ -22,8 +16,6 @@ try:
     _is_bf16_available = is_torch_bf16_gpu_available()
 except Exception:
     _is_bf16_available = False
-
-from trl import AutoModelForCausalLMWithValueHead
 
 from llamatuner.configs.model_args import ModelArguments
 
@@ -57,7 +49,7 @@ def check_version(requirement: str, mandatory: bool = False) -> None:
     """
     if os.getenv('DISABLE_VERSION_CHECK', '0').lower() in ['true', '1'
                                                            ] and not mandatory:
-        logger.warning_rank0_once(
+        logger.warning(
             'Version checking has been disabled, may lead to unexpected behaviors.'
         )
         return
@@ -79,97 +71,6 @@ def check_dependencies() -> None:
     check_version('accelerate>=0.34.0,<=1.0.1')
     check_version('peft>=0.11.1,<=0.12.0')
     check_version('trl>=0.8.6,<=0.9.6')
-
-
-def count_parameters(model: torch.nn.Module) -> Tuple[int, int]:
-    r"""
-    Returns the number of trainable parameters and number of all parameters in the model.
-    """
-    trainable_params, all_param = 0, 0
-    for param in model.parameters():
-        num_params = param.numel()
-        # if using DS Zero 3 and the weights are initialized empty
-        if num_params == 0 and hasattr(param, 'ds_numel'):
-            num_params = param.ds_numel
-
-        # Due to the design of 4bit linear layers from bitsandbytes, multiply the number of parameters by 2
-        if param.__class__.__name__ == 'Params4bit':
-            if hasattr(param, 'quant_storage') and hasattr(
-                    param.quant_storage, 'itemsize'):
-                num_bytes = param.quant_storage.itemsize
-            elif hasattr(param, 'element_size'):  # for older pytorch version
-                num_bytes = param.element_size()
-            else:
-                num_bytes = 1
-
-            num_params = num_params * 2 * num_bytes
-
-        all_param += num_params
-        if param.requires_grad:
-            trainable_params += num_params
-
-    return trainable_params, all_param
-
-
-def fix_valuehead_checkpoint(
-    model: 'AutoModelForCausalLMWithValueHead',
-    output_dir: str,
-    safe_serialization: bool,
-) -> None:
-    r"""
-    The model is already unwrapped.
-
-    There are three cases:
-    1. full tuning without ds_zero3: state_dict = {"model.layers.*": ..., "v_head.summary.*": ...}
-    2. lora tuning without ds_zero3: state_dict = {"v_head.summary.*": ...}
-    3. under deepspeed zero3: state_dict = {"pretrained_model.model.layers.*": ..., "v_head.summary.*": ...}
-
-    We assume `stage3_gather_16bit_weights_on_model_save=true`.
-    """
-    if not isinstance(model.pretrained_model, (PreTrainedModel, PeftModel)):
-        return
-
-    if safe_serialization:
-        from safetensors import safe_open
-        from safetensors.torch import save_file
-
-        path_to_checkpoint = os.path.join(output_dir, SAFE_WEIGHTS_NAME)
-        with safe_open(path_to_checkpoint, framework='pt', device='cpu') as f:
-            state_dict: Dict[str, torch.Tensor] = {
-                key: f.get_tensor(key)
-                for key in f.keys()
-            }
-    else:
-        path_to_checkpoint = os.path.join(output_dir, WEIGHTS_NAME)
-        state_dict: Dict[str, torch.Tensor] = torch.load(path_to_checkpoint,
-                                                         map_location='cpu')
-
-    decoder_state_dict = {}
-    v_head_state_dict = {}
-    for name, param in state_dict.items():
-        if name.startswith('v_head.'):
-            v_head_state_dict[name] = param
-        else:
-            decoder_state_dict[name.replace('pretrained_model.', '')] = param
-
-    os.remove(path_to_checkpoint)
-    model.pretrained_model.save_pretrained(
-        output_dir,
-        state_dict=decoder_state_dict or None,
-        safe_serialization=safe_serialization,
-    )
-
-    if safe_serialization:
-        save_file(
-            v_head_state_dict,
-            os.path.join(output_dir, V_HEAD_SAFE_WEIGHTS_NAME),
-            metadata={'format': 'pt'},
-        )
-    else:
-        torch.save(v_head_state_dict,
-                   os.path.join(output_dir, V_HEAD_WEIGHTS_NAME))
-
-    logger.info('Value head model saved at: {}'.format(output_dir))
 
 
 def get_current_device() -> torch.device:
@@ -202,13 +103,18 @@ def get_device_count() -> int:
         return 0
 
 
-def get_logits_processor() -> 'LogitsProcessorList':
+def get_peak_memory() -> Tuple[int, int]:
     r"""
-    Gets logits processor that removes NaN and Inf logits.
+    Gets the peak memory usage for the current device (in Bytes).
     """
-    logits_processor = LogitsProcessorList()
-    logits_processor.append(InfNanRemoveLogitsProcessor())
-    return logits_processor
+    if is_torch_npu_available():
+        return torch.npu.max_memory_allocated(), torch.npu.max_memory_reserved(
+        )
+    elif is_torch_cuda_available():
+        return torch.cuda.max_memory_allocated(
+        ), torch.cuda.max_memory_reserved()
+    else:
+        return 0, 0
 
 
 def infer_optim_dtype(model_dtype: torch.dtype) -> torch.dtype:
@@ -239,12 +145,17 @@ def has_tokenized_data(path: os.PathLike) -> bool:
 
 def torch_gc() -> None:
     r"""
-    Collects GPU memory.
+    Collects GPU or NPU memory.
     """
     gc.collect()
-    if torch.cuda.is_available():
+    if is_torch_xpu_available():
+        torch.xpu.empty_cache()
+    elif is_torch_npu_available():
+        torch.npu.empty_cache()
+    elif is_torch_mps_available():
+        torch.mps.empty_cache()
+    elif is_torch_cuda_available():
         torch.cuda.empty_cache()
-        torch.cuda.ipc_collect()
 
 
 def try_download_model_from_ms(model_args: 'ModelArguments') -> str:
