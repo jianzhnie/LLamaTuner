@@ -115,8 +115,6 @@ def preprocess_supervised_dataset(
                     messages,
                     examples['system'][i],
                     examples['tools'][i],
-                    data_args.cutoff_len,
-                    data_args.reserved_label_len,
                 )):
             if data_args.train_on_prompt:
                 source_mask = source_ids
