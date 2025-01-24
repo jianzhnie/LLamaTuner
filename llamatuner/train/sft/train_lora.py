@@ -123,8 +123,7 @@ def load_model_tokenizer(
     logger.info('Adding LoRA modules...')
     if len(finetuning_args.lora_target
            ) == 1 and finetuning_args.lora_target[0] == 'all':
-        target_modules = find_all_linear_modules(
-            model, finetuning_args.freeze_vision_tower)
+        target_modules = find_all_linear_modules(model)
     else:
         target_modules = finetuning_args.lora_target
 
